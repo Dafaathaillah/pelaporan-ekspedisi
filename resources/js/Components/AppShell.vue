@@ -1,0 +1,46 @@
+<script setup>
+import { Link, usePage } from '@inertiajs/vue3';
+import { computed, onMounted, ref, watch } from 'vue';
+import AppFooter from '@/Components/AppFooter.vue';
+import NavIcon from '@/Components/NavIcon.vue';
+
+defineProps({ title: String, subtitle: String, eyebrow: { type: String, default: '' } });
+const page = usePage();const user = computed(() => page.props.auth.user);const collapsed = ref(false);const moreOpen = ref(false);
+onMounted(() => collapsed.value = localStorage.getItem('ppa-sidebar-collapsed') === 'true');
+watch(collapsed, value => localStorage.setItem('ppa-sidebar-collapsed', String(value)));
+const can = permission => {
+    if (Array.isArray(user.value.permissions)) return user.value.permissions.includes(permission);
+    if (user.value.role === 'coordinator') return true;
+    return permission === (user.value.role === 'vendor' ? 'vendor.submission' : 'expedition.report');
+};
+const menus = computed(() => {
+    if (user.value.role === 'coordinator') return [
+        { label:'Ekspedisi',short:'Ekspedisi',icon:'truck',href:'/coordinator',exact:true, permission:'coordinator.expedition' },
+        { label:'Visitor',short:'Visitor',icon:'visitor',href:'/coordinator/submissions/VISITOR', permission:'coordinator.vendor' },
+        { label:'Waskat',short:'Waskat',icon:'shield',href:'/coordinator/submissions/WASKAT', permission:'coordinator.vendor' },
+        { label:'Permit Non Simper',short:'Permit',icon:'document',href:'/coordinator/submissions/PERMIT_VENDOR_NON_SIMPER', permission:'coordinator.vendor' },
+        { label:'Ijin Lintas',short:'Lintas',icon:'route',href:'/coordinator/submissions/IJIN_LINTAS', permission:'coordinator.vendor' },
+        { label:'Manajemen User',short:'Pengguna',icon:'users',href:'/coordinator/users', permission:'users.manage' },
+    ].filter(item => can(item.permission));
+    if (user.value.role === 'vendor') return [{label:'Pengajuan Vendor',short:'Pengajuan',icon:'upload',href:'/vendor'}];
+    return [{label:'Laporan Kedatangan',short:'Laporan',icon:'truck',href:'/expedition'}];
+});
+const active = item => item.exact ? page.url === item.href : page.url.startsWith(item.href);
+const primaryMenus = computed(() => menus.value.slice(0, 3));
+const additionalMenus = computed(() => menus.value.slice(3));
+const additionalActive = computed(() => additionalMenus.value.some(active));
+watch(() => page.url, () => moreOpen.value = false);
+</script>
+
+<template><div class="min-h-screen bg-[#f7f8fa] text-[#101b35] lg:flex">
+<aside class="sidebar-shell" :class="collapsed?'w-[88px]':'w-72'">
+    <button type="button" class="sidebar-toggle" :aria-label="collapsed?'Tampilkan sidebar':'Sembunyikan sidebar'" :title="collapsed?'Tampilkan sidebar':'Sembunyikan sidebar'" @click="collapsed=!collapsed">{{collapsed?'›':'‹'}}</button>
+    <div class="border-b border-slate-100 px-5 py-7"><div class="flex items-center" :class="collapsed?'justify-center':'gap-3'"><div class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-red-600 text-sm font-black text-white shadow-lg shadow-red-100">PPA</div><div v-show="!collapsed" class="min-w-0"><p class="font-black leading-tight text-slate-950">PUTRA PERKASA ABADI</p><p class="mt-1 whitespace-nowrap text-[9px] font-bold tracking-[.22em] text-slate-500">SITE BORNEO INDOBARA</p></div></div></div>
+    <div class="px-3 py-5"><p v-show="!collapsed" class="px-3 text-[10px] font-black uppercase tracking-[.18em] text-slate-400">Menu Utama</p><nav class="mt-3 space-y-1.5"><Link v-for="item in menus" :key="item.href" :href="item.href" :title="collapsed?item.label:null" class="side-link" :class="[{'side-link-active':active(item)},collapsed?'justify-center px-2':'']"><span class="side-icon"><NavIcon :name="item.icon"/></span><span v-show="!collapsed" class="whitespace-nowrap">{{item.label}}</span></Link></nav></div>
+    <div class="mt-auto border-t border-slate-100 p-3"><div class="mb-3 rounded-2xl bg-slate-50" :class="collapsed?'p-2':'p-4'"><div class="flex items-center" :class="collapsed?'justify-center':'gap-3'"><div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-red-100 font-black text-red-700">{{user.name.charAt(0).toUpperCase()}}</div><div v-show="!collapsed" class="min-w-0"><p class="truncate text-sm font-black">{{user.name}}</p><p class="whitespace-nowrap text-[10px] font-semibold uppercase text-slate-500">{{user.role}} · Site {{user.site}}</p></div></div></div><Link href="/logout" method="post" as="button" :title="collapsed?'Keluar dari Sistem':null" class="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm font-black text-red-700 hover:bg-red-100"><span>↪</span><span v-show="!collapsed" class="whitespace-nowrap">Keluar dari Sistem</span></Link></div>
+</aside>
+<div class="flex min-w-0 flex-1 flex-col"><header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur lg:hidden"><div class="flex items-center justify-between px-4 py-3"><div class="flex min-w-0 items-center gap-3"><div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-red-600 text-xs font-black text-white">PPA</div><div class="min-w-0"><p class="truncate text-sm font-black">{{title}}</p><p class="truncate text-[10px] uppercase text-slate-500">Site {{user.site}} · {{user.name}}</p></div></div><Link href="/logout" method="post" as="button" class="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">Keluar</Link></div></header><header class="hidden border-b border-slate-200 bg-white lg:block"><div class="flex items-center justify-between px-8 py-5"><div><p class="text-xl font-black uppercase">{{title}}</p><p class="text-xs font-semibold uppercase text-slate-500">{{subtitle}}</p></div><div class="rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-bold text-emerald-700">● Sistem aktif</div></div></header><main class="mx-auto w-full max-w-[1500px] flex-1 px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:pb-8"><section v-if="eyebrow" class="mb-5 rounded-2xl border border-slate-100 bg-white px-6 py-6 shadow-soft lg:px-7 lg:py-7"><p class="text-[10px] font-black uppercase tracking-[.2em] text-red-600">{{eyebrow}}</p><h1 class="mt-2 text-2xl font-black tracking-tight sm:text-3xl lg:text-4xl"><slot name="hero-title">{{title}}</slot></h1><p class="mt-2 text-xs text-slate-500 sm:text-sm"><slot name="hero-copy">{{subtitle}}</slot></p></section><slot/></main><AppFooter/></div>
+<Transition enter-active-class="transition duration-200" enter-from-class="opacity-0" leave-active-class="transition duration-150" leave-to-class="opacity-0"><button v-if="moreOpen" type="button" aria-label="Tutup menu lainnya" class="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-[2px] lg:hidden" @click="moreOpen=false"></button></Transition>
+<Transition enter-active-class="transition duration-250 ease-out" enter-from-class="translate-y-full opacity-0" leave-active-class="transition duration-180 ease-in" leave-to-class="translate-y-full opacity-0"><section v-if="moreOpen" class="fixed inset-x-3 bottom-[calc(5.4rem+env(safe-area-inset-bottom))] z-50 rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_24px_70px_rgba(15,23,42,.25)] lg:hidden sm:left-1/2 sm:w-[min(640px,calc(100%-2rem))] sm:-translate-x-1/2"><div class="mb-3 flex items-center justify-between px-1"><div><p class="text-[10px] font-black uppercase tracking-[.18em] text-red-600">Menu lainnya</p><p class="mt-1 text-sm font-black text-slate-900">Pilih halaman tujuan</p></div><button type="button" aria-label="Tutup" class="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-500" @click="moreOpen=false">✕</button></div><div class="grid grid-cols-2 gap-2"><Link v-for="item in additionalMenus" :key="item.href" :href="item.href" class="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-sm font-bold text-slate-700" :class="{'border-red-200 bg-red-50 text-red-700':active(item)}"><span class="side-icon"><NavIcon :name="item.icon"/></span><span class="truncate">{{item.label}}</span></Link></div><div class="mt-3 flex items-center gap-3 rounded-2xl border border-slate-100 p-3"><div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-red-100 font-black text-red-700">{{user.name.charAt(0).toUpperCase()}}</div><div class="min-w-0 flex-1"><p class="truncate text-sm font-black">{{user.name}}</p><p class="text-[10px] font-semibold uppercase text-slate-500">{{user.role}} · Site {{user.site}}</p></div><Link href="/logout" method="post" as="button" class="rounded-xl bg-red-50 px-3 py-2 text-xs font-black text-red-700">Keluar</Link></div></section></Transition>
+<nav class="mobile-bottom-nav lg:hidden"><Link v-for="item in primaryMenus" :key="item.href" :href="item.href" class="bottom-link" :class="{'bottom-link-active':active(item)}"><NavIcon :name="item.icon"/><span>{{item.short}}</span></Link><button v-if="additionalMenus.length" type="button" class="bottom-link" :class="{'bottom-link-active':additionalActive||moreOpen}" aria-label="Buka menu lainnya" :aria-expanded="moreOpen" @click="moreOpen=!moreOpen"><svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg><span>Lainnya</span></button></nav>
+</div></template>

@@ -1,0 +1,3 @@
+import Echo from 'laravel-echo';import Pusher from 'pusher-js';import{router}from'@inertiajs/vue3';
+window.Pusher=Pusher;
+export function connect(u){if(!u||!import.meta.env.VITE_PUSHER_APP_KEY)return;const e=new Echo({broadcaster:'pusher',key:import.meta.env.VITE_PUSHER_APP_KEY,cluster:import.meta.env.VITE_PUSHER_APP_CLUSTER,forceTLS:true});if(u.role==='coordinator')e.private('coordinator.'+u.site).listen('.ExpeditionReportCreated',()=>router.reload()).listen('.VendorSubmissionCreated',()=>router.reload());if(u.role==='vendor')e.private('vendor.'+u.id).listen('.VendorSubmissionStatusChanged',()=>router.reload({only:['submissions']}));}
