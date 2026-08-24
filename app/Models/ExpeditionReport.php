@@ -13,11 +13,16 @@ class ExpeditionReport extends Model
 
     protected function casts(): array
     {
-        return ['arrived_at' => 'datetime'];
+        return ['arrived_at' => 'datetime', 'arrival_photo_captured_at' => 'datetime', 'blood_pressure_photo_captured_at' => 'datetime', 'arrival_latitude' => 'decimal:7', 'arrival_longitude' => 'decimal:7', 'blood_pressure_latitude' => 'decimal:7', 'blood_pressure_longitude' => 'decimal:7'];
     }
 
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function vendorAccount()
+    {
+        return $this->belongsTo(User::class, 'vendor_user_id');
     }
 }

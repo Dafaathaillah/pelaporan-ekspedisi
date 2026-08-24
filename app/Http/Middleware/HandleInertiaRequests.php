@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserRole;
+use App\Models\VendorSubmission;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -35,6 +37,12 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'flash' => ['success' => fn () => $request->session()->get('success')],
+            'notificationCounts' => function () use ($request) {
+                $user = $request->user();
+                if (! $user || $user->role !== UserRole::COORDINATOR || ! $user->hasPermission('coordinator.vendor')) return [];
+                return VendorSubmission::where('site', $user->site)->whereNull('coordinator_opened_at')
+                    ->selectRaw('type, count(*) as total')->groupBy('type')->pluck('total', 'type');
+            },
         ];
     }
 }

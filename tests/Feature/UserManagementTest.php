@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Models\VendorCompany;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,6 +18,7 @@ class UserManagementTest extends TestCase
             'role' => UserRole::COORDINATOR,
             'permissions' => ['users.manage'],
         ]);
+        $company = VendorCompany::create(['name' => 'VENDOR BARU', 'abbreviation' => 'VBR', 'category' => 'REGULAR', 'is_active' => true]);
 
         $this->actingAs($coordinator)->get('/coordinator/users')->assertOk();
         $this->actingAs($coordinator)->post('/coordinator/users', [
@@ -25,12 +27,13 @@ class UserManagementTest extends TestCase
             'email' => 'vendor@example.test',
             'password' => 'password123',
             'role' => 'vendor',
+            'vendor_company_id' => $company->id,
             'site' => 'BIB',
             'is_active' => true,
             'permissions' => [],
         ])->assertSessionHasNoErrors();
 
-        $this->assertDatabaseHas('users', ['username' => 'vendor.baru', 'role' => 'vendor']);
+        $this->assertDatabaseHas('users', ['username' => 'vendor.baru', 'role' => 'vendor', 'vendor_company_id' => $company->id, 'name' => 'VENDOR BARU']);
     }
 
     public function test_coordinator_cannot_open_module_without_permission(): void

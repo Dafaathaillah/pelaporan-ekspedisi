@@ -22,7 +22,7 @@ class VendorSubmissionStatusChanged implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return ['id' => $this->submission->id, 'number' => $this->submission->submission_number, 'type' => $this->submission->type->value, 'label' => $this->submission->type->label(), 'vendor' => $this->submission->vendor_name, 'applicant' => $this->submission->applicant_name, 'status' => $this->submission->status->value, 'status_label' => match ($this->submission->status->value) {
-            'APPROVED' => 'Disetujui', 'REVISION' => 'Perlu Revisi', 'REJECTED' => 'Ditolak', 'RELEASED' => 'Released', default => 'Diajukan'
+            'APPROVED' => 'Disetujui', 'REVISION' => 'Perlu Revisi', 'REJECTED' => 'Ditolak', 'RELEASED' => 'Released', 'CLOSED' => 'Closed', default => 'Diajukan'
         }, 'note' => $this->submission->coordinator_note];
     }
 

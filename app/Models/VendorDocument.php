@@ -13,8 +13,9 @@ class VendorDocument extends Model
 
     protected function casts(): array
     {
-        return ['is_required' => 'boolean', 'uploaded_at' => 'datetime'];
+        return ['is_required' => 'boolean', 'uploaded_at' => 'datetime', 'verified_at' => 'datetime'];
     }
+    public function unit(){return $this->belongsTo(VendorSubmissionUnit::class,'vendor_submission_unit_id');}
 
     public function submission()
     {

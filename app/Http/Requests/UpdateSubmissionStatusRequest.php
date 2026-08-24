@@ -14,6 +14,6 @@ class UpdateSubmissionStatusRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['status' => ['required', Rule::in(['APPROVED', 'REVISION', 'REJECTED', 'RELEASED'])], 'coordinator_note' => [Rule::requiredIf(in_array($this->status, ['REVISION', 'REJECTED'], true)), 'nullable', 'string', 'max:2000']];
+        return ['status' => ['required', Rule::in(['APPROVED', 'REVISION', 'REJECTED', 'RELEASED', 'CLOSED'])], 'coordinator_note' => [Rule::requiredIf(in_array($this->status, ['REVISION', 'REJECTED'], true)), 'nullable', 'string', 'max:2000']];
     }
 }

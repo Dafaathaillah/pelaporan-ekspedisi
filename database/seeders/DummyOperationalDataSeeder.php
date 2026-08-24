@@ -61,5 +61,29 @@ class DummyOperationalDataSeeder extends Seeder
                 }
             }
         }
+
+        foreach ([SubmissionType::WASKAT, SubmissionType::IJIN_LINTAS] as $index => $type) {
+            $submission = VendorSubmission::updateOrCreate(
+                ['submission_number' => 'VND-DUMMY-RESUBMIT-'.$type->value],
+                ['type' => $type, 'service_category' => $type === SubmissionType::IJIN_LINTAS ? 'REGULAR' : null,
+                    'submission_sequence' => 1, 'vendor_name' => 'Vendor Demo Pengajuan Ulang',
+                    'applicant_name' => 'Budi Demo', 'phone' => '08129999000'.$index,
+                    'description' => 'Data dummy expired untuk mencoba tombol Minta Pengajuan Ulang pada akun koordinator.',
+                    'status' => SubmissionStatus::RELEASED, 'coordinator_note' => 'Masa berlaku dokumen telah habis.',
+                    'submitted_at' => now()->subDays(12), 'reviewed_at' => now()->subDays(11),
+                    'released_at' => now()->subDays(10), 'release_expired_at' => now()->subDays(3),
+                    'closed_at' => null, 'resubmission_requested_at' => null, 'resubmission_requested_by' => null,
+                    'revision_count' => 0, 'created_by' => $vendorUser->id, 'site' => 'BIB']
+            );
+            foreach ($requirements->for($type) as $document) {
+                $path = 'private/vendor-documents/'.$submission->id.'/'.$document['code'].'.pdf';
+                Storage::disk('local')->put($path, "%PDF-1.4\n% Dummy expired document\n%%EOF");
+                $submission->documents()->updateOrCreate(['document_code' => $document['code']], [
+                    'document_name' => $document['name'], 'file_name' => basename($path), 'original_name' => $document['code'].'.pdf',
+                    'file_path' => $path, 'mime_type' => 'application/pdf', 'file_size' => Storage::disk('local')->size($path),
+                    'is_required' => $document['required'], 'uploaded_at' => now()->subDays(12),
+                ]);
+            }
+        }
     }
 }

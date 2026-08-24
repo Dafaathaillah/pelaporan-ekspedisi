@@ -25,6 +25,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'vendor_company_id',
         'site',
         'is_active',
         'permissions',
@@ -96,5 +97,10 @@ class User extends Authenticatable
     public function vendorSubmissions()
     {
         return $this->hasMany(VendorSubmission::class, 'created_by');
+    }
+
+    public function vendorCompany()
+    {
+        return $this->belongsTo(VendorCompany::class);
     }
 }

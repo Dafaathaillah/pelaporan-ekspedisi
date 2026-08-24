@@ -23,6 +23,7 @@ class SaveUserRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:150', Rule::unique('users')->ignore($managedUser)],
             'password' => [$managedUser ? 'nullable' : 'required', 'string', 'min:8'],
             'role' => ['required', Rule::enum(UserRole::class)],
+            'vendor_company_id' => ['nullable', 'required_if:role,vendor', 'integer', 'exists:vendor_companies,id'],
             'site' => ['required', 'string', 'max:30'],
             'is_active' => ['required', 'boolean'],
             'permissions' => ['array'],

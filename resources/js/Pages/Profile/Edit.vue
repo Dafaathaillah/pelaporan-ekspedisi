@@ -1,56 +1,16 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import DeleteUserForm from './Partials/DeleteUserForm.vue';
+import AppShell from '@/Components/AppShell.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
-import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
-import { Head } from '@inertiajs/vue3';
-
-defineProps({
-    mustVerifyEmail: {
-        type: Boolean,
-    },
-    status: {
-        type: String,
-    },
-});
+import { Head, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+const user = computed(() => usePage().props.auth.user);
+const role = computed(() => ({coordinator:'Koordinator Sarana',vendor:'Vendor',expedition:'Ekspedisi'}[user.value.role] || user.value.role));
 </script>
 
-<template>
-    <Head title="Profile" />
-
-    <AuthenticatedLayout>
-        <template #header>
-            <h2
-                class="text-xl font-semibold leading-tight text-gray-800"
-            >
-                Profile
-            </h2>
-        </template>
-
-        <div class="py-12">
-            <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
-                >
-                    <UpdateProfileInformationForm
-                        :must-verify-email="mustVerifyEmail"
-                        :status="status"
-                        class="max-w-xl"
-                    />
-                </div>
-
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
-                >
-                    <UpdatePasswordForm class="max-w-xl" />
-                </div>
-
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
-                >
-                    <DeleteUserForm class="max-w-xl" />
-                </div>
-            </div>
-        </div>
-    </AuthenticatedLayout>
-</template>
+<template><Head title="Keamanan Akun"/><AppShell title="Keamanan Akun" subtitle="Kelola password dan perlindungan akun Anda" eyebrow="PPA · Pelaporan Ekspedisi">
+<template #hero-title>Profil & Keamanan Akun</template><template #hero-copy>Pastikan password hanya diketahui oleh Anda dan diperbarui secara berkala.</template>
+<div class="grid gap-5 xl:grid-cols-[360px_1fr]">
+    <aside class="panel h-fit overflow-hidden p-0"><div class="bg-gradient-to-br from-red-600 to-red-700 p-6 text-white"><div class="grid h-16 w-16 place-items-center rounded-2xl bg-white/15 text-2xl font-black ring-1 ring-white/20">{{user.name.charAt(0).toUpperCase()}}</div><h2 class="mt-5 text-xl font-black">{{user.name}}</h2><p class="mt-1 text-sm text-red-100">{{role}}</p></div><dl class="space-y-4 p-6 text-sm"><div><dt class="text-xs font-bold uppercase tracking-wider text-slate-400">Username</dt><dd class="mt-1 font-black text-slate-900">{{user.username}}</dd></div><div><dt class="text-xs font-bold uppercase tracking-wider text-slate-400">Site</dt><dd class="mt-1 font-black text-slate-900">{{user.site}}</dd></div><div><dt class="text-xs font-bold uppercase tracking-wider text-slate-400">Status Akun</dt><dd class="mt-2"><span class="status-badge status-approved">● Aktif & Terlindungi</span></dd></div></dl></aside>
+    <section class="panel"><UpdatePasswordForm/></section>
+</div>
+</AppShell></template>

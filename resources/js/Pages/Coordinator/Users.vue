@@ -7,18 +7,18 @@ import ActionConfirm from '@/Components/ActionConfirm.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
-const props = defineProps({ users: Object, filters: Object, permissionOptions: Array });
+const props = defineProps({ users: Object, filters: Object, permissionOptions: Array, vendorCompanies: Array });
 const showModal = ref(false); const editing = ref(null); const pendingEdit = ref(null);
 const query = ref({ search: props.filters.search || '', role: props.filters.role || '', status: props.filters.status || '', sort:props.filters.sort||'created_at', direction:props.filters.direction||'desc', per_page: Number(props.filters.per_page || 10) });
-const form = useForm({ name:'', username:'', email:'', password:'', role:'vendor', site:'BIB', is_active:true, permissions:[] });
+const form = useForm({ name:'', username:'', email:'', password:'', role:'vendor', vendor_company_id:'', site:'BIB', is_active:true, permissions:[] });
 const stats = computed(() => ({ total: props.users.total, active: props.users.data.filter(user => user.is_active).length, coordinator: props.users.data.filter(user => user.role === 'coordinator').length }));
 const roleLabel = role => ({ coordinator:'Koordinator', vendor:'Vendor', expedition:'Ekspedisi' }[role] || role);
 const applyFilters = () => router.get('/coordinator/users', query.value, { preserveState:true, preserveScroll:true, replace:true });
 const resetFilters = () => router.get('/coordinator/users', {}, { preserveScroll:true, replace:true });
 const sort = column => { query.value.direction=query.value.sort===column&&query.value.direction==='asc'?'desc':'asc'; query.value.sort=column; applyFilters(); };
 const setPerPage = value => { query.value.per_page = value; applyFilters(); };
-const openCreate = () => { editing.value=null; form.reset(); form.clearErrors(); Object.assign(form,{role:'vendor',site:'BIB',is_active:true,permissions:[]}); showModal.value=true; };
-const openEdit = user => { editing.value=user; form.clearErrors(); Object.assign(form,{name:user.name,username:user.username,email:user.email||'',password:'',role:user.role,site:user.site,is_active:Boolean(user.is_active),permissions:user.permissions||[]}); showModal.value=true; };
+const openCreate = () => { editing.value=null; form.reset(); form.clearErrors(); Object.assign(form,{role:'vendor',vendor_company_id:'',site:'BIB',is_active:true,permissions:[]}); showModal.value=true; };
+const openEdit = user => { editing.value=user; form.clearErrors(); Object.assign(form,{name:user.name,username:user.username,email:user.email||'',password:'',role:user.role,vendor_company_id:user.vendor_company_id||'',site:user.site,is_active:Boolean(user.is_active),permissions:user.permissions||[]}); showModal.value=true; };
 const confirmEdit = () => { const user=pendingEdit.value; pendingEdit.value=null; if(user) openEdit(user); };
 const save = () => { const options={preserveScroll:true,onSuccess:()=>{showModal.value=false;form.reset();}}; editing.value ? form.patch(`/coordinator/users/${editing.value.id}`,options) : form.post('/coordinator/users',options); };
 </script>
@@ -58,12 +58,13 @@ const save = () => { const options={preserveScroll:true,onSuccess:()=>{showModal
         <div class="px-6 py-6 sm:px-8">
         <div v-if="form.hasErrors" class="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800"><div class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white font-black shadow-sm">!</div><div><b class="text-sm">Periksa kembali data pengguna</b><p class="mt-1 text-xs leading-5">Data belum disimpan. Perbaiki kolom yang ditandai di bawah ini.</p></div></div>
         <div class="grid gap-4 sm:grid-cols-2">
-            <label class="text-xs font-bold">Nama lengkap<input v-model="form.name" class="control mt-2" placeholder="Nama pengguna"><span class="err">{{form.errors.name}}</span></label>
+            <label class="text-xs font-bold">{{form.role==='vendor'?'Nama perusahaan (otomatis)':'Nama lengkap'}}<input v-model="form.name" class="control mt-2" :readonly="form.role==='vendor'" :class="{'bg-slate-50':form.role==='vendor'}" placeholder="Nama pengguna"><span class="err">{{form.errors.name}}</span></label>
             <label class="text-xs font-bold">Username<input v-model="form.username" class="control mt-2" placeholder="Username login"><span class="err">{{form.errors.username}}</span></label>
             <label class="text-xs font-bold">Email <span class="font-normal text-slate-400">(opsional)</span><input v-model="form.email" class="control mt-2" type="email" placeholder="nama@perusahaan.com"><span class="err">{{form.errors.email}}</span></label>
             <label class="text-xs font-bold">Password <span v-if="editing" class="font-normal text-slate-400">(kosongkan jika tetap)</span><input v-model="form.password" class="control mt-2" type="password" placeholder="Minimal 8 karakter"><span class="err">{{form.errors.password}}</span></label>
             <label class="text-xs font-bold">Role<select v-model="form.role" class="control mt-2"><option value="coordinator">Koordinator</option><option value="vendor">Vendor</option><option value="expedition">Ekspedisi</option></select></label>
             <label class="text-xs font-bold">Site<input v-model="form.site" class="control mt-2" placeholder="BIB"></label>
+            <label v-if="form.role==='vendor'" class="text-xs font-bold sm:col-span-2">Perusahaan dari Master Vendor<select v-model="form.vendor_company_id" class="control mt-2" @change="form.name=vendorCompanies.find(x=>x.id==form.vendor_company_id)?.name||''"><option value="">Pilih perusahaan vendor</option><option v-for="company in vendorCompanies" :key="company.id" :value="company.id">{{company.abbreviation}} · {{company.name}}</option></select><span class="err">{{form.errors.vendor_company_id}}</span></label>
         </div>
         <div v-if="form.role==='coordinator'" class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4"><p class="text-sm font-black">Akses modul koordinator</p><p class="mb-3 mt-1 text-xs text-slate-500">Pilih halaman yang dapat dilihat dan dikelola akun ini.</p><label v-for="option in permissionOptions" :key="option.value" class="mb-2 flex cursor-pointer gap-3 rounded-xl bg-white p-3 last:mb-0"><input v-model="form.permissions" type="checkbox" :value="option.value" class="mt-1 rounded border-slate-300 text-red-600 focus:ring-red-400"><span><b class="block text-sm">{{option.label}}</b><small class="text-slate-500">{{option.description}}</small></span></label></div>
         <label class="mt-5 flex items-center gap-3 rounded-xl border border-slate-200 p-4"><input v-model="form.is_active" type="checkbox" class="rounded border-slate-300 text-red-600 focus:ring-red-400"><span><b class="block text-sm">Akun aktif</b><small class="text-slate-500">Pengguna dapat masuk ke dalam sistem.</small></span></label>

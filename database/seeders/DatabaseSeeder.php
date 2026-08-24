@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             };
             User::updateOrCreate(['username' => $role->value], ['name' => ucfirst($role->value), 'email' => null, 'password' => 'password', 'role' => $role, 'site' => 'BIB', 'is_active' => true, 'permissions' => $permissions]);
         }
-        $this->call(DummyOperationalDataSeeder::class);
+        $this->call(VendorCompanySeeder::class);
+        $this->call(VendorAccountDataSeeder::class);
     }
 }

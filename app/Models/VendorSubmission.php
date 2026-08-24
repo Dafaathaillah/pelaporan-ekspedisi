@@ -15,13 +15,15 @@ class VendorSubmission extends Model
 
     protected function casts(): array
     {
-        return ['type' => SubmissionType::class, 'status' => SubmissionStatus::class, 'submitted_at' => 'datetime', 'reviewed_at' => 'datetime', 'released_at' => 'datetime', 'release_expired_at' => 'datetime'];
+        return ['type' => SubmissionType::class, 'status' => SubmissionStatus::class, 'resubmission_subject_ids' => 'array', 'submitted_at' => 'datetime', 'reviewed_at' => 'datetime', 'coordinator_opened_at' => 'datetime', 'released_at' => 'datetime', 'closed_at' => 'datetime', 'release_expired_at' => 'datetime', 'resubmission_requested_at' => 'datetime'];
     }
 
     public function documents()
     {
         return $this->hasMany(VendorDocument::class);
     }
+    public function units(){return $this->hasMany(VendorSubmissionUnit::class)->orderBy('unit_order');}
+    public function planningItems(){return $this->hasMany(PlanningItem::class);}
 
     public function creator()
     {
@@ -31,5 +33,15 @@ class VendorSubmission extends Model
     public function reviewer()
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(self::class, 'parent_submission_id');
+    }
+
+    public function resubmissions()
+    {
+        return $this->hasMany(self::class, 'parent_submission_id');
     }
 }

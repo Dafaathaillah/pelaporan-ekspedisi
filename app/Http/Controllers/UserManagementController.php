@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\UserRole;
 use App\Http\Requests\SaveUserRequest;
 use App\Models\User;
+use App\Models\VendorCompany;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -36,6 +37,7 @@ class UserManagementController extends Controller
                 ['value' => 'coordinator.vendor', 'label' => 'Monitoring Pengajuan Vendor', 'description' => 'Visitor, Waskat, Permit Non Simper, dan Ijin Lintas.'],
                 ['value' => 'users.manage', 'label' => 'Manajemen Pengguna', 'description' => 'Membuat akun serta mengatur role dan akses modul.'],
             ],
+            'vendorCompanies' => VendorCompany::where('is_active', true)->orderBy('name')->get(['id', 'name', 'abbreviation']),
         ]);
     }
 
@@ -67,6 +69,12 @@ class UserManagementController extends Controller
     private function payload(SaveUserRequest $request): array
     {
         $data = $request->validated();
+        if ($data['role'] === UserRole::VENDOR->value) {
+            $company = VendorCompany::findOrFail($data['vendor_company_id']);
+            $data['name'] = $company->name;
+        } else {
+            $data['vendor_company_id'] = null;
+        }
         $data['permissions'] = match ($data['role']) {
             UserRole::EXPEDITION->value => ['expedition.report'],
             UserRole::VENDOR->value => ['vendor.submission'],

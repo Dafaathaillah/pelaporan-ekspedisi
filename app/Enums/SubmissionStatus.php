@@ -9,4 +9,5 @@ enum SubmissionStatus: string
     case REVISION = 'REVISION';
     case REJECTED = 'REJECTED';
     case RELEASED = 'RELEASED';
+    case CLOSED = 'CLOSED';
 }
