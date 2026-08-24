@@ -16,11 +16,18 @@ class VendorSubmissionStatusChanged implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel('vendor.'.$this->submission->created_by)];
+        return [new PrivateChannel('vendor.'.$this->submission->created_by), new PrivateChannel('coordinator.'.$this->submission->site)];
     }
 
     public function broadcastWith(): array
     {
-        return ['id' => $this->submission->id, 'status' => $this->submission->status->value, 'note' => $this->submission->coordinator_note];
+        return ['id' => $this->submission->id, 'number' => $this->submission->submission_number, 'type' => $this->submission->type->value, 'label' => $this->submission->type->label(), 'vendor' => $this->submission->vendor_name, 'applicant' => $this->submission->applicant_name, 'status' => $this->submission->status->value, 'status_label' => match ($this->submission->status->value) {
+            'APPROVED' => 'Disetujui', 'REVISION' => 'Perlu Revisi', 'REJECTED' => 'Ditolak', 'RELEASED' => 'Released', default => 'Diajukan'
+        }, 'note' => $this->submission->coordinator_note];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'VendorSubmissionStatusChanged';
     }
 }

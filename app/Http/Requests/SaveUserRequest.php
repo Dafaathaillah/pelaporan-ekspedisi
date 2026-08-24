@@ -29,4 +29,14 @@ class SaveUserRequest extends FormRequest
             'permissions.*' => [Rule::in(['coordinator.expedition', 'coordinator.vendor', 'users.manage'])],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'username.unique' => 'Username sudah digunakan oleh pengguna lain. Silakan gunakan username yang berbeda.',
+            'email.unique' => 'Email sudah digunakan oleh pengguna lain.',
+            'password.min' => 'Password minimal harus terdiri dari 8 karakter.',
+            'permissions.*.in' => 'Pilihan akses modul tidak valid.',
+        ];
+    }
 }

@@ -21,6 +21,11 @@ class ExpeditionReportCreated implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        return ['id' => $this->report->id];
+        return ['id' => $this->report->id, 'company' => $this->report->expedition_company, 'driver' => $this->report->driver_name];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'ExpeditionReportCreated';
     }
 }

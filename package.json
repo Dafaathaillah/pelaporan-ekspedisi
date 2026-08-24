@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "gateway:ngrok": "node scripts/ngrok-gateway.cjs"
     },
     "devDependencies": {
         "@inertiajs/vue3": "^2.0.0",
@@ -18,11 +19,13 @@
         "postcss": "^8.4.31",
         "tailwindcss": "^3.2.1",
         "vite": "^7.0.7",
-        "vue": "^3.4.0"
+        "vue": "^3.4.0",
+        "ws": "^8.18.3"
     },
     "dependencies": {
         "@inertiajs/vue3": "^3.7.0",
         "@vitejs/plugin-vue": "^6.0.8",
+        "http-proxy": "^1.18.1",
         "laravel-echo": "^2.4.0",
         "pusher-js": "^8.6.0",
         "vue": "^3.5.41"

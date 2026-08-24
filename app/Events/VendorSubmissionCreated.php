@@ -21,6 +21,11 @@ class VendorSubmissionCreated implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        return ['id' => $this->submission->id, 'type' => $this->submission->type->value];
+        return ['id' => $this->submission->id, 'type' => $this->submission->type->value, 'label' => $this->submission->type->label(), 'vendor' => $this->submission->vendor_name, 'applicant' => $this->submission->applicant_name];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'VendorSubmissionCreated';
     }
 }

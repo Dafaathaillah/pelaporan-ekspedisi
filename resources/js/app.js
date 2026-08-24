@@ -6,6 +6,9 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import { connect } from './echo';
+import AppLoading from './Components/AppLoading.vue';
+import AppFeedback from './Components/AppFeedback.vue';
+import RealtimeNotifications from './Components/RealtimeNotifications.vue';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -18,7 +21,7 @@ createInertiaApp({
         ),
     setup({ el, App, props, plugin }) {
         connect(props.initialPage.props.auth?.user);
-        return createApp({ render: () => h(App, props) })
+        return createApp({ render: () => h('div', [h(App, props), h(AppLoading), h(AppFeedback), h(RealtimeNotifications)]) })
             .use(plugin)
             .use(ZiggyVue)
             .mount(el);
