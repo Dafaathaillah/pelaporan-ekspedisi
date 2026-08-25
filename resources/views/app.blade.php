@@ -16,6 +16,9 @@
         <meta name="application-name" content="{{ $siteName }}">
         <meta name="author" content="PT Putra Perkasa Abadi Site Borneo Indobara">
         <meta name="theme-color" content="#c81e2a">
+        <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('images/favicon-ekspedisi-ppa.png') }}?v=20260825-2">
+        <link rel="shortcut icon" type="image/png" href="{{ asset('images/favicon-ekspedisi-ppa.png') }}?v=20260825-2">
+        <link rel="apple-touch-icon" sizes="512x512" href="{{ asset('images/favicon-ekspedisi-ppa.png') }}?v=20260825-2">
         <meta name="robots" content="{{ $isPublicPage ? 'index, follow, max-image-preview:large, max-snippet:-1' : 'noindex, nofollow, noarchive' }}">
         @if ($isPublicPage)
             <link rel="canonical" href="{{ $canonicalUrl }}">

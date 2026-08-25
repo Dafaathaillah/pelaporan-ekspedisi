@@ -212,9 +212,14 @@ const logout = () => {
                     :class="collapsed ? 'justify-center' : 'gap-3'"
                 >
                     <div
-                        class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-red-600 text-sm font-black text-white shadow-lg shadow-red-100"
+                        class="flex h-14 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-red-100 bg-white p-1 shadow-[0_8px_24px_rgba(220,38,38,.12)] transition-all duration-500"
+                        :class="collapsed ? 'w-16' : 'w-[72px]'"
                     >
-                        PPA
+                        <img
+                            src="/images/logo-ekspedisi-ppa.png"
+                            alt="Logo Ekspedisi PPA Department SCM"
+                            class="h-full w-full object-contain"
+                        />
                     </div>
                     <div
                         class="sidebar-reveal min-w-0"
@@ -324,9 +329,13 @@ const logout = () => {
                 <div class="flex items-center justify-between px-4 py-3">
                     <div class="flex min-w-0 items-center gap-3">
                         <div
-                            class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-red-600 text-xs font-bold text-white"
+                            class="flex h-11 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-red-100 bg-white p-1 shadow-sm"
                         >
-                            PPA
+                            <img
+                                src="/images/logo-ekspedisi-ppa.png"
+                                alt="Logo Ekspedisi PPA Department SCM"
+                                class="h-full w-full object-contain"
+                            />
                         </div>
                         <div class="min-w-0">
                             <p
