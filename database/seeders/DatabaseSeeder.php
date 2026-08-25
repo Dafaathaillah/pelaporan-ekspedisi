@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         foreach (UserRole::cases() as $role) {
+            if ($role === UserRole::DEVELOPER) continue;
             $permissions = match ($role) {
                 UserRole::COORDINATOR => ['coordinator.expedition', 'coordinator.vendor', 'users.manage'],
                 UserRole::VENDOR => ['vendor.submission'],

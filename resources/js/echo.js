@@ -43,7 +43,7 @@ export function connect(user) {
             );
         }),
     );
-    if (user.role === "coordinator")
+    if (user.role === "coordinator" || user.role === "developer")
         echo.private(`coordinator.${user.site}`)
             .listen(".ExpeditionReportCreated", (p) => {
                 notify({

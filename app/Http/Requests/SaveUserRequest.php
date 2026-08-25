@@ -34,7 +34,7 @@ class SaveUserRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        if ($this->input('role') !== UserRole::COORDINATOR->value) {
+        if ($this->input('role') === UserRole::DEVELOPER->value || $this->input('role') !== UserRole::COORDINATOR->value) {
             $this->merge(['permissions' => []]);
         }
 

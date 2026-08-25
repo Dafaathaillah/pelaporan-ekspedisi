@@ -65,7 +65,7 @@ class DriverEscortController extends Controller
     public function photo(Request $request, ExpeditionReport $report)
     {
         $allowed = $report->escort_driver_id === $request->user()->id
-            || ($request->user()->role->value === 'coordinator' && $report->site === $request->user()->site);
+            || (in_array($request->user()->role->value, ['developer', 'coordinator'], true) && $report->site === $request->user()->site);
         abort_unless($allowed && $report->escort_close_photo_path && Storage::disk('local')->exists($report->escort_close_photo_path), 404);
         return Storage::disk('local')->response($report->escort_close_photo_path);
     }

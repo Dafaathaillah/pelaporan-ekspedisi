@@ -60,10 +60,15 @@ class User extends Authenticatable
 
     public function hasPermission(string $permission): bool
     {
+        if ($this->role === UserRole::DEVELOPER) {
+            return true;
+        }
+
         $permissions = $this->permissions;
 
         if ($permissions === null) {
             $permissions = match ($this->role) {
+                UserRole::DEVELOPER => ['*'],
                 UserRole::COORDINATOR => ['coordinator.expedition', 'coordinator.vendor', 'users.manage'],
                 UserRole::VENDOR => ['vendor.submission'],
                 UserRole::EXPEDITION => ['expedition.report'],
@@ -76,7 +81,7 @@ class User extends Authenticatable
 
     public function homePath(): string
     {
-        if ($this->role === UserRole::COORDINATOR) {
+        if (in_array($this->role, [UserRole::DEVELOPER, UserRole::COORDINATOR], true)) {
             if ($this->hasPermission('coordinator.expedition')) {
                 return '/coordinator';
             }

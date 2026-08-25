@@ -43,7 +43,7 @@ class ExpeditionController extends Controller
     public function photo(Request $request, ExpeditionReport $report, string $kind)
     {
         abort_unless($report->site === $request->user()->site, 403);
-        abort_unless($request->user()->id === $report->created_by || $request->user()->role === UserRole::COORDINATOR, 403);
+        abort_unless($request->user()->id === $report->created_by || in_array($request->user()->role, [UserRole::DEVELOPER, UserRole::COORDINATOR], true), 403);
         abort_unless(in_array($kind, ['arrival', 'blood-pressure'], true), 404);
         $path = $kind === 'arrival' ? $report->arrival_photo_path : $report->blood_pressure_photo_path;
         abort_unless($path && Storage::disk('local')->exists($path), 404);

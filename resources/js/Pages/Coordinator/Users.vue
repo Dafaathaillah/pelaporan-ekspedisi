@@ -4,6 +4,7 @@ import DataTableFooter from "@/Components/DataTableFooter.vue";
 import Modal from "@/Components/Modal.vue";
 import SortButton from "@/Components/SortButton.vue";
 import ActionConfirm from "@/Components/ActionConfirm.vue";
+import SearchableSelect from "@/Components/SearchableSelect.vue";
 import { router, useForm } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 
@@ -12,6 +13,7 @@ const props = defineProps({
     filters: Object,
     permissionOptions: Array,
     vendorCompanies: Array,
+    canManageDevelopers: Boolean,
 });
 const showModal = ref(false);
 const editing = ref(null);
@@ -43,9 +45,40 @@ const stats = computed(() => ({
     coordinator: props.users.data.filter((user) => user.role === "coordinator")
         .length,
 }));
+const roleOptions = [
+    { value: "", label: "Semua role" },
+    { value: "coordinator", label: "Koordinator" },
+    { value: "vendor", label: "Vendor" },
+    { value: "expedition", label: "Ekspedisi" },
+    { value: "driver", label: "Driver Escort" },
+];
+const editableRoleOptions = roleOptions.slice(1);
+if (props.canManageDevelopers) {
+    roleOptions.splice(1, 0, { value: "developer", label: "Developer" });
+    editableRoleOptions.unshift({ value: "developer", label: "Developer" });
+}
+const statusOptions = [
+    { value: "", label: "Semua status" },
+    { value: "active", label: "Aktif" },
+    { value: "inactive", label: "Nonaktif" },
+];
+const vendorOptions = computed(() => [
+    { value: "", label: "Pilih perusahaan vendor" },
+    ...props.vendorCompanies.map((company) => ({
+        value: company.id,
+        label: `${company.abbreviation} · ${company.name}`,
+        keywords: `${company.name} ${company.abbreviation}`,
+    })),
+]);
+const vendorChanged = (value) => {
+    form.name =
+        props.vendorCompanies.find((company) => company.id == value)?.name ||
+        "";
+};
 const roleLabel = (role) =>
     ({
         coordinator: "Koordinator",
+        developer: "Developer",
         vendor: "Vendor",
         expedition: "Ekspedisi",
         driver: "Driver Escort",
@@ -166,22 +199,26 @@ const save = () => {
                         placeholder="Nama, username, atau email..."
                         @keyup.enter="applyFilters"
                 /></label>
-                <label class="text-xs font-bold text-slate-600 lg:w-52"
-                    >Role<select v-model="query.role" class="control mt-2">
-                        <option value="">Semua role</option>
-                        <option value="coordinator">Koordinator</option>
-                        <option value="vendor">Vendor</option>
-                        <option value="expedition">Ekspedisi</option>
-                        <option value="driver">Driver Escort</option>
-                    </select></label
-                >
-                <label class="text-xs font-bold text-slate-600 lg:w-48"
-                    >Status<select v-model="query.status" class="control mt-2">
-                        <option value="">Semua status</option>
-                        <option value="active">Aktif</option>
-                        <option value="inactive">Nonaktif</option>
-                    </select></label
-                >
+                <div class="text-xs font-bold text-slate-600 lg:w-52">
+                    Role
+                    <SearchableSelect
+                        v-model="query.role"
+                        :options="roleOptions"
+                        class="mt-2"
+                        placeholder="Semua role"
+                        search-placeholder="Cari role..."
+                    />
+                </div>
+                <div class="text-xs font-bold text-slate-600 lg:w-48">
+                    Status
+                    <SearchableSelect
+                        v-model="query.status"
+                        :options="statusOptions"
+                        class="mt-2"
+                        placeholder="Semua status"
+                        search-placeholder="Cari status..."
+                    />
+                </div>
                 <button class="btn" type="button" @click="applyFilters">
                     Terapkan</button
                 ><button class="btn-ghost" type="button" @click="resetFilters">
@@ -476,52 +513,39 @@ const save = () => {
                                 form.errors.password
                             }}</span></label
                         >
-                        <label class="text-xs font-bold"
-                            >Role<select
+                        <div class="text-xs font-bold">
+                            Role
+                            <SearchableSelect
                                 v-model="form.role"
-                                class="control mt-2"
-                            >
-                                <option value="coordinator">Koordinator</option>
-                                <option value="vendor">Vendor</option>
-                                <option value="expedition">Ekspedisi</option>
-                                <option value="driver">Driver Escort</option>
-                            </select></label
-                        >
+                                :options="editableRoleOptions"
+                                class="mt-2"
+                                placeholder="Pilih role"
+                                search-placeholder="Cari role pengguna..."
+                            />
+                        </div>
                         <label class="text-xs font-bold"
                             >Site<input
                                 v-model="form.site"
                                 class="control mt-2"
                                 placeholder="BIB"
                         /></label>
-                        <label
+                        <div
                             v-if="form.role === 'vendor'"
                             class="text-xs font-bold sm:col-span-2"
-                            >Perusahaan dari Master Vendor<select
-                                v-model="form.vendor_company_id"
-                                class="control mt-2"
-                                @change="
-                                    form.name =
-                                        vendorCompanies.find(
-                                            (x) =>
-                                                x.id == form.vendor_company_id,
-                                        )?.name || ''
-                                "
-                            >
-                                <option value="">
-                                    Pilih perusahaan vendor
-                                </option>
-                                <option
-                                    v-for="company in vendorCompanies"
-                                    :key="company.id"
-                                    :value="company.id"
-                                >
-                                    {{ company.abbreviation }} ·
-                                    {{ company.name }}
-                                </option></select
-                            ><span class="err">{{
-                                form.errors.vendor_company_id
-                            }}</span></label
                         >
+                            Perusahaan dari Master Vendor
+                            <SearchableSelect
+                                v-model="form.vendor_company_id"
+                                :options="vendorOptions"
+                                class="mt-2"
+                                placeholder="Pilih perusahaan vendor"
+                                search-placeholder="Cari nama atau singkatan vendor..."
+                                @change="vendorChanged"
+                            />
+                            <span class="err">{{
+                                form.errors.vendor_company_id
+                            }}</span>
+                        </div>
                         <label
                             v-if="form.role === 'driver'"
                             class="text-xs font-bold sm:col-span-2"

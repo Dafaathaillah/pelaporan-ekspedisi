@@ -188,13 +188,11 @@ const sendEvidence = (event) => {
                 </p>
             </div>
             <div class="overflow-x-auto p-3 sm:p-4">
-                <div
-                    class="flex min-w-0 snap-x snap-mandatory gap-3 pb-2 md:grid md:min-w-[1050px] md:grid-cols-7 md:pb-0"
-                >
+                <div class="grid min-w-[1050px] grid-cols-7 gap-3 pb-2">
                     <article
                         v-for="date in dates"
                         :key="date"
-                        class="min-h-44 w-[82vw] max-w-[340px] shrink-0 snap-center rounded-2xl border bg-slate-50/60 p-3 transition hover:border-red-300 hover:bg-red-50/30 md:w-auto md:max-w-none md:p-2"
+                        class="min-w-0 overflow-hidden rounded-2xl border bg-slate-50/60 p-2 transition hover:border-red-300 hover:bg-red-50/30"
                         :class="
                             selected ? 'border-red-200' : 'border-slate-200'
                         "
@@ -203,11 +201,11 @@ const sendEvidence = (event) => {
                         @click.self="placeSelected(date)"
                     >
                         <header
-                            class="mb-2 flex items-center justify-between border-b border-slate-200 px-1 pb-2"
+                            class="mb-2 flex min-w-0 items-center justify-between gap-1 border-b border-slate-200 px-1 pb-2"
                             @click="placeSelected(date)"
                         >
-                            <b class="text-xs">{{ dateLabel(date) }}</b
-                            ><span class="text-[10px] text-slate-400"
+                            <b class="min-w-0 text-xs">{{ dateLabel(date) }}</b
+                            ><span class="shrink-0 text-[10px] text-slate-400"
                                 >{{ byDate(date).length }} agenda</span
                             >
                         </header>
@@ -216,7 +214,7 @@ const sendEvidence = (event) => {
                                 v-for="item in byDate(date)"
                                 :key="item.id"
                                 draggable="true"
-                                class="cursor-grab rounded-xl border bg-white p-3 shadow-sm active:cursor-grabbing"
+                                class="min-w-0 cursor-grab overflow-hidden rounded-xl border bg-white p-3 shadow-sm active:cursor-grabbing"
                                 :class="
                                     selected === item.id
                                         ? 'border-red-500 ring-2 ring-red-100'
@@ -229,10 +227,10 @@ const sendEvidence = (event) => {
                                 "
                             >
                                 <div
-                                    class="flex items-start justify-between gap-2"
+                                    class="flex min-w-0 items-start justify-between gap-2"
                                 >
                                     <b
-                                        class="min-w-0 whitespace-normal break-words text-sm leading-5 md:line-clamp-2 md:text-xs md:leading-relaxed"
+                                        class="line-clamp-2 min-w-0 flex-1 whitespace-normal break-all text-xs leading-relaxed"
                                         >{{ item.submission.vendor_name }}</b
                                     ><span
                                         class="shrink-0 rounded bg-red-50 px-1.5 py-1 text-[9px] font-black text-red-600"
@@ -243,7 +241,7 @@ const sendEvidence = (event) => {
                                     >
                                 </div>
                                 <p
-                                    class="mt-1 whitespace-normal break-all text-[11px] leading-4 text-slate-500 md:text-[10px]"
+                                    class="mt-1 line-clamp-3 max-w-full whitespace-normal break-all text-[10px] leading-4 text-slate-500"
                                 >
                                     <span class="font-semibold">{{
                                         typeLabel(item.submission.type)
@@ -251,7 +249,7 @@ const sendEvidence = (event) => {
                                     · {{ item.submission.submission_number }}
                                 </p>
                                 <p
-                                    class="mt-1 break-words text-[10px] leading-4 text-slate-600"
+                                    class="mt-1 line-clamp-3 max-w-full whitespace-normal break-all text-[10px] leading-4 text-slate-600"
                                 >
                                     {{
                                         subjects(item) ||
@@ -261,7 +259,7 @@ const sendEvidence = (event) => {
                                 <div class="mt-2">
                                     <p
                                         v-if="item.driver"
-                                        class="mt-1 text-[10px] font-semibold text-slate-700"
+                                        class="mt-1 line-clamp-2 max-w-full break-all text-[10px] font-semibold text-slate-700"
                                     >
                                         {{ item.driver.name }} · Lambung
                                         {{ item.driver.hull_number }}
@@ -294,11 +292,11 @@ const sendEvidence = (event) => {
                                     </div>
                                 </div>
                                 <div
-                                    class="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-2"
+                                    class="mt-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 pt-2"
                                 >
                                     <button
                                         type="button"
-                                        class="text-[10px] font-black text-red-600"
+                                        class="max-w-full whitespace-normal break-words text-left text-[10px] font-black leading-4 text-red-600"
                                         @click.stop="uploadEvidence(item)"
                                     >
                                         {{
