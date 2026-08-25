@@ -187,12 +187,14 @@ const sendEvidence = (event) => {
                     screenshot/file WhatsApp.
                 </p>
             </div>
-            <div class="overflow-x-auto p-4">
-                <div class="grid min-w-[1050px] grid-cols-7 gap-3">
+            <div class="overflow-x-auto p-3 sm:p-4">
+                <div
+                    class="flex min-w-0 snap-x snap-mandatory gap-3 pb-2 md:grid md:min-w-[1050px] md:grid-cols-7 md:pb-0"
+                >
                     <article
                         v-for="date in dates"
                         :key="date"
-                        class="min-h-44 rounded-2xl border bg-slate-50/60 p-2 transition hover:border-red-300 hover:bg-red-50/30"
+                        class="min-h-44 w-[82vw] max-w-[340px] shrink-0 snap-center rounded-2xl border bg-slate-50/60 p-3 transition hover:border-red-300 hover:bg-red-50/30 md:w-auto md:max-w-none md:p-2"
                         :class="
                             selected ? 'border-red-200' : 'border-slate-200'
                         "
@@ -230,7 +232,7 @@ const sendEvidence = (event) => {
                                     class="flex items-start justify-between gap-2"
                                 >
                                     <b
-                                        class="line-clamp-2 text-xs leading-relaxed"
+                                        class="min-w-0 whitespace-normal break-words text-sm leading-5 md:line-clamp-2 md:text-xs md:leading-relaxed"
                                         >{{ item.submission.vendor_name }}</b
                                     ><span
                                         class="shrink-0 rounded bg-red-50 px-1.5 py-1 text-[9px] font-black text-red-600"
@@ -240,9 +242,13 @@ const sendEvidence = (event) => {
                                         unit</span
                                     >
                                 </div>
-                                <p class="mt-1 text-[10px] text-slate-500">
-                                    {{ typeLabel(item.submission.type) }} ·
-                                    {{ item.submission.submission_number }}
+                                <p
+                                    class="mt-1 whitespace-normal break-all text-[11px] leading-4 text-slate-500 md:text-[10px]"
+                                >
+                                    <span class="font-semibold">{{
+                                        typeLabel(item.submission.type)
+                                    }}</span>
+                                    · {{ item.submission.submission_number }}
                                 </p>
                                 <p
                                     class="mt-1 break-words text-[10px] leading-4 text-slate-600"
@@ -287,7 +293,9 @@ const sendEvidence = (event) => {
                                         >
                                     </div>
                                 </div>
-                                <div class="mt-2 flex items-center gap-2">
+                                <div
+                                    class="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-2"
+                                >
                                     <button
                                         type="button"
                                         class="text-[10px] font-black text-red-600"
