@@ -1,2 +1,13 @@
 User-agent: *
-Disallow:
+Allow: /login
+Disallow: /dashboard
+Disallow: /coordinator
+Disallow: /vendor
+Disallow: /expedition
+Disallow: /profile
+Disallow: /documents
+Disallow: /submissions
+Disallow: /forgot-password
+Disallow: /reset-password
+
+Sitemap: https://ekspedisi.ppabib.com/sitemap.xml

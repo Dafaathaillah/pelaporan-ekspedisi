@@ -1,6 +1,6 @@
 <script setup>
 import AppFooter from '@/Components/AppFooter.vue';
-import { useForm } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 const showPassword = ref(false);
@@ -9,6 +9,7 @@ const submit = () => form.post('/login', { onFinish: () => form.reset('password'
 </script>
 
 <template>
+<Head title="Portal Masuk" />
 <div class="flex min-h-screen flex-col bg-[#fffafa] text-[#101b35]">
     <main class="flex flex-1 items-stretch p-3 sm:p-5 lg:p-7">
         <div class="mx-auto grid w-full max-w-[1480px] overflow-hidden rounded-[28px] border border-red-100 bg-white shadow-[0_24px_80px_rgba(127,29,29,.12)] lg:grid-cols-[1.2fr_.8fr]">

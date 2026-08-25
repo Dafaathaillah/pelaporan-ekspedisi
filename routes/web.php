@@ -10,7 +10,16 @@ use App\Http\Controllers\VendorCompanyController;
 use App\Http\Controllers\PlanningController;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/login');
+Route::redirect('/', '/login', 301);
+Route::get('/sitemap.xml', function () {
+    $loginUrl = rtrim(config('app.url'), '/').'/login';
+    $xml = '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL
+        .'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'.PHP_EOL
+        .'  <url><loc>'.e($loginUrl).'</loc><changefreq>monthly</changefreq><priority>1.0</priority></url>'.PHP_EOL
+        .'</urlset>';
+
+    return response($xml, 200)->header('Content-Type', 'application/xml; charset=UTF-8');
+})->name('sitemap');
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', fn () => redirect(request()->user()->homePath()))->name('dashboard');
     Route::middleware(['role:expedition', 'permission:expedition.report'])->prefix('expedition')->group(function () {
