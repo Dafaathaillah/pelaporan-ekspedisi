@@ -1,7 +1,7 @@
 <?php
 
-use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Broadcasting\BroadcastManager;
+use Illuminate\Contracts\Console\Kernel;
 
 require dirname(__DIR__).'/vendor/autoload.php';
 

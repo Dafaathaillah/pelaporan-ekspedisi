@@ -5,7 +5,8 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::table('expedition_reports', function (Blueprint $table) {
@@ -20,7 +21,9 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::table('expedition_reports', function (Blueprint $table) {
-            $table->dropIndex('exp_vendor_monitor_idx');$table->dropForeign(['vendor_user_id']);$table->dropColumn('vendor_user_id');
+            $table->dropIndex('exp_vendor_monitor_idx');
+            $table->dropForeign(['vendor_user_id']);
+            $table->dropColumn('vendor_user_id');
         });
     }
 };

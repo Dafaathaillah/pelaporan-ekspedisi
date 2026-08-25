@@ -21,6 +21,7 @@ class StoreExpeditionReportRequest extends FormRequest
             $rules[$prefix.'_location_name'] = ['nullable', 'string', 'max:500'];
             $rules[$prefix.'_photo_captured_at'] = ['required', 'date'];
         }
+
         return $rules;
     }
 

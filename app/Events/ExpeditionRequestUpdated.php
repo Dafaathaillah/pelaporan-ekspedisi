@@ -16,7 +16,10 @@ class ExpeditionRequestUpdated implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
-        $channels = [new PrivateChannel('coordinator.'.$this->expeditionRequest->site)];
+        $channels = [
+            new PrivateChannel('coordinator.'.$this->expeditionRequest->site),
+            new PrivateChannel('purchasing.'.$this->expeditionRequest->site),
+        ];
         foreach ($this->expeditionRequest->vendorCompany->users()->pluck('id') as $id) {
             $channels[] = new PrivateChannel('vendor.'.$id);
         }

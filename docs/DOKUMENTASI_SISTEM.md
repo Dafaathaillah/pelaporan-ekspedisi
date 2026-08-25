@@ -2,7 +2,7 @@
 
 **PT Putra Perkasa Abadi — Site Borneo Indobara (BIB)**  
 **Kolaborasi SCM · FAW · ICT**  
-Versi dokumentasi: 1.0 — 25 Agustus 2026
+Versi dokumentasi: 1.1 — 25 Agustus 2026
 
 ---
 
@@ -19,6 +19,8 @@ Sistem ini merupakan portal operasional terintegrasi untuk:
 - menyimpan bukti foto dan koordinat maksimal ±5 meter;
 - menampilkan pembaruan dan notifikasi secara realtime melalui Laravel Reverb;
 - mengelola pengguna, hak akses, serta master vendor.
+- mengelola Request Ekspedisi, nomor PR/PO, dan relasinya dengan Izin Lintas;
+- menyinkronkan tanggal planning Izin Lintas antara Ekspedisi, Vendor, dan Koordinator.
 
 Antarmuka menggunakan identitas merah-putih lembut, responsif untuk desktop, tablet, dan mobile. Pada mobile, navigasi utama berada di bawah dan menu tambahan tersedia melalui **Lainnya**.
 
@@ -32,6 +34,7 @@ Antarmuka menggunakan identitas merah-putih lembut, responsif untuk desktop, tab
 | Pengajuan Vendor | Visitor, Waskat, Permit Non Simper, Ijin Lintas, upload PDF per subjek | Vendor |
 | Review Dokumen | Verifikasi dokumen, catatan, status, unduh per file/semua file | Koordinator/Developer |
 | Pengajuan Ulang | Pemilihan orang/unit dan pemeriksaan Surat Sehat | Koordinator dan Vendor |
+| Request Ekspedisi | Request kendaraan, vendor tujuan, rute, PR/PO, dan relasi Izin Lintas | Purchasing/Koordinator/Developer/Vendor |
 | Planning Escort | Kalender 30 hari, drag-and-drop, evidence WA | Koordinator/Developer |
 | Driver Escort | Ambil unit ekspedisi, proses, close dengan foto dan GPS | Driver |
 | Manajemen User | CRUD akun, permission koordinator, relasi vendor, nomor lambung | Koordinator/Developer |
@@ -93,6 +96,8 @@ Super admin operasional pada site yang sama. Permission dapat dibatasi per modul
 
 - `coordinator.expedition`: dashboard dan monitoring ekspedisi;
 - `coordinator.vendor`: pengajuan vendor dan Planning Escort;
+- `coordinator.requests`: Request Ekspedisi dan pembaruan PR/PO;
+- `coordinator.planning`: kalender Planning Escort;
 - `users.manage`: manajemen user dan master vendor.
 
 ### 4.3 Vendor
@@ -101,6 +106,7 @@ Super admin operasional pada site yang sama. Permission dapat dibatasi per modul
 - terhubung ke satu `vendor_company_id` dari master vendor;
 - membuat pengajuan dan mengunggah dokumen PDF;
 - menerima permintaan pengajuan ulang/Surat Sehat;
+- melihat Request Ekspedisi yang ditujukan ke perusahaan akunnya, termasuk PR, PO, dan tanggal planning;
 - melihat Monitoring Sarana yang terkait akun;
 - dapat mengganti password sendiri.
 
@@ -111,14 +117,16 @@ Super admin operasional pada site yang sama. Permission dapat dibatasi per modul
 - Vendor/Pengirim tetap berupa input manual;
 - riwayat laporan dibatasi pada data buatan akun sendiri;
 - mengambil foto kedatangan dan foto alat tensi dari kamera.
+- melihat Izin Lintas Released yang masih berlaku dan menentukan tanggal planning utama.
 
 ### 4.5 Driver
 
-- hanya melihat kendaraan **ekspedisi** berstatus menunggu atau escort miliknya sendiri;
+- melihat kendaraan **ekspedisi** berstatus menunggu, seluruh escort aktif pada site, serta riwayat yang dimulai/ditutup olehnya;
 - memilih kendaraan yang akan diproses;
 - satu kendaraan hanya dapat diambil satu driver (database row locking);
 - akun Driver wajib mempunyai nomor lambung yang unik per site;
 - menutup escort dengan foto langsung dan koordinat akurat.
+- driver yang memulai dan driver yang menutup escort dapat berbeda; keduanya disimpan sebagai audit operasional.
 
 ## 5. Alur Operasional
 
@@ -191,7 +199,23 @@ Satu pengajuan dapat berisi satu atau beberapa orang/unit. Dokumen disimpan per 
 
 Upload mendukung drag-and-drop, paste file, dan pemilihan file. Hanya PDF dengan ukuran maksimal 3 MB per dokumen.
 
-### 5.4 Status Pengajuan
+### 5.4 Request Ekspedisi dan PR/PO
+
+1. Admin Purchasing, Koordinator, atau Developer membuat Request Ekspedisi.
+2. Data wajib mencakup vendor tujuan, jenis kendaraan, rute asal, dan rute tujuan. Keterangan muatan/PIC bersifat opsional.
+3. Nomor request dibuat otomatis dengan pola `REQ-EXP-YYYYMMDD-XXXXXX`.
+4. Hanya akun Vendor yang terhubung ke perusahaan tujuan yang dapat melihat dan memilih request tersebut pada Izin Lintas.
+5. Nomor PR dan PO dapat diisi atau diperbarui langsung dari tabel Request Ekspedisi. Salah satu atau keduanya boleh belum terbit.
+6. Perubahan PR/PO muncul pada Request Vendor, tabel/detail Izin Lintas Koordinator, dan notifikasi realtime.
+7. Ketika request dipilih dalam pengajuan Izin Lintas, relasi disimpan melalui `expedition_request_id`; nomor PR/PO tidak disalin agar selalu menampilkan nilai terbaru.
+
+Status Request Ekspedisi:
+
+- `OPEN`: tersedia untuk dipilih vendor tujuan;
+- `USED`: sudah dipakai pada pengajuan Izin Lintas;
+- `CLOSED`: proses request telah selesai.
+
+### 5.5 Status Pengajuan
 
 ```text
 SUBMITTED → APPROVED / REVISION / REJECTED
@@ -208,17 +232,19 @@ RELEASED  → CLOSED atau kedaluwarsa/pengajuan ulang
 
 Koordinator dapat memverifikasi setiap dokumen sebagai pending/valid/tidak valid, memberi catatan, mengubah status, serta mengunduh satu dokumen atau seluruh dokumen sebagai arsip.
 
-### 5.5 Pengajuan Ulang
+### 5.6 Pengajuan Ulang
 
 - Pengajuan ulang dimulai oleh Koordinator.
 - Koordinator memilih satu atau beberapa orang/unit yang benar-benar diajukan ulang.
 - Dokumen lama dipertahankan sesuai subjek.
 - Vendor hanya memperbarui Surat Sehat ketika diminta dan dokumen lain tetap memakai data terdahulu.
+- Untuk aksi **Minta Dokumen Kesehatan Baru**, Koordinator wajib mengisi alasan minimal 10 dan maksimal 1.500 karakter.
+- Alasan ditampilkan pada akun Vendor, dikirim melalui notifikasi realtime, dan dipertahankan sebagai riwayat setelah dokumen baru diunggah.
 - Setiap release berlaku 7 hari dari `released_at` sampai `release_expired_at`.
 - Waskat maksimal dua kali pengajuan ulang; pengajuan berikutnya wajib Permit.
 - Ijin Lintas Regular dapat diteruskan; Non Regular bersifat opsional sesuai kebutuhan.
 
-### 5.6 Planning Escort
+### 5.7 Planning Escort
 
 - Semua pengajuan non-ditolak dapat tersedia di planning sesuai aturan aplikasi.
 - Ijin Lintas `RELEASED` Regular Daily dibuat untuk setiap hari masa berlaku.
@@ -228,8 +254,11 @@ Koordinator dapat memverifikasi setiap dokumen sebagai pending/valid/tidak valid
 - Pada layar sentuh, kartu dipilih lalu tanggal tujuan dipilih.
 - Evidence WhatsApp dapat dilampirkan dan dibuka kembali.
 - Filter mencakup kata kunci, tipe, status, waktu, dan urutan.
+- Akun Ekspedisi dapat menentukan tanggal planning utama untuk Izin Lintas `RELEASED` yang belum kedaluwarsa.
+- Perubahan dari akun Ekspedisi menggunakan item planning yang sama dan otomatis terlihat pada Koordinator serta Vendor.
+- Koordinator tetap dapat memindahkan tanggal dengan drag-and-drop; perubahan kembali tersinkron ke Ekspedisi dan Vendor.
 
-### 5.7 Driver Escort
+### 5.8 Driver Escort
 
 Hanya laporan kedatangan ekspedisi yang dapat di-escort. Pengajuan Visitor, Waskat, Permit, dan Ijin Lintas tidak muncul sebagai pekerjaan Driver.
 
@@ -239,11 +268,13 @@ WAITING → PROCESS → CLOSED
 
 1. Driver memilih kendaraan berstatus `WAITING`.
 2. Sistem mengunci row untuk mencegah dua driver mengambil kendaraan yang sama.
-3. Status menjadi `PROCESS`; tanggal/jam mulai dan identitas driver/nomor lambung tersimpan.
-4. Driver mengambil foto close escort di lokasi tujuan.
-5. GPS wajib mencapai akurasi maksimal ±5 meter.
-6. Status menjadi `CLOSED`; jam selesai, foto, koordinat, akurasi, dan nama lokasi tersimpan.
-7. Tabel Koordinator diperbarui realtime tanpa mengembalikan pengguna ke atas halaman.
+3. Status menjadi `PROCESS`; tanggal/jam mulai serta identitas driver pemulai/nomor lambung tersimpan.
+4. Seluruh driver berizin pada site dapat melihat escort aktif. Driver yang menutup boleh berbeda dari driver yang memulai.
+5. Driver penutup mengambil foto close escort di lokasi tujuan.
+6. GPS wajib mencapai akurasi maksimal ±5 meter.
+7. Status menjadi `CLOSED`; identitas driver penutup, jam selesai, foto, koordinat, akurasi, dan nama lokasi tersimpan.
+8. Penutupan memakai database row locking sehingga dua driver tidak dapat menutup escort yang sama secara bersamaan.
+9. Tabel Koordinator menampilkan **Driver Mulai Escort** dan **Driver Close Escort**, lalu diperbarui realtime tanpa mengembalikan pengguna ke atas halaman.
 
 ## 6. Dashboard dan DataTable
 
@@ -267,6 +298,8 @@ Chart pola kedatangan bersifat interaktif: hover/touch menampilkan detail per ja
 | `coordinator.{site}` | Developer/Koordinator berizin pada site | Pengajuan, laporan, escort |
 | `vendor.{userId}` | User vendor itu sendiri | Perubahan status/pengajuan ulang |
 | `driver.{site}` | Driver berizin pada site | Laporan ekspedisi dan perubahan escort |
+| `expedition.{site}` | Ekspedisi berizin pada site | Sinkronisasi tanggal planning |
+| `purchasing.{site}` | Admin Purchasing berizin pada site | Request Ekspedisi dan perubahan PR/PO |
 | `App.Models.User.{id}` | User itu sendiri | Channel privat Laravel |
 
 ### 7.2 Event
@@ -277,8 +310,11 @@ Chart pola kedatangan bersifat interaktif: hover/touch menampilkan detail per ja
 - `VendorSubmissionUpdated`
 - `VendorSubmissionStatusChanged`
 - `VendorResubmissionRequested`
+- `ExpeditionRequestCreated`
+- `ExpeditionRequestUpdated`
+- `PlanningUpdated`
 
-Event escort dan laporan memakai `ShouldBroadcastNow`. Event vendor yang memakai queue memerlukan worker aktif.
+Event menggunakan broadcasting melalui queue. `SafeBroadcast` memastikan gangguan sementara Reverb/ngrok tidak mengubah penyimpanan bisnis yang sudah berhasil menjadi HTTP 500. Queue worker tetap wajib aktif agar event terkirim.
 
 ### 7.3 Konfigurasi Lokal
 
@@ -486,10 +522,23 @@ Lakukan uji restore berkala pada lingkungan terpisah. Setelah restore, jalankan 
 ## 14. Pengujian dan Quality Gate
 
 ```bash
+php artisan optimize:clear
 php artisan test
 npm run build
 ./vendor/bin/pint --test
 ```
+
+Jalankan `optimize:clear` **sebelum** test. Jangan menjalankan test setelah `config:cache` production tanpa membersihkan cache terlebih dahulu karena konfigurasi session/CSRF production dapat menyebabkan respons 419 palsu pada test HTTP.
+
+Hasil verifikasi versi 1.1 pada 25 Agustus 2026:
+
+- 61 test lulus;
+- 490 assertions lulus;
+- Laravel Pint lulus tanpa pelanggaran format;
+- Vite production build berhasil (819 modul);
+- seluruh 23 migration berstatus `Ran`;
+- route, configuration, dan Blade cache berhasil dibuat setelah build.
+- broadcast nyata ke Reverb berhasil (`REVERB_BROADCAST_OK`), queue worker aktif, tanpa failed/pending job.
 
 Cakupan pengujian yang tersedia mencakup:
 
@@ -497,8 +546,11 @@ Cakupan pengujian yang tersedia mencakup:
 - hak akses Developer/Koordinator/Vendor/Ekspedisi/Driver;
 - filter, sorting, dan aksi DataTable;
 - alur pengajuan dan Surat Sehat;
+- alasan wajib permintaan Surat Sehat dan visibilitas alasan pada Vendor;
+- Request Ekspedisi, pembaruan PR/PO, dan relasi Izin Lintas;
+- planning Izin Lintas dari akun Ekspedisi serta sinkronisasi ke Vendor/Koordinator;
 - notifikasi belum dibuka;
-- escort eksklusif, foto close, dan GPS ≤5 meter;
+- escort eksklusif saat claim, pemulai/penutup berbeda, foto close, dan GPS ≤5 meter;
 - penilaian tensi berdasarkan tingkat terberat;
 - metadata SEO dan sitemap publik.
 
@@ -546,6 +598,13 @@ Cakupan pengujian yang tersedia mencakup:
 - Driver wajib nomor lambung unik per site;
 - Vendor wajib dipasangkan ke Master Vendor;
 - Koordinator tidak dapat membuat/mengubah Developer.
+
+### Test HTTP banyak gagal dengan status 419
+
+1. Jalankan `php artisan optimize:clear`.
+2. Pastikan `.env.testing` atau konfigurasi PHPUnit menggunakan session dan database test.
+3. Jalankan kembali `php artisan test`.
+4. Buat cache production hanya setelah test selesai.
 
 ## 16. Operasional Harian
 
@@ -595,9 +654,15 @@ Cakupan pengujian yang tersedia mencakup:
 - Tambahkan health check queue/Reverb dan alert monitoring.
 - Tambahkan persetujuan medis formal bila status tensi digunakan sebagai keputusan keselamatan. Penilaian saat ini adalah aturan sistem dan bukan diagnosis dokter.
 
+## 19. Riwayat Versi Dokumentasi
+
+| Versi | Tanggal | Perubahan utama |
+|---|---|---|
+| 1.0 | 25 Agustus 2026 | Dokumentasi awal seluruh modul, role, deployment, Reverb, keamanan, dan operasional. |
+| 1.1 | 25 Agustus 2026 | Request Ekspedisi dan PR/PO, planning oleh Ekspedisi, sinkronisasi Vendor/Koordinator, escort dengan driver mulai/close berbeda, alasan wajib Surat Sehat, serta hasil quality gate terbaru. |
+
 ---
 
 **Pemilik proses:** SCM & FAW  
 **Dukungan aplikasi:** ICT  
 **Identitas:** PT Putra Perkasa Abadi — Site Borneo Indobara
-

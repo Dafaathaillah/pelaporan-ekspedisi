@@ -27,6 +27,7 @@ class CreateDeveloperAccount extends Command
             $confirmation = (string) $this->secret('Ulangi password Developer');
             if ($password !== $confirmation) {
                 $this->error('Konfirmasi password tidak sama.');
+
                 return self::FAILURE;
             }
         }
@@ -46,13 +47,17 @@ class CreateDeveloperAccount extends Command
             'password' => ['required', 'string', 'min:12'],
         ]);
         if ($validator->fails()) {
-            foreach ($validator->errors()->all() as $error) $this->error($error);
+            foreach ($validator->errors()->all() as $error) {
+                $this->error($error);
+            }
+
             return self::FAILURE;
         }
 
         $developer = User::firstOrNew(['username' => $username]);
         if ($developer->exists && $developer->role !== UserRole::DEVELOPER) {
             $this->error('Username sudah digunakan oleh akun non-Developer.');
+
             return self::FAILURE;
         }
 

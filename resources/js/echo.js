@@ -97,6 +97,15 @@ export function connect(user) {
                 });
                 coordinatorRefresh(p);
             })
+            .listen(".ExpeditionRequestCreated", (p) => {
+                notify({
+                    title: "Request ekspedisi baru",
+                    message: `${p.number} · ${p.route}`,
+                    href: "/coordinator/expedition-requests",
+                });
+                if (location.pathname === "/coordinator/expedition-requests")
+                    reload(["items"]);
+            })
             .listen(".ExpeditionRequestUpdated", (p) => {
                 notify({
                     title: "PR/PO request diperbarui",
@@ -140,9 +149,10 @@ export function connect(user) {
                     message: `${p.number} · ${p.status_label}`,
                     href: `/vendor/submissions/${p.id}`,
                 });
-                location.pathname === "/vendor"
-                    ? reload(["submissions"])
-                    : reload(["submission"]);
+                if (location.pathname === "/vendor") reload(["submissions"]);
+                else if (location.pathname === "/vendor/expedition-requests")
+                    reload(["items"]);
+                else reload(["submission"]);
             })
             .listen(".VendorResubmissionRequested", (p) => {
                 notify({
@@ -185,6 +195,26 @@ export function connect(user) {
                     reload(["items"]);
             },
         );
+    if (user.role === "purchasing_admin")
+        echo.private(`purchasing.${user.site}`)
+            .listen(".ExpeditionRequestCreated", (p) => {
+                notify({
+                    title: "Request ekspedisi tersimpan",
+                    message: `${p.number} · ${p.route}`,
+                    href: "/purchasing/requests",
+                });
+                if (location.pathname === "/purchasing/requests")
+                    reload(["items"]);
+            })
+            .listen(".ExpeditionRequestUpdated", (p) => {
+                notify({
+                    title: "PR/PO request diperbarui",
+                    message: `${p.number} · PR ${p.pr_number || "-"} · PO ${p.po_number || "-"}`,
+                    href: "/purchasing/requests",
+                });
+                if (location.pathname === "/purchasing/requests")
+                    reload(["items"]);
+            });
     if (user.role === "driver")
         echo.private(`driver.${user.site}`)
             .listen(".ExpeditionReportCreated", (p) => {

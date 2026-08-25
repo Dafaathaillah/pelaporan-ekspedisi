@@ -36,10 +36,8 @@ strong { color: #111a2d; }
 </style>
 </head>
 <body>
-
-
 <h1>Dokumentasi Sistem Pelaporan Ekspedisi &amp; Pengajuan Dokumen Vendor</h1>
-<p><strong>PT Putra Perkasa Abadi â€” Site Borneo Indobara (BIB)</strong><br><strong>Kolaborasi SCM Â· FAW Â· ICT</strong><br>Versi dokumentasi: 1.0 â€” 25 Agustus 2026</p>
+<p><strong>PT Putra Perkasa Abadi — Site Borneo Indobara (BIB)</strong><br><strong>Kolaborasi SCM · FAW · ICT</strong><br>Versi dokumentasi: 1.1 — 25 Agustus 2026</p>
 <hr>
 <h2>1. Ringkasan Eksekutif</h2>
 <p>Sistem ini merupakan portal operasional terintegrasi untuk:</p>
@@ -50,9 +48,11 @@ strong { color: #111a2d; }
 <li>mengatur masa berlaku, release, revisi, penolakan, penutupan, dan pengajuan ulang;</li>
 <li>menyusun Planning Escort satu bulan ke depan dengan drag-and-drop;</li>
 <li>menjalankan escort kendaraan ekspedisi oleh Driver Escort;</li>
-<li>menyimpan bukti foto dan koordinat maksimal Â±5 meter;</li>
+<li>menyimpan bukti foto dan koordinat maksimal ±5 meter;</li>
 <li>menampilkan pembaruan dan notifikasi secara realtime melalui Laravel Reverb;</li>
 <li>mengelola pengguna, hak akses, serta master vendor.</li>
+<li>mengelola Request Ekspedisi, nomor PR/PO, dan relasinya dengan Izin Lintas;</li>
+<li>menyinkronkan tanggal planning Izin Lintas antara Ekspedisi, Vendor, dan Koordinator.</li>
 </ul>
 <p>Antarmuka menggunakan identitas merah-putih lembut, responsif untuk desktop, tablet, dan mobile. Pada mobile, navigasi utama berada di bawah dan menu tambahan tersedia melalui <strong>Lainnya</strong>.</p>
 <h2>2. Ruang Lingkup Modul</h2>
@@ -93,6 +93,11 @@ strong { color: #111a2d; }
 <td>Pengajuan Ulang</td>
 <td>Pemilihan orang/unit dan pemeriksaan Surat Sehat</td>
 <td>Koordinator dan Vendor</td>
+</tr>
+<tr>
+<td>Request Ekspedisi</td>
+<td>Request kendaraan, vendor tujuan, rute, PR/PO, dan relasi Izin Lintas</td>
+<td>Purchasing/Koordinator/Developer/Vendor</td>
 </tr>
 <tr>
 <td>Planning Escort</td>
@@ -139,14 +144,14 @@ strong { color: #111a2d; }
 </ul>
 <h3>3.2 Aliran Sistem</h3>
 <pre><code class="language-text">Browser / Mobile
-      â”‚ HTTPS + Inertia
-      â–¼
+      │ HTTPS + Inertia
+      ▼
 Web Server (Nginx/Apache)
-      â”‚
-      â”œâ”€â”€ Laravel HTTP â”€â”€ Database
-      â”œâ”€â”€ Storage privat â”€â”€ Dokumen &amp; foto
-      â”œâ”€â”€ Queue Worker â”€â”€ Event broadcast
-      â””â”€â”€ Reverb WebSocket â”€â”€ Update realtime
+      │
+      ├── Laravel HTTP ── Database
+      ├── Storage privat ── Dokumen &amp; foto
+      ├── Queue Worker ── Event broadcast
+      └── Reverb WebSocket ── Update realtime
 </code></pre>
 <p>Semua aksi sensitif tetap divalidasi di server. Pemeriksaan role di UI hanya untuk pengalaman pengguna dan bukan pengganti middleware backend.</p>
 <h2>4. Role dan Hak Akses</h2>
@@ -167,6 +172,8 @@ Web Server (Nginx/Apache)
 <ul>
 <li><code>coordinator.expedition</code>: dashboard dan monitoring ekspedisi;</li>
 <li><code>coordinator.vendor</code>: pengajuan vendor dan Planning Escort;</li>
+<li><code>coordinator.requests</code>: Request Ekspedisi dan pembaruan PR/PO;</li>
+<li><code>coordinator.planning</code>: kalender Planning Escort;</li>
 <li><code>users.manage</code>: manajemen user dan master vendor.</li>
 </ul>
 <h3>4.3 Vendor</h3>
@@ -175,6 +182,7 @@ Web Server (Nginx/Apache)
 <li>terhubung ke satu <code>vendor_company_id</code> dari master vendor;</li>
 <li>membuat pengajuan dan mengunggah dokumen PDF;</li>
 <li>menerima permintaan pengajuan ulang/Surat Sehat;</li>
+<li>melihat Request Ekspedisi yang ditujukan ke perusahaan akunnya, termasuk PR, PO, dan tanggal planning;</li>
 <li>melihat Monitoring Sarana yang terkait akun;</li>
 <li>dapat mengganti password sendiri.</li>
 </ul>
@@ -185,14 +193,16 @@ Web Server (Nginx/Apache)
 <li>Vendor/Pengirim tetap berupa input manual;</li>
 <li>riwayat laporan dibatasi pada data buatan akun sendiri;</li>
 <li>mengambil foto kedatangan dan foto alat tensi dari kamera.</li>
+<li>melihat Izin Lintas Released yang masih berlaku dan menentukan tanggal planning utama.</li>
 </ul>
 <h3>4.5 Driver</h3>
 <ul>
-<li>hanya melihat kendaraan <strong>ekspedisi</strong> berstatus menunggu atau escort miliknya sendiri;</li>
+<li>melihat kendaraan <strong>ekspedisi</strong> berstatus menunggu, seluruh escort aktif pada site, serta riwayat yang dimulai/ditutup olehnya;</li>
 <li>memilih kendaraan yang akan diproses;</li>
 <li>satu kendaraan hanya dapat diambil satu driver (database row locking);</li>
 <li>akun Driver wajib mempunyai nomor lambung yang unik per site;</li>
 <li>menutup escort dengan foto langsung dan koordinat akurat.</li>
+<li>driver yang memulai dan driver yang menutup escort dapat berbeda; keduanya disimpan sebagai audit operasional.</li>
 </ul>
 <h2>5. Alur Operasional</h2>
 <h3>5.1 Pelaporan Kedatangan Ekspedisi</h3>
@@ -201,15 +211,15 @@ Web Server (Nginx/Apache)
 <li>Isi driver, nomor HP, nomor polisi, vendor/pengirim, tujuan, dan jenis kendaraan.</li>
 <li>Isi sistolik dan diastolik. Sistem menilai status kesehatan secara realtime.</li>
 <li>Ambil foto kedatangan dan foto layar alat tensi melalui kamera.</li>
-<li>Untuk setiap foto, browser meminta GPS hingga akurasi maksimal Â±5 meter.</li>
+<li>Untuk setiap foto, browser meminta GPS hingga akurasi maksimal ±5 meter.</li>
 <li>Sistem melakukan reverse geocoding untuk menampilkan nama area.</li>
 <li>Kirim laporan. Jam kedatangan dicatat server.</li>
 <li>Koordinator dan Driver menerima event realtime.</li>
 </ol>
 <p>Validasi penting:</p>
 <ul>
-<li>sistolik 60â€“250 mmHg;</li>
-<li>diastolik 30â€“150 mmHg dan harus lebih kecil dari sistolik;</li>
+<li>sistolik 60–250 mmHg;</li>
+<li>diastolik 30–150 mmHg dan harus lebih kecil dari sistolik;</li>
 <li>foto JPG/JPEG/PNG/WebP maksimal 8 MB;</li>
 <li>koordinat latitude/longitude valid;</li>
 <li>akurasi GPS maksimal 5 meter.</li>
@@ -225,22 +235,22 @@ Web Server (Nginx/Apache)
 </tr>
 </thead>
 <tbody><tr>
-<td>Sistolik â‰¥180 atau diastolik â‰¥110</td>
+<td>Sistolik ≥180 atau diastolik ≥110</td>
 <td>Unfit</td>
 <td>Sangat tinggi; perlu evaluasi medis segera</td>
 </tr>
 <tr>
-<td>Sistolik 160â€“179 atau diastolik 100â€“109</td>
+<td>Sistolik 160–179 atau diastolik 100–109</td>
 <td>Unfit / Pending</td>
 <td>Cukup tinggi; perlu evaluasi dokter</td>
 </tr>
 <tr>
-<td>Sistolik 140â€“159 atau diastolik 90â€“99</td>
+<td>Sistolik 140–159 atau diastolik 90–99</td>
 <td>Pending</td>
 <td>Perlu pemeriksaan/monitoring lanjutan</td>
 </tr>
 <tr>
-<td>Sistolik 120â€“139 atau diastolik 80â€“89</td>
+<td>Sistolik 120–139 atau diastolik 80–89</td>
 <td>Fit dengan Catatan Medis</td>
 <td>Dapat bekerja dengan catatan/rekomendasi</td>
 </tr>
@@ -262,32 +272,48 @@ Web Server (Nginx/Apache)
 <p>Satu pengajuan dapat berisi satu atau beberapa orang/unit. Dokumen disimpan per subjek agar review dan pengajuan ulang dapat dilakukan sebagian.</p>
 <h4>Dokumen Visitor</h4>
 <ul>
-<li>Surat Tugas â€” wajib;</li>
-<li>KTP â€” wajib.</li>
+<li>Surat Tugas — wajib;</li>
+<li>KTP — wajib.</li>
 </ul>
 <h4>Dokumen Waskat</h4>
 <ul>
-<li>KTP Vendor â€” wajib;</li>
-<li>Foto 4x4 Latar Merah â€” wajib;</li>
-<li>Surat Sehat Vendor â€” wajib;</li>
-<li>Mine Permit Pengawas 1/2, SPDK, JSA/IK, Sosialisasi JSA â€” opsional.</li>
+<li>KTP Vendor — wajib;</li>
+<li>Foto 4x4 Latar Merah — wajib;</li>
+<li>Surat Sehat Vendor — wajib;</li>
+<li>Mine Permit Pengawas 1/2, SPDK, JSA/IK, Sosialisasi JSA — opsional.</li>
 </ul>
 <h4>Dokumen Permit Vendor Non Simper</h4>
 <ul>
-<li>Foto 4x4, KTP, MCU â€” wajib;</li>
-<li>SPDK dan Mine Permit Custodian â€” opsional.</li>
+<li>Foto 4x4, KTP, MCU — wajib;</li>
+<li>SPDK dan Mine Permit Custodian — opsional.</li>
 </ul>
 <h4>Dokumen Ijin Lintas</h4>
 <ul>
-<li>Foto Unit 4 Sisi, KTP, SIM, STNK, KIR, Surat Ijin Lintas, Surat Sehat â€” wajib.</li>
+<li>Foto Unit 4 Sisi, KTP, SIM, STNK, KIR, Surat Ijin Lintas, Surat Sehat — wajib.</li>
 <li>Kategori layanan: Regular atau Non Regular.</li>
 <li>Frekuensi planning: Daily, Weekly, atau Non Regular.</li>
 </ul>
 <p>Upload mendukung drag-and-drop, paste file, dan pemilihan file. Hanya PDF dengan ukuran maksimal 3 MB per dokumen.</p>
-<h3>5.4 Status Pengajuan</h3>
-<pre><code class="language-text">SUBMITTED â†’ APPROVED / REVISION / REJECTED
-APPROVED  â†’ RELEASED
-RELEASED  â†’ CLOSED atau kedaluwarsa/pengajuan ulang
+<h3>5.4 Request Ekspedisi dan PR/PO</h3>
+<ol>
+<li>Admin Purchasing, Koordinator, atau Developer membuat Request Ekspedisi.</li>
+<li>Data wajib mencakup vendor tujuan, jenis kendaraan, rute asal, dan rute tujuan. Keterangan muatan/PIC bersifat opsional.</li>
+<li>Nomor request dibuat otomatis dengan pola <code>REQ-EXP-YYYYMMDD-XXXXXX</code>.</li>
+<li>Hanya akun Vendor yang terhubung ke perusahaan tujuan yang dapat melihat dan memilih request tersebut pada Izin Lintas.</li>
+<li>Nomor PR dan PO dapat diisi atau diperbarui langsung dari tabel Request Ekspedisi. Salah satu atau keduanya boleh belum terbit.</li>
+<li>Perubahan PR/PO muncul pada Request Vendor, tabel/detail Izin Lintas Koordinator, dan notifikasi realtime.</li>
+<li>Ketika request dipilih dalam pengajuan Izin Lintas, relasi disimpan melalui <code>expedition_request_id</code>; nomor PR/PO tidak disalin agar selalu menampilkan nilai terbaru.</li>
+</ol>
+<p>Status Request Ekspedisi:</p>
+<ul>
+<li><code>OPEN</code>: tersedia untuk dipilih vendor tujuan;</li>
+<li><code>USED</code>: sudah dipakai pada pengajuan Izin Lintas;</li>
+<li><code>CLOSED</code>: proses request telah selesai.</li>
+</ul>
+<h3>5.5 Status Pengajuan</h3>
+<pre><code class="language-text">SUBMITTED → APPROVED / REVISION / REJECTED
+APPROVED  → RELEASED
+RELEASED  → CLOSED atau kedaluwarsa/pengajuan ulang
 </code></pre>
 <ul>
 <li><code>SUBMITTED</code>: baru diajukan.</li>
@@ -298,17 +324,19 @@ RELEASED  â†’ CLOSED atau kedaluwarsa/pengajuan ulang
 <li><code>CLOSED</code>: siklus pengajuan selesai.</li>
 </ul>
 <p>Koordinator dapat memverifikasi setiap dokumen sebagai pending/valid/tidak valid, memberi catatan, mengubah status, serta mengunduh satu dokumen atau seluruh dokumen sebagai arsip.</p>
-<h3>5.5 Pengajuan Ulang</h3>
+<h3>5.6 Pengajuan Ulang</h3>
 <ul>
 <li>Pengajuan ulang dimulai oleh Koordinator.</li>
 <li>Koordinator memilih satu atau beberapa orang/unit yang benar-benar diajukan ulang.</li>
 <li>Dokumen lama dipertahankan sesuai subjek.</li>
 <li>Vendor hanya memperbarui Surat Sehat ketika diminta dan dokumen lain tetap memakai data terdahulu.</li>
+<li>Untuk aksi <strong>Minta Dokumen Kesehatan Baru</strong>, Koordinator wajib mengisi alasan minimal 10 dan maksimal 1.500 karakter.</li>
+<li>Alasan ditampilkan pada akun Vendor, dikirim melalui notifikasi realtime, dan dipertahankan sebagai riwayat setelah dokumen baru diunggah.</li>
 <li>Setiap release berlaku 7 hari dari <code>released_at</code> sampai <code>release_expired_at</code>.</li>
 <li>Waskat maksimal dua kali pengajuan ulang; pengajuan berikutnya wajib Permit.</li>
 <li>Ijin Lintas Regular dapat diteruskan; Non Regular bersifat opsional sesuai kebutuhan.</li>
 </ul>
-<h3>5.6 Planning Escort</h3>
+<h3>5.7 Planning Escort</h3>
 <ul>
 <li>Semua pengajuan non-ditolak dapat tersedia di planning sesuai aturan aplikasi.</li>
 <li>Ijin Lintas <code>RELEASED</code> Regular Daily dibuat untuk setiap hari masa berlaku.</li>
@@ -318,19 +346,24 @@ RELEASED  â†’ CLOSED atau kedaluwarsa/pengajuan ulang
 <li>Pada layar sentuh, kartu dipilih lalu tanggal tujuan dipilih.</li>
 <li>Evidence WhatsApp dapat dilampirkan dan dibuka kembali.</li>
 <li>Filter mencakup kata kunci, tipe, status, waktu, dan urutan.</li>
+<li>Akun Ekspedisi dapat menentukan tanggal planning utama untuk Izin Lintas <code>RELEASED</code> yang belum kedaluwarsa.</li>
+<li>Perubahan dari akun Ekspedisi menggunakan item planning yang sama dan otomatis terlihat pada Koordinator serta Vendor.</li>
+<li>Koordinator tetap dapat memindahkan tanggal dengan drag-and-drop; perubahan kembali tersinkron ke Ekspedisi dan Vendor.</li>
 </ul>
-<h3>5.7 Driver Escort</h3>
+<h3>5.8 Driver Escort</h3>
 <p>Hanya laporan kedatangan ekspedisi yang dapat di-escort. Pengajuan Visitor, Waskat, Permit, dan Ijin Lintas tidak muncul sebagai pekerjaan Driver.</p>
-<pre><code class="language-text">WAITING â†’ PROCESS â†’ CLOSED
+<pre><code class="language-text">WAITING → PROCESS → CLOSED
 </code></pre>
 <ol>
 <li>Driver memilih kendaraan berstatus <code>WAITING</code>.</li>
 <li>Sistem mengunci row untuk mencegah dua driver mengambil kendaraan yang sama.</li>
-<li>Status menjadi <code>PROCESS</code>; tanggal/jam mulai dan identitas driver/nomor lambung tersimpan.</li>
-<li>Driver mengambil foto close escort di lokasi tujuan.</li>
-<li>GPS wajib mencapai akurasi maksimal Â±5 meter.</li>
-<li>Status menjadi <code>CLOSED</code>; jam selesai, foto, koordinat, akurasi, dan nama lokasi tersimpan.</li>
-<li>Tabel Koordinator diperbarui realtime tanpa mengembalikan pengguna ke atas halaman.</li>
+<li>Status menjadi <code>PROCESS</code>; tanggal/jam mulai serta identitas driver pemulai/nomor lambung tersimpan.</li>
+<li>Seluruh driver berizin pada site dapat melihat escort aktif. Driver yang menutup boleh berbeda dari driver yang memulai.</li>
+<li>Driver penutup mengambil foto close escort di lokasi tujuan.</li>
+<li>GPS wajib mencapai akurasi maksimal ±5 meter.</li>
+<li>Status menjadi <code>CLOSED</code>; identitas driver penutup, jam selesai, foto, koordinat, akurasi, dan nama lokasi tersimpan.</li>
+<li>Penutupan memakai database row locking sehingga dua driver tidak dapat menutup escort yang sama secara bersamaan.</li>
+<li>Tabel Koordinator menampilkan <strong>Driver Mulai Escort</strong> dan <strong>Driver Close Escort</strong>, lalu diperbarui realtime tanpa mengembalikan pengguna ke atas halaman.</li>
 </ol>
 <h2>6. Dashboard dan DataTable</h2>
 <p>Seluruh tabel utama menggunakan pemrosesan server-side:</p>
@@ -369,6 +402,16 @@ RELEASED  â†’ CLOSED atau kedaluwarsa/pengajuan ulang
 <td>Laporan ekspedisi dan perubahan escort</td>
 </tr>
 <tr>
+<td><code>expedition.{site}</code></td>
+<td>Ekspedisi berizin pada site</td>
+<td>Sinkronisasi tanggal planning</td>
+</tr>
+<tr>
+<td><code>purchasing.{site}</code></td>
+<td>Admin Purchasing berizin pada site</td>
+<td>Request Ekspedisi dan perubahan PR/PO</td>
+</tr>
+<tr>
 <td><code>App.Models.User.{id}</code></td>
 <td>User itu sendiri</td>
 <td>Channel privat Laravel</td>
@@ -382,8 +425,11 @@ RELEASED  â†’ CLOSED atau kedaluwarsa/pengajuan ulang
 <li><code>VendorSubmissionUpdated</code></li>
 <li><code>VendorSubmissionStatusChanged</code></li>
 <li><code>VendorResubmissionRequested</code></li>
+<li><code>ExpeditionRequestCreated</code></li>
+<li><code>ExpeditionRequestUpdated</code></li>
+<li><code>PlanningUpdated</code></li>
 </ul>
-<p>Event escort dan laporan memakai <code>ShouldBroadcastNow</code>. Event vendor yang memakai queue memerlukan worker aktif.</p>
+<p>Event menggunakan broadcasting melalui queue. <code>SafeBroadcast</code> memastikan gangguan sementara Reverb/ngrok tidak mengubah penyimpanan bisnis yang sudah berhasil menjadi HTTP 500. Queue worker tetap wajib aktif agar event terkirim.</p>
 <h3>7.3 Konfigurasi Lokal</h3>
 <pre><code class="language-env">BROADCAST_CONNECTION=reverb
 QUEUE_CONNECTION=database
@@ -567,18 +613,33 @@ location /apps/ {
 </ul>
 <p>Lakukan uji restore berkala pada lingkungan terpisah. Setelah restore, jalankan <code>php artisan optimize:clear</code> dan verifikasi relasi file-database.</p>
 <h2>14. Pengujian dan Quality Gate</h2>
-<pre><code class="language-bash">php artisan test
+<pre><code class="language-bash">php artisan optimize:clear
+php artisan test
 npm run build
 ./vendor/bin/pint --test
 </code></pre>
+<p>Jalankan <code>optimize:clear</code> <strong>sebelum</strong> test. Jangan menjalankan test setelah <code>config:cache</code> production tanpa membersihkan cache terlebih dahulu karena konfigurasi session/CSRF production dapat menyebabkan respons 419 palsu pada test HTTP.</p>
+<p>Hasil verifikasi versi 1.1 pada 25 Agustus 2026:</p>
+<ul>
+<li>61 test lulus;</li>
+<li>490 assertions lulus;</li>
+<li>Laravel Pint lulus tanpa pelanggaran format;</li>
+<li>Vite production build berhasil (819 modul);</li>
+<li>seluruh 23 migration berstatus <code>Ran</code>;</li>
+<li>route, configuration, dan Blade cache berhasil dibuat setelah build.</li>
+<li>broadcast nyata ke Reverb berhasil (<code>REVERB_BROADCAST_OK</code>), queue worker aktif, tanpa failed/pending job.</li>
+</ul>
 <p>Cakupan pengujian yang tersedia mencakup:</p>
 <ul>
 <li>autentikasi dan password;</li>
 <li>hak akses Developer/Koordinator/Vendor/Ekspedisi/Driver;</li>
 <li>filter, sorting, dan aksi DataTable;</li>
 <li>alur pengajuan dan Surat Sehat;</li>
+<li>alasan wajib permintaan Surat Sehat dan visibilitas alasan pada Vendor;</li>
+<li>Request Ekspedisi, pembaruan PR/PO, dan relasi Izin Lintas;</li>
+<li>planning Izin Lintas dari akun Ekspedisi serta sinkronisasi ke Vendor/Koordinator;</li>
 <li>notifikasi belum dibuka;</li>
-<li>escort eksklusif, foto close, dan GPS â‰¤5 meter;</li>
+<li>escort eksklusif saat claim, pemulai/penutup berbeda, foto close, dan GPS ≤5 meter;</li>
 <li>penilaian tensi berdasarkan tingkat terberat;</li>
 <li>metadata SEO dan sitemap publik.</li>
 </ul>
@@ -607,7 +668,7 @@ npm run build
 <li>izinkan Camera dan Precise Location pada browser;</li>
 <li>matikan mode hemat lokasi;</li>
 <li>ambil foto di area terbuka;</li>
-<li>tunggu hingga akurasi â‰¤5 meter;</li>
+<li>tunggu hingga akurasi ≤5 meter;</li>
 <li>jangan memilih gambar lama jika bukti wajib diambil langsung.</li>
 </ul>
 <h3>DataTable tampak lama/tidak berubah</h3>
@@ -626,6 +687,13 @@ npm run build
 <li>Vendor wajib dipasangkan ke Master Vendor;</li>
 <li>Koordinator tidak dapat membuat/mengubah Developer.</li>
 </ul>
+<h3>Test HTTP banyak gagal dengan status 419</h3>
+<ol>
+<li>Jalankan <code>php artisan optimize:clear</code>.</li>
+<li>Pastikan <code>.env.testing</code> atau konfigurasi PHPUnit menggunakan session dan database test.</li>
+<li>Jalankan kembali <code>php artisan test</code>.</li>
+<li>Buat cache production hanya setelah test selesai.</li>
+</ol>
 <h2>16. Operasional Harian</h2>
 <h3>Checklist awal shift</h3>
 <ul>
@@ -722,10 +790,28 @@ npm run build
 <li>Tambahkan health check queue/Reverb dan alert monitoring.</li>
 <li>Tambahkan persetujuan medis formal bila status tensi digunakan sebagai keputusan keselamatan. Penilaian saat ini adalah aturan sistem dan bukan diagnosis dokter.</li>
 </ul>
+<h2>19. Riwayat Versi Dokumentasi</h2>
+<table>
+<thead>
+<tr>
+<th>Versi</th>
+<th>Tanggal</th>
+<th>Perubahan utama</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1.0</td>
+<td>25 Agustus 2026</td>
+<td>Dokumentasi awal seluruh modul, role, deployment, Reverb, keamanan, dan operasional.</td>
+</tr>
+<tr>
+<td>1.1</td>
+<td>25 Agustus 2026</td>
+<td>Request Ekspedisi dan PR/PO, planning oleh Ekspedisi, sinkronisasi Vendor/Koordinator, escort dengan driver mulai/close berbeda, alasan wajib Surat Sehat, serta hasil quality gate terbaru.</td>
+</tr>
+</tbody></table>
 <hr>
-<p><strong>Pemilik proses:</strong> SCM &amp; FAW<br><strong>Dukungan aplikasi:</strong> ICT<br><strong>Identitas:</strong> PT Putra Perkasa Abadi â€” Site Borneo Indobara</p>
-
+<p><strong>Pemilik proses:</strong> SCM &amp; FAW<br><strong>Dukungan aplikasi:</strong> ICT<br><strong>Identitas:</strong> PT Putra Perkasa Abadi — Site Borneo Indobara</p>
 
 </body>
 </html>
-

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\SubmissionStatus;
 use App\Enums\SubmissionType;
+use App\Events\PlanningUpdated;
 use App\Events\VendorResubmissionRequested;
 use App\Events\VendorSubmissionCreated;
 use App\Events\VendorSubmissionStatusChanged;
@@ -128,8 +129,13 @@ class CoordinatorController extends Controller
             $releasedAt = $next === SubmissionStatus::RELEASED ? now() : $submission->released_at;
             $submission->update(['status' => $next, 'coordinator_note' => $r->coordinator_note, 'reviewed_at' => now(), 'reviewed_by' => $r->user()->id, 'coordinator_opened_at' => $submission->coordinator_opened_at ?? now(), 'released_at' => $releasedAt, 'release_expired_at' => $next === SubmissionStatus::RELEASED ? $releasedAt->copy()->addDays(7) : $submission->release_expired_at, 'closed_at' => $next === SubmissionStatus::CLOSED ? now() : $submission->closed_at]);
         });
-        SafeBroadcast::dispatch(new VendorSubmissionStatusChanged($submission->fresh()));
-        app(PlanningService::class)->syncRelease($submission->fresh());
+        $freshSubmission = $submission->fresh();
+        app(PlanningService::class)->syncRelease($freshSubmission);
+        if ($next === SubmissionStatus::RELEASED) {
+            $freshSubmission->planningItems()->with('submission')->get()
+                ->each(fn ($planningItem) => SafeBroadcast::dispatch(new PlanningUpdated($planningItem)));
+        }
+        SafeBroadcast::dispatch(new VendorSubmissionStatusChanged($freshSubmission));
 
         return back()->with('success', 'Status pengajuan berhasil diperbarui.');
     }

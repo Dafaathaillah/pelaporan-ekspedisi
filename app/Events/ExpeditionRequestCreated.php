@@ -18,7 +18,11 @@ class ExpeditionRequestCreated implements ShouldBroadcast
     {
         $vendorUsers = $this->expeditionRequest->vendorCompany->users()->pluck('id');
 
-        return $vendorUsers->map(fn ($id) => new PrivateChannel('vendor.'.$id))->all();
+        return [
+            new PrivateChannel('coordinator.'.$this->expeditionRequest->site),
+            new PrivateChannel('purchasing.'.$this->expeditionRequest->site),
+            ...$vendorUsers->map(fn ($id) => new PrivateChannel('vendor.'.$id))->all(),
+        ];
     }
 
     public function broadcastAs(): string
