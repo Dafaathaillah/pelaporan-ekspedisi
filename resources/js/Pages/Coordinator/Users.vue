@@ -16,6 +16,7 @@ const props = defineProps({
 const showModal = ref(false);
 const editing = ref(null);
 const pendingEdit = ref(null);
+const passwordTouched = ref(false);
 const query = ref({
     search: props.filters.search || "",
     role: props.filters.role || "",
@@ -77,6 +78,7 @@ const openCreate = () => {
     editing.value = null;
     form.reset();
     form.clearErrors();
+    passwordTouched.value = false;
     Object.assign(form, {
         role: "vendor",
         vendor_company_id: "",
@@ -90,6 +92,7 @@ const openCreate = () => {
 const openEdit = (user) => {
     editing.value = user;
     form.clearErrors();
+    passwordTouched.value = false;
     Object.assign(form, {
         name: user.name,
         username: user.username,
@@ -100,7 +103,7 @@ const openEdit = (user) => {
         hull_number: user.hull_number || "",
         site: user.site,
         is_active: Boolean(user.is_active),
-        permissions: user.permissions || [],
+        permissions: user.role === "coordinator" ? user.permissions || [] : [],
     });
     showModal.value = true;
 };
@@ -110,6 +113,7 @@ const confirmEdit = () => {
     if (user) openEdit(user);
 };
 const save = () => {
+    if (editing.value && !passwordTouched.value) form.password = "";
     const options = {
         preserveScroll: true,
         onSuccess: () => {
@@ -275,7 +279,13 @@ const save = () => {
                                 >
                             </td>
                             <td>{{ user.site }}</td>
-                            <td><span v-if="user.hull_number" class="plate-badge">{{ user.hull_number }}</span><span v-else>-</span></td>
+                            <td>
+                                <span
+                                    v-if="user.hull_number"
+                                    class="plate-badge"
+                                    >{{ user.hull_number }}</span
+                                ><span v-else>-</span>
+                            </td>
                             <td class="table-wrap-cell">
                                 <div class="flex max-w-md flex-wrap gap-1.5">
                                     <span
@@ -399,6 +409,14 @@ const save = () => {
                                 Data belum disimpan. Perbaiki kolom yang
                                 ditandai di bawah ini.
                             </p>
+                            <ul class="mt-2 list-disc space-y-1 pl-4 text-xs">
+                                <li
+                                    v-for="(message, field) in form.errors"
+                                    :key="field"
+                                >
+                                    {{ message }}
+                                </li>
+                            </ul>
                         </div>
                     </div>
                     <div class="grid gap-4 sm:grid-cols-2">
@@ -451,7 +469,9 @@ const save = () => {
                                 v-model="form.password"
                                 class="control mt-2"
                                 type="password"
+                                autocomplete="new-password"
                                 placeholder="Minimal 8 karakter"
+                                @focus="passwordTouched = true"
                             /><span class="err">{{
                                 form.errors.password
                             }}</span></label

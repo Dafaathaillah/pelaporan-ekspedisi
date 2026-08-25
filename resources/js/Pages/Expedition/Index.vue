@@ -2,7 +2,7 @@
 import AppShell from "@/Components/AppShell.vue";
 import DataTableFooter from "@/Components/DataTableFooter.vue";
 import { router, useForm } from "@inertiajs/vue3";
-import { onBeforeUnmount, ref } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 import axios from "axios";
 import { getPreciseLocation } from "@/lib/preciseLocation";
 
@@ -46,6 +46,63 @@ const fields = [
     ["vehicle_plate", "Nomor Polisi"],
     ["destination", "Tujuan"],
 ];
+const healthAssessment = computed(() => {
+    const systolic = Number(form.blood_pressure_systolic);
+    const diastolic = Number(form.blood_pressure_diastolic);
+    if (!systolic || !diastolic) return null;
+    if (systolic < 60 || systolic > 250)
+        return {
+            status: "INVALID",
+            label: "Nilai Tensi Tidak Valid",
+            reason: "Sistolik harus berada pada rentang 60–250 mmHg. Periksa kembali angka pada alat tensi.",
+        };
+    if (diastolic < 30 || diastolic > 150)
+        return {
+            status: "INVALID",
+            label: "Nilai Tensi Tidak Valid",
+            reason: "Diastolik harus berada pada rentang 30–150 mmHg. Periksa kembali angka pada alat tensi.",
+        };
+    if (diastolic >= systolic)
+        return {
+            status: "INVALID",
+            label: "Nilai Tensi Tidak Valid",
+            reason: "Tekanan diastolik harus lebih rendah daripada tekanan sistolik. Periksa kembali urutan atau hasil pengukuran.",
+        };
+    if (systolic >= 180 || diastolic >= 110)
+        return {
+            status: "UNFIT",
+            label: "Unfit",
+            reason: "Tekanan darah sangat tinggi dan memerlukan evaluasi medis segera.",
+        };
+    if (systolic >= 160 || diastolic >= 100)
+        return {
+            status: "UNFIT_PENDING",
+            label: "Unfit / Pending",
+            reason: "Tekanan darah cukup tinggi dan memerlukan evaluasi dokter.",
+        };
+    if (systolic >= 140 || diastolic >= 90)
+        return {
+            status: "PENDING",
+            label: "Pending",
+            reason: "Perlu pemeriksaan atau monitoring lebih lanjut.",
+        };
+    if (systolic >= 120 || diastolic >= 80)
+        return {
+            status: "FIT_WITH_NOTE",
+            label: "Fit dengan Catatan Medis",
+            reason: "Masih dapat bekerja, tetapi ada catatan atau rekomendasi kesehatan.",
+        };
+    return { status: "FIT", label: "Fit", reason: "Tekanan darah normal." };
+});
+const healthClass = (status) =>
+    ({
+        FIT: "border-emerald-200 bg-emerald-50 text-emerald-800",
+        FIT_WITH_NOTE: "border-blue-200 bg-blue-50 text-blue-800",
+        PENDING: "border-amber-200 bg-amber-50 text-amber-800",
+        UNFIT_PENDING: "border-orange-200 bg-orange-50 text-orange-800",
+        UNFIT: "border-red-200 bg-red-50 text-red-800",
+        INVALID: "border-red-300 bg-red-50 text-red-800",
+    })[status] || "border-slate-200 bg-slate-50 text-slate-700";
 const pickPhoto = (kind) =>
     (kind === "arrival" ? arrivalInput.value : pressureInput.value)?.click();
 const captureLocation = async (kind) => {
@@ -100,7 +157,9 @@ const clearPreviews = () => {
     locating.value = { arrival: false, pressure: false };
     locationError.value = { arrival: "", pressure: "" };
 };
-const send = () =>
+const send = () => {
+    if (!healthAssessment.value || healthAssessment.value.status === "INVALID")
+        return;
     form.post("/expedition/reports", {
         forceFormData: true,
         preserveScroll: true,
@@ -110,6 +169,7 @@ const send = () =>
             clearPreviews();
         },
     });
+};
 const date = (value) =>
     new Date(value).toLocaleString("id-ID", {
         dateStyle: "medium",
@@ -256,6 +316,38 @@ onBeforeUnmount(clearPreviews);
                         {{ form.errors.blood_pressure_diastolic }}
                     </p></label
                 >
+            </div>
+
+            <div
+                v-if="healthAssessment"
+                class="mt-4 rounded-2xl border p-4 transition-colors"
+                :class="healthClass(healthAssessment.status)"
+                aria-live="polite"
+            >
+                <div
+                    class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+                >
+                    <div>
+                        <p
+                            class="text-[10px] font-bold uppercase tracking-[.16em] opacity-70"
+                        >
+                            Hasil Penilaian Tensi Otomatis
+                        </p>
+                        <p class="mt-1 text-lg font-bold">
+                            {{ healthAssessment.label }}
+                        </p>
+                    </div>
+                    <span
+                        class="w-fit rounded-full bg-white/70 px-3 py-1 text-xs font-bold"
+                        >{{ form.blood_pressure_systolic }}/{{
+                            form.blood_pressure_diastolic
+                        }}
+                        mmHg</span
+                    >
+                </div>
+                <p class="mt-2 text-sm font-medium leading-5">
+                    {{ healthAssessment.reason }}
+                </p>
             </div>
 
             <div class="mt-6 grid gap-5 md:grid-cols-2">
@@ -450,7 +542,11 @@ onBeforeUnmount(clearPreviews);
             </p>
             <button
                 :disabled="
-                    form.processing || locating.arrival || locating.pressure
+                    form.processing ||
+                    locating.arrival ||
+                    locating.pressure ||
+                    !healthAssessment ||
+                    healthAssessment.status === 'INVALID'
                 "
                 class="btn mt-4 w-full"
             >
@@ -459,7 +555,9 @@ onBeforeUnmount(clearPreviews);
                         ? "MENGIRIM LAPORAN..."
                         : locating.arrival || locating.pressure
                           ? "MENGAMBIL LOKASI..."
-                          : "KIRIM LAPORAN KEDATANGAN"
+                          : healthAssessment?.status === "INVALID"
+                            ? "PERIKSA KEMBALI NILAI TENSI"
+                            : "KIRIM LAPORAN KEDATANGAN"
                 }}
             </button>
         </form>
@@ -496,11 +594,32 @@ onBeforeUnmount(clearPreviews);
                             </td>
                             <td>{{ row.vehicle_type }}</td>
                             <td>
-                                <b v-if="row.blood_pressure_systolic"
-                                    >{{ row.blood_pressure_systolic }}/{{
-                                        row.blood_pressure_diastolic
-                                    }}</b
-                                ><span v-else>-</span>
+                                <div
+                                    v-if="row.blood_pressure_systolic"
+                                    class="min-w-44"
+                                >
+                                    <b
+                                        >{{ row.blood_pressure_systolic }}/{{
+                                            row.blood_pressure_diastolic
+                                        }}
+                                        mmHg</b
+                                    >
+                                    <span
+                                        class="mt-2 block w-fit rounded-full border px-2.5 py-1 text-[10px] font-bold"
+                                        :class="healthClass(row.health_status)"
+                                        >{{
+                                            row.health_status_label ||
+                                            "Belum dinilai"
+                                        }}</span
+                                    >
+                                    <p
+                                        v-if="row.health_status_reason"
+                                        class="mt-2 max-w-56 whitespace-normal break-words text-[11px] leading-4 text-slate-500"
+                                    >
+                                        {{ row.health_status_reason }}
+                                    </p>
+                                </div>
+                                <span v-else>-</span>
                             </td>
                             <td>
                                 <div class="flex gap-2">

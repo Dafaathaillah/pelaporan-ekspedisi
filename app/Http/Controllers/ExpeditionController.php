@@ -7,6 +7,7 @@ use App\Http\Requests\StoreExpeditionReportRequest;
 use App\Models\ExpeditionReport;
 use App\Models\User;
 use App\Enums\UserRole;
+use App\Support\BloodPressureAssessment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -32,7 +33,8 @@ class ExpeditionController extends Controller
         $number = 'EXP-'.$now->format('Ymd-His').'-'.str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
         $arrivalPath = $request->file('arrival_photo')->store('private/expedition-reports/'.$number, 'local');
         $pressurePath = $request->file('blood_pressure_photo')->store('private/expedition-reports/'.$number, 'local');
-        $report = ExpeditionReport::create([...$request->safe()->except(['arrival_photo', 'blood_pressure_photo']), 'expedition_company' => $request->user()->name, 'arrival_photo_path' => $arrivalPath, 'blood_pressure_photo_path' => $pressurePath, 'vendor_user_id' => $vendorUser?->id, 'report_number' => $number, 'arrived_at' => $now, 'created_by' => $request->user()->id, 'site' => $request->user()->site]);
+        $assessment = BloodPressureAssessment::assess((int) $request->blood_pressure_systolic, (int) $request->blood_pressure_diastolic);
+        $report = ExpeditionReport::create([...$request->safe()->except(['arrival_photo', 'blood_pressure_photo']), 'health_status' => $assessment['status'], 'health_status_label' => $assessment['label'], 'health_status_reason' => $assessment['reason'], 'expedition_company' => $request->user()->name, 'arrival_photo_path' => $arrivalPath, 'blood_pressure_photo_path' => $pressurePath, 'vendor_user_id' => $vendorUser?->id, 'report_number' => $number, 'arrived_at' => $now, 'created_by' => $request->user()->id, 'site' => $request->user()->site]);
         ExpeditionReportCreated::dispatch($report);
 
         return back()->with('success', 'Laporan kedatangan berhasil dikirim.');

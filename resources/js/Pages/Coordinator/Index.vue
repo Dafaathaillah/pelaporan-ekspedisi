@@ -126,6 +126,14 @@ const escortTime = (value) =>
               hour12: false,
           }) + " WITA"
         : "Belum dimulai";
+const healthStatusClass = (status) =>
+    ({
+        FIT: "bg-emerald-50 text-emerald-700",
+        FIT_WITH_NOTE: "bg-blue-50 text-blue-700",
+        PENDING: "bg-amber-50 text-amber-700",
+        UNFIT_PENDING: "bg-orange-50 text-orange-700",
+        UNFIT: "bg-red-50 text-red-700",
+    })[status] || "bg-slate-100 text-slate-600";
 </script>
 <template>
     <AppShell
@@ -550,11 +558,34 @@ const escortTime = (value) =>
                             </td>
                             <td>{{ x.vehicle_type }}</td>
                             <td>
-                                <b v-if="x.blood_pressure_systolic"
-                                    >{{ x.blood_pressure_systolic }}/{{
-                                        x.blood_pressure_diastolic
-                                    }}</b
-                                ><span v-else>-</span>
+                                <div
+                                    v-if="x.blood_pressure_systolic"
+                                    class="min-w-44"
+                                >
+                                    <b
+                                        >{{ x.blood_pressure_systolic }}/{{
+                                            x.blood_pressure_diastolic
+                                        }}
+                                        mmHg</b
+                                    >
+                                    <span
+                                        class="mt-2 block w-fit rounded-full px-2.5 py-1 text-[10px] font-bold"
+                                        :class="
+                                            healthStatusClass(x.health_status)
+                                        "
+                                        >{{
+                                            x.health_status_label ||
+                                            "Belum dinilai"
+                                        }}</span
+                                    >
+                                    <p
+                                        v-if="x.health_status_reason"
+                                        class="mt-2 max-w-56 whitespace-normal break-words text-[11px] leading-4 text-slate-500"
+                                    >
+                                        {{ x.health_status_reason }}
+                                    </p>
+                                </div>
+                                <span v-else>-</span>
                             </td>
                             <td>
                                 <div class="flex flex-wrap gap-2">

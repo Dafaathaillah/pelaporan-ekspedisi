@@ -32,6 +32,17 @@ class SaveUserRequest extends FormRequest
         ];
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->input('role') !== UserRole::COORDINATOR->value) {
+            $this->merge(['permissions' => []]);
+        }
+
+        if ($this->route('managedUser') && blank($this->input('password'))) {
+            $this->merge(['password' => null]);
+        }
+    }
+
     public function messages(): array
     {
         return [

@@ -46,4 +46,35 @@ class UserManagementTest extends TestCase
         $this->actingAs($coordinator)->get('/coordinator/users')->assertForbidden();
         $this->actingAs($coordinator)->get('/coordinator/submissions/VISITOR')->assertForbidden();
     }
+
+    public function test_vendor_can_be_updated_without_hidden_permission_or_password_errors(): void
+    {
+        $coordinator = User::factory()->create([
+            'role' => UserRole::COORDINATOR,
+            'permissions' => ['users.manage'],
+        ]);
+        $company = VendorCompany::create(['name' => 'SINAR JAYA PRIMA LANGGENG', 'abbreviation' => 'SJPL', 'category' => 'REGULAR', 'is_active' => true]);
+        $vendor = User::factory()->create([
+            'name' => $company->name,
+            'username' => 'vendor_sinar',
+            'role' => UserRole::VENDOR,
+            'vendor_company_id' => $company->id,
+            'permissions' => ['vendor.submission'],
+        ]);
+
+        $this->actingAs($coordinator)->patch('/coordinator/users/'.$vendor->id, [
+            'name' => $company->name,
+            'username' => $vendor->username,
+            'email' => $vendor->email,
+            'password' => '',
+            'role' => 'vendor',
+            'vendor_company_id' => $company->id,
+            'hull_number' => '',
+            'site' => 'BIB',
+            'is_active' => true,
+            'permissions' => ['vendor.submission'],
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        $this->assertSame(['vendor.submission'], $vendor->fresh()->permissions);
+    }
 }
