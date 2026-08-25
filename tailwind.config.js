@@ -13,7 +13,16 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: [
+                    '-apple-system',
+                    'BlinkMacSystemFont',
+                    'SF Pro Text',
+                    'SF Pro Display',
+                    'Helvetica Neue',
+                    'Segoe UI',
+                    'Inter',
+                    ...defaultTheme.fontFamily.sans,
+                ],
             },
         },
     },

@@ -1,18 +1,29 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+ html { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Segoe UI", Inter, sans-serif; font-feature-settings: "kern" 1, "liga" 1, "calt" 1; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+ body { background-color: #f6f7f9; color: #263449; font-size: 15px; font-weight: 400; line-height: 1.55; letter-spacing: -.008em; }
+ h1, h2, h3, h4 { color: inherit; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI", Inter, sans-serif; letter-spacing: -.028em; text-wrap: balance; }
+ p { text-wrap: pretty; }
+ button, input, select, textarea { font: inherit; letter-spacing: inherit; }
+ input, select, textarea { font-size: 15px; line-height: 1.5; }
+ ::placeholder { color: #94a3b8; font-weight: 400; opacity: 1; }
+}
+
 @layer components {
- .field { @apply mt-2 w-full rounded-xl border-slate-200 bg-white px-4 py-3 focus:border-red-400 focus:ring-red-200; }
- .control { @apply w-full rounded-xl border-slate-200 bg-white px-3 py-3 text-sm focus:border-red-400 focus:ring-red-100; }
- .btn { @apply rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-red-100 transition hover:bg-red-700 disabled:opacity-50; }
- .btn-ghost { @apply rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700; }
+ .field { @apply mt-2 w-full rounded-xl border-slate-200 bg-white px-4 py-3 text-[15px] leading-6 focus:border-red-400 focus:ring-red-200; }
+ .control { @apply w-full rounded-xl border-slate-200 bg-white px-3 py-3 text-[14px] font-medium leading-5 focus:border-red-400 focus:ring-red-100; }
+ .btn { @apply rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-red-100 transition hover:bg-red-700 disabled:opacity-50; }
+ .btn-ghost { @apply rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700; }
  .card { @apply rounded-2xl border border-red-100 bg-white shadow-sm; }
  .panel { @apply rounded-2xl border border-slate-100 bg-white p-5 shadow-soft; }
- .panel-title { @apply text-base font-black text-slate-950; }
- .panel-copy { @apply mt-1 text-xs text-slate-500; }
- .nav-pill { @apply shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-black uppercase text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700; }
+ .panel-title { @apply text-[17px] font-semibold leading-6 text-slate-800; letter-spacing: -.018em; }
+ .panel-copy { @apply mt-1 text-[13px] leading-5 text-slate-600; }
+ .nav-pill { @apply shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-3 text-[13px] font-semibold text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700; }
  .nav-pill-active { @apply border-red-600 bg-red-600 text-white shadow-lg shadow-red-100 hover:bg-red-700 hover:text-white; }
- .side-link { @apply flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-slate-600 transition hover:bg-red-50 hover:text-red-700; }
+ .side-link { @apply flex items-center gap-3 rounded-xl px-3 py-3 text-[14px] font-semibold text-slate-600 transition hover:bg-red-50 hover:text-red-700; }
  .side-link-active { @apply bg-red-600 text-white shadow-lg shadow-red-100 hover:bg-red-700 hover:text-white; }
  .side-icon { @apply grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-sm text-slate-600; }
  .side-link-active .side-icon { @apply bg-white/20 text-white; }
@@ -20,17 +31,17 @@
  .sidebar-toggle { @apply absolute -right-3 top-7 z-50 grid h-7 w-7 place-items-center rounded-full border border-slate-200 bg-white text-lg font-black text-slate-500 shadow-md transition hover:border-red-200 hover:bg-red-50 hover:text-red-700; }
  .metric-card { @apply relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-soft; }
  .metric-card::after { content: ''; @apply absolute -right-4 -top-5 h-16 w-16 rounded-full bg-red-50; }
- .metric-card p { @apply relative z-10 text-[11px] font-black uppercase text-slate-500; }
- .metric-card strong { @apply relative z-10 mt-3 block text-3xl font-black text-slate-950; }
- .metric-card span { @apply relative z-10 mt-2 block text-[11px] text-slate-500; }
- .data-table { @apply min-w-[1200px] w-full text-left text-xs; }
- .data-table thead { @apply bg-slate-50 text-[10px] uppercase tracking-wide text-slate-600; }
- .data-table th { @apply px-4 py-3 font-black; }
- .data-table td { @apply border-t border-slate-100 px-4 py-4 align-top leading-relaxed; }
- .data-table small { @apply mt-1 block text-[9px] font-normal text-slate-400; }
- .time-badge { @apply rounded-lg bg-red-50 px-2 py-2 font-black text-red-700; }
- .plate-badge { @apply rounded-md bg-[#182238] px-3 py-2 font-black tracking-wider text-white; }
- .status-badge { @apply inline-flex rounded-full px-3 py-1.5 text-[10px] font-black; }
+ .metric-card p { @apply relative z-10 text-[11px] font-semibold uppercase text-slate-500; letter-spacing: .055em; }
+ .metric-card strong { @apply relative z-10 mt-3 block break-words text-3xl font-semibold tracking-tight text-slate-800; }
+ .metric-card span { @apply relative z-10 mt-2 block break-words text-[12px] leading-5 text-slate-600; }
+ .data-table { @apply min-w-[1200px] w-full text-left text-[13px]; }
+ .data-table thead { @apply bg-slate-50 text-[11px] uppercase text-slate-600; letter-spacing: .045em; }
+ .data-table th { @apply px-4 py-3 font-semibold; }
+ .data-table td { @apply border-t border-slate-100 px-4 py-4 align-top leading-5; }
+ .data-table small { @apply mt-1 block text-[11px] font-normal leading-4 text-slate-400; }
+ .time-badge { @apply rounded-lg bg-red-50 px-2 py-2 font-semibold text-red-700; }
+ .plate-badge { @apply rounded-md bg-[#182238] px-3 py-2 font-bold tracking-wide text-white; }
+ .status-badge { @apply inline-flex rounded-full px-3 py-1.5 text-[11px] font-semibold; }
  .status-submitted { @apply bg-blue-50 text-blue-700; }
  .status-approved { @apply bg-emerald-50 text-emerald-700; }
  .status-revision { @apply bg-amber-50 text-amber-700; }
@@ -43,7 +54,7 @@
  select.control, select.field, .select-control, .status-select { appearance:none; border-color:#dbe2ea; background-color:#fff; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m6 8 4 4 4-4' stroke='%2364758b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right .8rem center; box-shadow:0 1px 2px rgba(15,23,42,.03); transition:border-color .2s,box-shadow .2s,background-color .2s; }
  select.control:hover, select.field:hover, .select-control:hover, .status-select:hover { border-color:#f3a7aa; background-color:#fffafa; }
  select.control:focus, select.field:focus, .select-control:focus, .status-select:focus { border-color:#dc2626; box-shadow:0 0 0 4px rgba(220,38,38,.09); outline:none; }
- .status-select { @apply w-full rounded-lg border py-2 pl-3 pr-9 text-[11px] font-bold text-slate-700; }
+ .status-select { @apply w-full rounded-lg border py-2 pl-3 pr-9 text-[13px] font-medium text-slate-700; }
  .submission-table { min-width: 1600px; table-layout: fixed; }
  .submission-table th:nth-child(1) { width: 50px; }
  .submission-table th:nth-child(2) { width: 105px; }
@@ -60,14 +71,14 @@
  .description-cell, .note-cell { line-height: 1.65; }
  .id-cell { white-space: normal; overflow-wrap: anywhere; }
  .status-cell { min-width: 180px; }
- .chart-stat { @apply min-w-0 rounded-xl border border-slate-100 bg-gradient-to-br from-white to-slate-50 p-3; }
- .chart-stat span { @apply block truncate text-[9px] font-black uppercase tracking-wide text-slate-400; }
- .chart-stat strong { @apply mt-1 block truncate text-xl font-black text-slate-950; }
- .chart-stat small { @apply mt-0.5 block truncate text-[9px] text-slate-500; }
+ .chart-stat { @apply min-w-0 rounded-xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-3; }
+ .chart-stat span { @apply block whitespace-normal break-words text-[10px] font-semibold uppercase leading-4 tracking-wide text-slate-500; }
+ .chart-stat strong { @apply mt-1 block whitespace-normal break-words text-xl font-semibold leading-6 tracking-tight text-slate-800; overflow-wrap:anywhere; }
+ .chart-stat small { @apply mt-1 block whitespace-normal break-words text-[11px] leading-4 text-slate-600; }
  .app-footer { @apply relative mt-8 overflow-hidden border-t border-slate-200 bg-white; }
  .app-footer-glow { @apply pointer-events-none absolute -left-16 top-0 h-24 w-64 rounded-full bg-red-100/50 blur-3xl; }
  .footer-mark { @apply grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-red-100 bg-gradient-to-br from-red-600 to-red-800 text-white shadow-lg shadow-red-100; }
- .vendor-type-link { @apply flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-slate-600 transition hover:bg-red-50 hover:text-red-700; }
+ .vendor-type-link { @apply flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-600 transition hover:bg-red-50 hover:text-red-700; }
  .vendor-type-active { @apply bg-red-600 text-white shadow-lg shadow-red-100 hover:bg-red-700 hover:text-white; }
  .vendor-type-icon { @apply grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-xs text-slate-600; }
  .vendor-type-active .vendor-type-icon { @apply bg-white/20 text-white; }
@@ -84,7 +95,7 @@
  border-top: 1px solid rgb(226 232 240); background: rgba(255,255,255,.97);
  box-shadow: 0 -10px 35px rgba(15,23,42,.10); backdrop-filter: blur(14px);
 }
-.bottom-link { display:flex; min-width:0; flex:1; flex-direction:column; align-items:center; gap:.25rem; border-radius:.75rem; padding:.5rem .15rem; color:#64748b; font-size:.62rem; font-weight:800; }
+.bottom-link { display:flex; min-width:0; flex:1; flex-direction:column; align-items:center; gap:.25rem; border-radius:.75rem; padding:.5rem .15rem; color:#64748b; font-size:.67rem; font-weight:600; letter-spacing:-.005em; }
 .bottom-link-active { background:#fef2f2; color:#c81e2a; }
 
 @media (min-width: 640px) and (max-width: 1023px) {

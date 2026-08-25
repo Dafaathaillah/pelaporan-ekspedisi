@@ -144,7 +144,7 @@ const time = (v) => new Date(v).toLocaleTimeString("id-ID", { hour12: false });
                         >● LIVE WITA</span
                     >
                 </div>
-                <div class="mt-5 grid grid-cols-3 gap-2">
+                <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <div class="chart-stat">
                         <span>Jam Tersibuk</span
                         ><strong>{{ peak ? peak.hour + ".00" : "--" }}</strong
