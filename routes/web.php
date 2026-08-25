@@ -8,6 +8,7 @@ use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\VendorCompanyController;
 use App\Http\Controllers\PlanningController;
+use App\Http\Controllers\DriverEscortController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login', 301);
@@ -28,6 +29,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/reverse-geocode', [ExpeditionController::class, 'reverseGeocode'])->name('expedition.reverse-geocode');
         Route::get('/reports/{report}/photos/{kind}', [ExpeditionController::class, 'photo'])->name('expedition.photo');
     });
+    Route::middleware(['role:driver', 'permission:driver.escort'])->prefix('driver')->group(function () {
+        Route::get('/escorts', [DriverEscortController::class, 'index'])->name('driver.escorts.index');
+        Route::patch('/escorts/{report}/claim', [DriverEscortController::class, 'claim'])->name('driver.escorts.claim');
+        Route::post('/escorts/{report}/close', [DriverEscortController::class, 'close'])->name('driver.escorts.close');
+        Route::get('/escorts/{report}/photo', [DriverEscortController::class, 'photo'])->name('driver.escorts.photo');
+        Route::get('/reverse-geocode', [DriverEscortController::class, 'reverseGeocode'])->name('driver.reverse-geocode');
+    });
+    Route::middleware('role:coordinator')->get('/coordinator/reports/{report}/escort-photo', [DriverEscortController::class, 'photo'])->name('coordinator.expedition.escort-photo');
     Route::middleware('role:coordinator')->get('/coordinator/reports/{report}/photos/{kind}', [ExpeditionController::class, 'photo'])->name('coordinator.expedition.photo');
     Route::middleware(['role:vendor', 'permission:vendor.submission'])->prefix('vendor')->group(function () {
         Route::get('/', [VendorController::class, 'index'])->name('vendor.index');

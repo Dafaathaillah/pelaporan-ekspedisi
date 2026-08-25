@@ -15,7 +15,7 @@ class PlanningController extends Controller
         $end = $start->copy()->addMonth();
         $sort = in_array($request->sort, ['vendor_name', 'type', 'status', 'submitted_at'], true) ? $request->sort : 'submitted_at';
         $direction = $request->direction === 'asc' ? 'asc' : 'desc';
-        $items = PlanningItem::with(['submission' => fn ($q) => $q->withCount('units')])
+        $items = PlanningItem::with(['submission' => fn ($q) => $q->with('units:id,vendor_submission_id,subject_type,person_name,plate_number,unit_order')->withCount('units')])
             ->whereHas('submission', fn ($q) => $q->where('site', $request->user()->site)->where('status', '!=', 'REJECTED')
                 ->when($request->search, fn ($x, $v) => $x->where(fn ($y) => $y->where('vendor_name', 'like', '%'.$v.'%')->orWhere('submission_number', 'like', '%'.$v.'%')->orWhere('applicant_name', 'like', '%'.$v.'%')))
                 ->when($request->type, fn ($x, $v) => $x->where('type', $v))

@@ -4,7 +4,7 @@ import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 const user = computed(() => usePage().props.auth.user);
-const role = computed(() => ({coordinator:'Koordinator Sarana',vendor:'Vendor',expedition:'Ekspedisi'}[user.value.role] || user.value.role));
+const role = computed(() => ({coordinator:'Koordinator Sarana',vendor:'Vendor',expedition:'Ekspedisi',driver:'Driver Escort'}[user.value.role] || user.value.role));
 </script>
 
 <template><Head title="Keamanan Akun"/><AppShell title="Keamanan Akun" subtitle="Kelola password dan perlindungan akun Anda" eyebrow="PPA · Pelaporan Ekspedisi">

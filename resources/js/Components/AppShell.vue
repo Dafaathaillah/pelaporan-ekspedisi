@@ -14,7 +14,7 @@ watch(collapsed, value => localStorage.setItem('ppa-sidebar-collapsed', String(v
 const can = permission => {
     if (Array.isArray(user.value.permissions)) return user.value.permissions.includes(permission);
     if (user.value.role === 'coordinator') return true;
-    return permission === (user.value.role === 'vendor' ? 'vendor.submission' : 'expedition.report');
+    return permission === ({vendor:'vendor.submission',driver:'driver.escort',expedition:'expedition.report'}[user.value.role]);
 };
 const menus = computed(() => {
     if (user.value.role === 'coordinator') return [
@@ -29,6 +29,7 @@ const menus = computed(() => {
         { label:'Ganti Password',short:'Password',icon:'lock',href:'/profile' },
     ].filter(item => !item.permission || can(item.permission));
     if (user.value.role === 'vendor') return [{label:'Pengajuan Vendor',short:'Pengajuan',icon:'upload',href:'/vendor',exact:true},{label:'Monitoring Sarana',short:'Sarana',icon:'truck',href:'/vendor/monitoring-sarana'},{label:'Ganti Password',short:'Password',icon:'lock',href:'/profile'}];
+    if (user.value.role === 'driver') return [{label:'Agenda Escort',short:'Escort',icon:'steering',href:'/driver/escorts',exact:true},{label:'Ganti Password',short:'Password',icon:'lock',href:'/profile'}];
     return [{label:'Laporan Kedatangan',short:'Laporan',icon:'truck',href:'/expedition'},{label:'Ganti Password',short:'Password',icon:'lock',href:'/profile'}];
 });
 const active = item => item.exact ? page.url === item.href : page.url.startsWith(item.href);

@@ -42,10 +42,11 @@ class CoordinatorController extends Controller
             'destinations' => (clone $base)->distinct()->orderBy('destination')->pluck('destination'),
         ];
 
-        return Inertia::render('Coordinator/Index', [
-            'reports' => $this->expeditionQuery($r)
+        $reports = $this->expeditionQuery($r)
                 ->orderBy($this->sortColumn($r, ['arrived_at', 'expedition_company', 'driver_name', 'driver_phone', 'vehicle_plate', 'vehicle_type', 'sender_vendor', 'destination'], 'arrived_at'), $this->sortDirection($r))
-                ->paginate($this->perPage($r))->withQueryString(),
+                ->paginate($this->perPage($r))->withQueryString();
+        return Inertia::render('Coordinator/Index', [
+            'reports' => $reports,
             'summary' => $summary,
             'hourly' => $hourly,
             'options' => $options,
@@ -55,8 +56,9 @@ class CoordinatorController extends Controller
 
     private function expeditionQuery(Request $r)
     {
-        return ExpeditionReport::where('site', $r->user()->site)->when($r->search, fn ($q, $v) => $q->where(fn ($x) => $x->where('driver_name', 'like', '%'.$v.'%')->orWhere('vehicle_plate', 'like', '%'.$v.'%')->orWhere('expedition_company', 'like', '%'.$v.'%')->orWhere('sender_vendor', 'like', '%'.$v.'%')->orWhere('destination', 'like', '%'.$v.'%')))->when($r->date_from, fn ($q, $v) => $q->whereDate('arrived_at', '>=', $v))->when($r->date_to, fn ($q, $v) => $q->whereDate('arrived_at', '<=', $v))->when($r->company, fn ($q, $v) => $q->where('expedition_company', $v))->when($r->vehicle_type, fn ($q, $v) => $q->where('vehicle_type', $v))->when($r->vendor, fn ($q, $v) => $q->where('sender_vendor', $v))->when($r->destination, fn ($q, $v) => $q->where('destination', $v));
+        return ExpeditionReport::with('escortDriver:id,name,hull_number')->where('site', $r->user()->site)->when($r->search, fn ($q, $v) => $q->where(fn ($x) => $x->where('driver_name', 'like', '%'.$v.'%')->orWhere('vehicle_plate', 'like', '%'.$v.'%')->orWhere('expedition_company', 'like', '%'.$v.'%')->orWhere('sender_vendor', 'like', '%'.$v.'%')->orWhere('destination', 'like', '%'.$v.'%')))->when($r->date_from, fn ($q, $v) => $q->whereDate('arrived_at', '>=', $v))->when($r->date_to, fn ($q, $v) => $q->whereDate('arrived_at', '<=', $v))->when($r->company, fn ($q, $v) => $q->where('expedition_company', $v))->when($r->vehicle_type, fn ($q, $v) => $q->where('vehicle_type', $v))->when($r->vendor, fn ($q, $v) => $q->where('sender_vendor', $v))->when($r->destination, fn ($q, $v) => $q->where('destination', $v));
     }
+
 
     public function export(Request $r)
     {

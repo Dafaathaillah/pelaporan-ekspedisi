@@ -15,7 +15,7 @@ class UserManagementController extends Controller
 {
     public function index(Request $request): Response
     {
-        $sort = in_array($request->string('sort')->toString(), ['name', 'username', 'role', 'site', 'is_active', 'created_at'], true)
+        $sort = in_array($request->string('sort')->toString(), ['name', 'username', 'role', 'site', 'hull_number', 'is_active', 'created_at'], true)
             ? $request->string('sort')->toString() : 'created_at';
         $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
         $perPage = in_array($request->integer('per_page'), [10, 25, 50, 100], true) ? $request->integer('per_page') : 10;
@@ -75,8 +75,10 @@ class UserManagementController extends Controller
         } else {
             $data['vendor_company_id'] = null;
         }
+        if ($data['role'] !== UserRole::DRIVER->value) $data['hull_number'] = null;
         $data['permissions'] = match ($data['role']) {
             UserRole::EXPEDITION->value => ['expedition.report'],
+            UserRole::DRIVER->value => ['driver.escort'],
             UserRole::VENDOR->value => ['vendor.submission'],
             default => array_values(array_unique($data['permissions'] ?? [])),
         };

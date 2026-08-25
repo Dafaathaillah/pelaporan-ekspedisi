@@ -4,11 +4,11 @@ namespace App\Events;
 
 use App\Models\ExpeditionReport;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class ExpeditionReportCreated implements ShouldBroadcast
+class ExpeditionReportCreated implements ShouldBroadcastNow
 {
     use Dispatchable,SerializesModels;
 
@@ -16,7 +16,7 @@ class ExpeditionReportCreated implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel('coordinator.'.$this->report->site)];
+        return [new PrivateChannel('coordinator.'.$this->report->site), new PrivateChannel('driver.'.$this->report->site)];
     }
 
     public function broadcastWith(): array

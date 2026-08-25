@@ -1,6 +1,7 @@
 <script setup>
 import AppShell from "@/Components/AppShell.vue";
 import DataTableFooter from "@/Components/DataTableFooter.vue";
+import Modal from "@/Components/Modal.vue";
 import SortButton from "@/Components/SortButton.vue";
 import { router } from "@inertiajs/vue3";
 import { computed, reactive, ref } from "vue";
@@ -68,6 +69,7 @@ const busiest = computed(() =>
     [...activeHours.value].sort((a, b) => b.total - a.total).slice(0, 3),
 );
 const activePoint = ref(null);
+const selectedEscort = ref(null);
 const selectPoint = (point) => (activePoint.value = point);
 const load = () =>
     router.get("/coordinator", f, {
@@ -103,6 +105,27 @@ const date = (v) =>
         year: "numeric",
     });
 const time = (v) => new Date(v).toLocaleTimeString("id-ID", { hour12: false });
+const escortStatusLabel = (value) =>
+    ({
+        WAITING: "Menunggu Driver",
+        PROCESS: "Sedang Di-escort",
+        CLOSED: "Escort Selesai",
+    })[value] || value;
+const escortStatusClass = (value) =>
+    ({
+        WAITING: "bg-blue-50 text-blue-700",
+        PROCESS: "bg-amber-50 text-amber-700",
+        CLOSED: "bg-emerald-50 text-emerald-700",
+    })[value] || "bg-slate-100 text-slate-600";
+const escortTime = (value) =>
+    value
+        ? new Date(value).toLocaleTimeString("id-ID", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: false,
+          }) + " WITA"
+        : "Belum dimulai";
 </script>
 <template>
     <AppShell
@@ -390,15 +413,22 @@ const time = (v) => new Date(v).toLocaleTimeString("id-ID", { hour12: false });
                 >
             </div>
             <div class="overflow-x-auto">
-                <table class="data-table min-w-[1900px] table-fixed">
+                <table class="data-table min-w-[2220px] table-fixed">
                     <colgroup>
-                        <col class="w-[55px]" /><col class="w-[115px]" />
-                        <col class="w-[125px]" /><col class="w-[220px]" />
-                        <col class="w-[175px]" /><col class="w-[145px]" />
-                        <col class="w-[150px]" /><col class="w-[130px]" />
-                        <col class="w-[90px]" /><col class="w-[145px]" />
-                        <col class="w-[330px]" /><col class="w-[175px]" />
+                        <col class="w-[55px]" />
+                        <col class="w-[115px]" />
+                        <col class="w-[125px]" />
+                        <col class="w-[220px]" />
+                        <col class="w-[175px]" />
+                        <col class="w-[145px]" />
                         <col class="w-[150px]" />
+                        <col class="w-[130px]" />
+                        <col class="w-[90px]" />
+                        <col class="w-[145px]" />
+                        <col class="w-[330px]" />
+                        <col class="w-[175px]" />
+                        <col class="w-[150px]" />
+                        <col class="w-[320px]" />
                     </colgroup>
                     <thead>
                         <tr>
@@ -487,6 +517,7 @@ const time = (v) => new Date(v).toLocaleTimeString("id-ID", { hour12: false });
                                     @sort="sort"
                                 />
                             </th>
+                            <th>Informasi Escort</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -494,7 +525,8 @@ const time = (v) => new Date(v).toLocaleTimeString("id-ID", { hour12: false });
                             <td>{{ reports.from + i }}</td>
                             <td>{{ date(x.arrived_at) }}</td>
                             <td>
-                                <span class="time-badge inline-flex whitespace-nowrap"
+                                <span
+                                    class="time-badge inline-flex whitespace-nowrap"
                                     >{{ time(x.arrived_at) }} WITA</span
                                 >
                             </td>
@@ -511,9 +543,10 @@ const time = (v) => new Date(v).toLocaleTimeString("id-ID", { hour12: false });
                                 >
                             </td>
                             <td>
-                                <span class="plate-badge inline-flex whitespace-nowrap">{{
-                                    x.vehicle_plate
-                                }}</span>
+                                <span
+                                    class="plate-badge inline-flex whitespace-nowrap"
+                                    >{{ x.vehicle_plate }}</span
+                                >
                             </td>
                             <td>{{ x.vehicle_type }}</td>
                             <td>
@@ -587,6 +620,170 @@ const time = (v) => new Date(v).toLocaleTimeString("id-ID", { hour12: false });
                             </td>
                             <td>{{ x.sender_vendor }}</td>
                             <td>{{ x.destination }}</td>
+                            <td>
+                                <div
+                                    class="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                                >
+                                    <div
+                                        class="flex flex-wrap items-center justify-between gap-2"
+                                    >
+                                        <span
+                                            class="status-badge"
+                                            :class="
+                                                escortStatusClass(
+                                                    x.escort_status,
+                                                )
+                                            "
+                                            >{{
+                                                escortStatusLabel(
+                                                    x.escort_status,
+                                                )
+                                            }}</span
+                                        >
+                                        <b class="text-xs text-slate-700">{{
+                                            date(x.arrived_at)
+                                        }}</b>
+                                    </div>
+                                    <dl
+                                        class="mt-2 grid gap-1.5 text-[11px] leading-4"
+                                    >
+                                        <div class="flex justify-between gap-3">
+                                            <dt class="text-slate-500">
+                                                Mulai escort
+                                            </dt>
+                                            <dd
+                                                class="font-semibold text-slate-800"
+                                            >
+                                                {{
+                                                    escortTime(
+                                                        x.escort_started_at,
+                                                    )
+                                                }}
+                                            </dd>
+                                        </div>
+                                        <div
+                                            v-if="x.escort_closed_at"
+                                            class="flex justify-between gap-3"
+                                        >
+                                            <dt class="text-slate-500">
+                                                Selesai escort
+                                            </dt>
+                                            <dd
+                                                class="font-semibold text-emerald-700"
+                                            >
+                                                {{
+                                                    escortTime(
+                                                        x.escort_closed_at,
+                                                    )
+                                                }}
+                                            </dd>
+                                        </div>
+                                        <div
+                                            v-if="x.escort_driver"
+                                            class="mt-1 border-t border-slate-200 pt-2"
+                                        >
+                                            <dt class="text-slate-500">
+                                                Driver escort
+                                            </dt>
+                                            <dd
+                                                class="mt-0.5 break-words font-semibold text-slate-800"
+                                            >
+                                                {{ x.escort_driver.name }} ·
+                                                Lambung
+                                                {{
+                                                    x.escort_driver
+                                                        .hull_number || "-"
+                                                }}
+                                            </dd>
+                                        </div>
+                                        <button
+                                            v-if="x.escort_status === 'CLOSED'"
+                                            type="button"
+                                            class="mt-1 inline-flex w-full items-center justify-center rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-600 transition hover:border-red-200 hover:bg-red-600 hover:text-white"
+                                            @click="selectedEscort = x"
+                                        >
+                                            Lihat bukti & lokasi close
+                                        </button>
+                                        <div
+                                            v-if="x.escort_status === 'CLOSED'"
+                                            class="hidden"
+                                        >
+                                            <dt class="text-slate-500">
+                                                Bukti close escort
+                                            </dt>
+                                            <dd
+                                                class="mt-2 flex flex-wrap gap-2"
+                                            >
+                                                <a
+                                                    v-if="
+                                                        x.escort_close_photo_path
+                                                    "
+                                                    :href="`/coordinator/reports/${x.id}/escort-photo`"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    class="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 font-bold text-red-600 transition hover:bg-red-600 hover:text-white"
+                                                    >Lihat foto close</a
+                                                >
+                                                <span
+                                                    v-else
+                                                    class="text-slate-400"
+                                                    >Foto tidak tersedia</span
+                                                >
+                                            </dd>
+                                        </div>
+                                        <div
+                                            v-if="
+                                                x.escort_status === 'CLOSED' &&
+                                                x.escort_close_latitude !==
+                                                    null &&
+                                                x.escort_close_longitude !==
+                                                    null
+                                            "
+                                            class="hidden"
+                                        >
+                                            <dt class="text-slate-500">
+                                                Lokasi close escort
+                                            </dt>
+                                            <dd
+                                                class="mt-1 break-words font-semibold text-slate-800"
+                                            >
+                                                {{
+                                                    x.escort_close_location_name ||
+                                                    "Nama lokasi tidak tersedia"
+                                                }}
+                                            </dd>
+                                            <dd
+                                                class="mt-1 break-all font-mono text-[10px] text-slate-500"
+                                            >
+                                                {{ x.escort_close_latitude }},
+                                                {{ x.escort_close_longitude }}
+                                            </dd>
+                                            <dd
+                                                v-if="
+                                                    x.escort_close_location_accuracy !==
+                                                    null
+                                                "
+                                                class="mt-1 text-[10px] text-slate-400"
+                                            >
+                                                Akurasi ±{{
+                                                    x.escort_close_location_accuracy
+                                                }}
+                                                meter
+                                            </dd>
+                                            <dd class="mt-2">
+                                                <a
+                                                    :href="`https://www.google.com/maps?q=${x.escort_close_latitude},${x.escort_close_longitude}`"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 font-bold text-emerald-700 transition hover:bg-emerald-600 hover:text-white"
+                                                    >Buka lokasi close di
+                                                    Maps</a
+                                                >
+                                            </dd>
+                                        </div>
+                                    </dl>
+                                </div>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -603,5 +800,154 @@ const time = (v) => new Date(v).toLocaleTimeString("id-ID", { hour12: false });
                 @update:per-page="size"
             />
         </section>
+        <Modal
+            :show="Boolean(selectedEscort)"
+            max-width="lg"
+            @close="selectedEscort = null"
+        >
+            <div v-if="selectedEscort" class="p-5 sm:p-6">
+                <div
+                    class="flex items-start justify-between gap-4 border-b border-slate-100 pb-4"
+                >
+                    <div class="min-w-0">
+                        <p
+                            class="text-[10px] font-bold uppercase tracking-[.18em] text-red-600"
+                        >
+                            Detail Escort Ekspedisi
+                        </p>
+                        <h3
+                            class="mt-1 break-words text-xl font-bold text-slate-950"
+                        >
+                            {{ selectedEscort.expedition_company }}
+                        </h3>
+                        <p class="mt-1 text-sm text-slate-500">
+                            {{ selectedEscort.vehicle_plate }} ·
+                            {{ selectedEscort.report_number }}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        aria-label="Tutup detail"
+                        @click="selectedEscort = null"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div class="rounded-2xl bg-slate-50 p-4">
+                        <p
+                            class="text-[10px] font-bold uppercase tracking-wide text-slate-400"
+                        >
+                            Status & Waktu
+                        </p>
+                        <span
+                            class="status-badge mt-2"
+                            :class="
+                                escortStatusClass(selectedEscort.escort_status)
+                            "
+                            >{{
+                                escortStatusLabel(selectedEscort.escort_status)
+                            }}</span
+                        >
+                        <dl class="mt-3 grid gap-2 text-xs">
+                            <div class="flex justify-between gap-3">
+                                <dt class="text-slate-500">Mulai</dt>
+                                <dd class="font-semibold">
+                                    {{
+                                        escortTime(
+                                            selectedEscort.escort_started_at,
+                                        )
+                                    }}
+                                </dd>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <dt class="text-slate-500">Selesai</dt>
+                                <dd class="font-semibold text-emerald-700">
+                                    {{
+                                        escortTime(
+                                            selectedEscort.escort_closed_at,
+                                        )
+                                    }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 p-4">
+                        <p
+                            class="text-[10px] font-bold uppercase tracking-wide text-slate-400"
+                        >
+                            Driver Escort
+                        </p>
+                        <p
+                            class="mt-2 break-words text-sm font-bold text-slate-900"
+                        >
+                            {{ selectedEscort.escort_driver?.name || "-" }}
+                        </p>
+                        <p class="mt-1 text-xs text-slate-500">
+                            Nomor lambung
+                            {{
+                                selectedEscort.escort_driver?.hull_number || "-"
+                            }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-3 rounded-2xl border border-slate-200 p-4">
+                    <p
+                        class="text-[10px] font-bold uppercase tracking-wide text-slate-400"
+                    >
+                        Lokasi Penutupan
+                    </p>
+                    <p
+                        class="mt-2 break-words text-sm font-bold leading-5 text-slate-900"
+                    >
+                        {{
+                            selectedEscort.escort_close_location_name ||
+                            "Nama lokasi tidak tersedia"
+                        }}
+                    </p>
+                    <p
+                        v-if="selectedEscort.escort_close_latitude !== null"
+                        class="mt-2 break-all font-mono text-[11px] text-slate-500"
+                    >
+                        {{ selectedEscort.escort_close_latitude }},
+                        {{ selectedEscort.escort_close_longitude }}
+                    </p>
+                    <p
+                        v-if="
+                            selectedEscort.escort_close_location_accuracy !==
+                            null
+                        "
+                        class="mt-1 text-[11px] text-slate-400"
+                    >
+                        Akurasi ±{{
+                            selectedEscort.escort_close_location_accuracy
+                        }}
+                        meter
+                    </p>
+                </div>
+
+                <div class="mt-4 grid gap-2 sm:grid-cols-2">
+                    <a
+                        v-if="selectedEscort.escort_close_photo_path"
+                        :href="`/coordinator/reports/${selectedEscort.id}/escort-photo`"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex min-h-11 items-center justify-center rounded-xl bg-red-600 px-4 text-sm font-bold text-white shadow-lg shadow-red-100 transition hover:bg-red-700"
+                        >Lihat Foto Close</a
+                    >
+                    <a
+                        v-if="selectedEscort.escort_close_latitude !== null"
+                        :href="`https://www.google.com/maps?q=${selectedEscort.escort_close_latitude},${selectedEscort.escort_close_longitude}`"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-50 px-4 text-sm font-bold text-emerald-700 transition hover:bg-emerald-600 hover:text-white"
+                        >Buka di Google Maps</a
+                    >
+                </div>
+            </div>
+        </Modal>
     </AppShell>
 </template>

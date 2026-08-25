@@ -17,7 +17,7 @@ class StoreExpeditionReportRequest extends FormRequest
         foreach (['arrival', 'blood_pressure'] as $prefix) {
             $rules[$prefix.'_latitude'] = ['required', 'numeric', 'between:-90,90'];
             $rules[$prefix.'_longitude'] = ['required', 'numeric', 'between:-180,180'];
-            $rules[$prefix.'_location_accuracy'] = ['required', 'integer', 'min:0', 'max:100000'];
+            $rules[$prefix.'_location_accuracy'] = ['required', 'integer', 'min:0', 'max:5'];
             $rules[$prefix.'_location_name'] = ['nullable', 'string', 'max:500'];
             $rules[$prefix.'_photo_captured_at'] = ['required', 'date'];
         }
@@ -27,5 +27,13 @@ class StoreExpeditionReportRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge(['vehicle_plate' => strtoupper(trim((string) $this->vehicle_plate))]);
+    }
+
+    public function messages(): array
+    {
+        return [
+            'arrival_location_accuracy.max' => 'Akurasi lokasi foto kedatangan wajib maksimal ±5 meter. Aktifkan GPS dan ambil ulang foto di area terbuka.',
+            'blood_pressure_location_accuracy.max' => 'Akurasi lokasi foto tensi wajib maksimal ±5 meter. Aktifkan GPS dan ambil ulang foto di area terbuka.',
+        ];
     }
 }

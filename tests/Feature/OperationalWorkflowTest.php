@@ -30,8 +30,8 @@ class OperationalWorkflowTest extends TestCase
             'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80,
             'arrival_photo' => UploadedFile::fake()->image('kedatangan.jpg'),
             'blood_pressure_photo' => UploadedFile::fake()->image('tensi.jpg'),
-            'arrival_latitude' => -3.3212345, 'arrival_longitude' => 115.6123456, 'arrival_location_accuracy' => 8, 'arrival_location_name' => 'Site BIB, Kalimantan Selatan', 'arrival_photo_captured_at' => now()->toISOString(),
-            'blood_pressure_latitude' => -3.3212345, 'blood_pressure_longitude' => 115.6123456, 'blood_pressure_location_accuracy' => 9, 'blood_pressure_location_name' => 'Site BIB, Kalimantan Selatan', 'blood_pressure_photo_captured_at' => now()->toISOString(),
+            'arrival_latitude' => -3.3212345, 'arrival_longitude' => 115.6123456, 'arrival_location_accuracy' => 4, 'arrival_location_name' => 'Site BIB, Kalimantan Selatan', 'arrival_photo_captured_at' => now()->toISOString(),
+            'blood_pressure_latitude' => -3.3212345, 'blood_pressure_longitude' => 115.6123456, 'blood_pressure_location_accuracy' => 3, 'blood_pressure_location_name' => 'Site BIB, Kalimantan Selatan', 'blood_pressure_photo_captured_at' => now()->toISOString(),
         ])->assertSessionHasNoErrors();
         $this->assertDatabaseHas('expedition_reports', ['vehicle_plate' => 'DA 1234 XX', 'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80]);
 

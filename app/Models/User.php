@@ -27,6 +27,7 @@ class User extends Authenticatable
         'role',
         'vendor_company_id',
         'site',
+        'hull_number',
         'is_active',
         'permissions',
     ];
@@ -66,6 +67,7 @@ class User extends Authenticatable
                 UserRole::COORDINATOR => ['coordinator.expedition', 'coordinator.vendor', 'users.manage'],
                 UserRole::VENDOR => ['vendor.submission'],
                 UserRole::EXPEDITION => ['expedition.report'],
+                UserRole::DRIVER => ['driver.escort'],
             };
         }
 
@@ -86,7 +88,11 @@ class User extends Authenticatable
             }
         }
 
-        return $this->role === UserRole::VENDOR ? '/vendor' : '/expedition';
+        return match ($this->role) {
+            UserRole::VENDOR => '/vendor',
+            UserRole::DRIVER => '/driver/escorts',
+            default => '/expedition',
+        };
     }
 
     public function expeditionReports()
