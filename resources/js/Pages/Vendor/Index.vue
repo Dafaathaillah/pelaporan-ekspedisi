@@ -161,6 +161,12 @@ const validity = (x) =>
                     >Lengkapi Surat Sehat
                     {{ x.units_count || x.units?.length }} unit →</span
                 >
+                <span
+                    class="mt-3 block rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-slate-700"
+                >
+                    <b class="block text-amber-800">Alasan dari Koordinator</b>
+                    {{ x.resubmission_request_reason }}
+                </span>
             </button>
         </section>
         <div class="lg:grid lg:grid-cols-[230px_1fr] lg:gap-5">

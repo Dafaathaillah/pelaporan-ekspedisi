@@ -14,7 +14,7 @@ class ExpeditionEscortUpdated implements ShouldBroadcast
 
     public function __construct(public ExpeditionReport $report)
     {
-        $this->report->loadMissing('escortDriver:id,name,hull_number');
+        $this->report->loadMissing(['escortDriver:id,name,hull_number', 'escortCloser:id,name,hull_number']);
     }
 
     public function broadcastOn(): array
@@ -24,7 +24,7 @@ class ExpeditionEscortUpdated implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        return ['id' => $this->report->id, 'report_number' => $this->report->report_number, 'company' => $this->report->expedition_company, 'plate' => $this->report->vehicle_plate, 'status' => $this->report->escort_status, 'driver' => $this->report->escortDriver?->name, 'hull_number' => $this->report->escortDriver?->hull_number];
+        return ['id' => $this->report->id, 'report_number' => $this->report->report_number, 'company' => $this->report->expedition_company, 'plate' => $this->report->vehicle_plate, 'status' => $this->report->escort_status, 'driver' => $this->report->escortDriver?->name, 'hull_number' => $this->report->escortDriver?->hull_number, 'closer' => $this->report->escortCloser?->name, 'closer_hull_number' => $this->report->escortCloser?->hull_number];
     }
 
     public function broadcastAs(): string

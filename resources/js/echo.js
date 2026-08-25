@@ -147,7 +147,7 @@ export function connect(user) {
             .listen(".VendorResubmissionRequested", (p) => {
                 notify({
                     title: "Perbarui Surat Sehat",
-                    message: `Koordinator meminta pembaruan untuk ${p.number}`,
+                    message: `${p.number} · ${p.reason || "Koordinator meminta dokumen terbaru"}`,
                     href: "/vendor",
                 });
                 reload(["submissions"]);

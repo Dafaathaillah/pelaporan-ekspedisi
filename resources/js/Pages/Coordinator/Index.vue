@@ -714,7 +714,7 @@ const healthStatusClass = (status) =>
                                             class="mt-1 border-t border-slate-200 pt-2"
                                         >
                                             <dt class="text-slate-500">
-                                                Driver escort
+                                                Driver mulai escort
                                             </dt>
                                             <dd
                                                 class="mt-0.5 break-words font-semibold text-slate-800"
@@ -723,6 +723,24 @@ const healthStatusClass = (status) =>
                                                 Lambung
                                                 {{
                                                     x.escort_driver
+                                                        .hull_number || "-"
+                                                }}
+                                            </dd>
+                                        </div>
+                                        <div
+                                            v-if="x.escort_closer"
+                                            class="mt-1 border-t border-slate-200 pt-2"
+                                        >
+                                            <dt class="text-slate-500">
+                                                Driver close escort
+                                            </dt>
+                                            <dd
+                                                class="mt-0.5 break-words font-semibold text-emerald-700"
+                                            >
+                                                {{ x.escort_closer.name }} ·
+                                                Lambung
+                                                {{
+                                                    x.escort_closer
                                                         .hull_number || "-"
                                                 }}
                                             </dd>
@@ -909,7 +927,7 @@ const healthStatusClass = (status) =>
                         <p
                             class="text-[10px] font-bold uppercase tracking-wide text-slate-400"
                         >
-                            Driver Escort
+                            Driver Mulai Escort
                         </p>
                         <p
                             class="mt-2 break-words text-sm font-bold text-slate-900"
@@ -920,6 +938,24 @@ const healthStatusClass = (status) =>
                             Nomor lambung
                             {{
                                 selectedEscort.escort_driver?.hull_number || "-"
+                            }}
+                        </p>
+                    </div>
+                    <div class="rounded-2xl bg-emerald-50 p-4">
+                        <p
+                            class="text-[10px] font-bold uppercase tracking-wide text-emerald-600"
+                        >
+                            Driver Close Escort
+                        </p>
+                        <p
+                            class="mt-2 break-words text-sm font-bold text-slate-900"
+                        >
+                            {{ selectedEscort.escort_closer?.name || "-" }}
+                        </p>
+                        <p class="mt-1 text-xs text-slate-500">
+                            Nomor lambung
+                            {{
+                                selectedEscort.escort_closer?.hull_number || "-"
                             }}
                         </p>
                     </div>

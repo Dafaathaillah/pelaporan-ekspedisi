@@ -17,9 +17,12 @@ class DriverEscortController extends Controller
     public function index(Request $request)
     {
         $items = ExpeditionReport::query()
-            ->with('escortDriver:id,name,hull_number')
+            ->with(['escortDriver:id,name,hull_number', 'escortCloser:id,name,hull_number'])
             ->where('site', $request->user()->site)
-            ->where(fn ($query) => $query->where('escort_status', 'WAITING')->orWhere('escort_driver_id', $request->user()->id))
+            ->where(fn ($query) => $query
+                ->whereIn('escort_status', ['WAITING', 'PROCESS'])
+                ->orWhere('escort_driver_id', $request->user()->id)
+                ->orWhere('escort_closed_by', $request->user()->id))
             ->latest('arrived_at')->get();
 
         return Inertia::render('Driver/Escorts', ['items' => $items]);
@@ -40,7 +43,7 @@ class DriverEscortController extends Controller
 
     public function close(Request $request, ExpeditionReport $report)
     {
-        abort_unless($report->escort_driver_id === $request->user()->id && $report->escort_status === 'PROCESS', 403);
+        abort_unless($report->site === $request->user()->site && $report->escort_status === 'PROCESS', 403);
         $data = $request->validate([
             'close_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
@@ -52,12 +55,16 @@ class DriverEscortController extends Controller
             'accuracy.max' => 'Akurasi lokasi close escort wajib maksimal ±5 meter. Aktifkan GPS dan ambil ulang foto di area terbuka.',
         ]);
         $path = $data['close_photo']->store('private/escort-close/'.$report->id, 'local');
-        $report->update([
-            'escort_status' => 'CLOSED', 'escort_closed_at' => now(), 'escort_close_photo_path' => $path,
-            'escort_close_latitude' => $data['latitude'], 'escort_close_longitude' => $data['longitude'],
-            'escort_close_location_accuracy' => $data['accuracy'], 'escort_close_location_name' => $data['location_name'] ?? null,
-            'escort_close_photo_captured_at' => $data['captured_at'],
-        ]);
+        DB::transaction(function () use ($request, $report, $data, $path) {
+            $item = ExpeditionReport::lockForUpdate()->findOrFail($report->id);
+            abort_unless($item->site === $request->user()->site && $item->escort_status === 'PROCESS', 422, 'Escort sudah ditutup driver lain.');
+            $item->update([
+                'escort_status' => 'CLOSED', 'escort_closed_at' => now(), 'escort_closed_by' => $request->user()->id,
+                'escort_close_photo_path' => $path, 'escort_close_latitude' => $data['latitude'],
+                'escort_close_longitude' => $data['longitude'], 'escort_close_location_accuracy' => $data['accuracy'],
+                'escort_close_location_name' => $data['location_name'] ?? null, 'escort_close_photo_captured_at' => $data['captured_at'],
+            ]);
+        });
         SafeBroadcast::dispatch(new ExpeditionEscortUpdated($report->fresh()));
 
         return back()->with('success', 'Escort berhasil ditutup. Foto dan koordinat telah tersimpan.');
@@ -65,7 +72,7 @@ class DriverEscortController extends Controller
 
     public function photo(Request $request, ExpeditionReport $report)
     {
-        $allowed = $report->escort_driver_id === $request->user()->id
+        $allowed = in_array($request->user()->id, [$report->escort_driver_id, $report->escort_closed_by], true)
             || (in_array($request->user()->role->value, ['developer', 'coordinator'], true) && $report->site === $request->user()->site);
         abort_unless($allowed && $report->escort_close_photo_path && Storage::disk('local')->exists($report->escort_close_photo_path), 404);
 

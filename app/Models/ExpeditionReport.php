@@ -11,6 +11,8 @@ class ExpeditionReport extends Model
 
     protected $guarded = [];
 
+    protected $with = ['escortCloser:id,name,hull_number'];
+
     protected function casts(): array
     {
         return ['arrived_at' => 'datetime', 'arrival_photo_captured_at' => 'datetime', 'blood_pressure_photo_captured_at' => 'datetime', 'escort_started_at' => 'datetime', 'escort_closed_at' => 'datetime', 'escort_close_photo_captured_at' => 'datetime', 'arrival_latitude' => 'decimal:7', 'arrival_longitude' => 'decimal:7', 'blood_pressure_latitude' => 'decimal:7', 'blood_pressure_longitude' => 'decimal:7', 'escort_close_latitude' => 'decimal:7', 'escort_close_longitude' => 'decimal:7'];
@@ -29,5 +31,10 @@ class ExpeditionReport extends Model
     public function escortDriver()
     {
         return $this->belongsTo(User::class, 'escort_driver_id');
+    }
+
+    public function escortCloser()
+    {
+        return $this->belongsTo(User::class, 'escort_closed_by');
     }
 }

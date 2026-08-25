@@ -26,6 +26,6 @@ class VendorResubmissionRequested implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        return ['id' => $this->submission->id, 'number' => $this->submission->submission_number, 'type' => $this->submission->type->value, 'label' => $this->submission->type->label(), 'vendor' => $this->submission->vendor_name, 'applicant' => $this->submission->applicant_name];
+        return ['id' => $this->submission->id, 'number' => $this->submission->submission_number, 'type' => $this->submission->type->value, 'label' => $this->submission->type->label(), 'vendor' => $this->submission->vendor_name, 'applicant' => $this->submission->applicant_name, 'reason' => $this->submission->resubmission_request_reason];
     }
 }

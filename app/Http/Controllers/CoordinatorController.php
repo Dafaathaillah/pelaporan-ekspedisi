@@ -136,7 +136,15 @@ class CoordinatorController extends Controller
 
     public function requestResubmission(Request $request, VendorSubmission $submission)
     {
-        $validated = $request->validate(['mode' => 'required|in:USE_EXISTING,REQUEST_HEALTH', 'subject_ids' => 'required|array|min:1', 'subject_ids.*' => 'uuid']);
+        $validated = $request->validate([
+            'mode' => 'required|in:USE_EXISTING,REQUEST_HEALTH',
+            'subject_ids' => 'required|array|min:1',
+            'subject_ids.*' => 'uuid',
+            'reason' => 'required_if:mode,REQUEST_HEALTH|nullable|string|min:10|max:1500',
+        ], [
+            'reason.required_if' => 'Alasan permintaan Surat Sehat baru wajib diisi.',
+            'reason.min' => 'Alasan permintaan minimal 10 karakter agar dapat dipahami vendor.',
+        ]);
         $mode = $validated['mode'];
         $subjectIds = $validated['subject_ids'];
         abort_unless($submission->site === $request->user()->site, 403);
@@ -160,7 +168,7 @@ class CoordinatorController extends Controller
 
             return back()->with('success', 'Dokumen dinyatakan sesuai dan pengajuan ulang langsung dibuat.');
         }
-        $submission->update(['resubmission_requested_at' => now(), 'resubmission_requested_by' => $request->user()->id, 'resubmission_subject_ids' => $subjectIds]);
+        $submission->update(['resubmission_requested_at' => now(), 'resubmission_requested_by' => $request->user()->id, 'resubmission_subject_ids' => $subjectIds, 'resubmission_request_reason' => trim($validated['reason'])]);
         SafeBroadcast::dispatch(new VendorResubmissionRequested($submission->fresh()));
 
         return back()->with('success', 'Permintaan pengajuan ulang dikirim. Vendor hanya perlu memperbarui Surat Sehat.');
@@ -180,7 +188,7 @@ class CoordinatorController extends Controller
     {
         $source->load('units.documents');
         $now = now();
-        $child = $source->replicate(['submission_number', 'status', 'submitted_at', 'reviewed_at', 'reviewed_by', 'coordinator_opened_at', 'released_at', 'release_expired_at', 'closed_at', 'resubmission_requested_at', 'resubmission_requested_by', 'resubmission_subject_ids']);
+        $child = $source->replicate(['submission_number', 'status', 'submitted_at', 'reviewed_at', 'reviewed_by', 'coordinator_opened_at', 'released_at', 'release_expired_at', 'closed_at', 'resubmission_requested_at', 'resubmission_requested_by', 'resubmission_subject_ids', 'resubmission_request_reason']);
         $child->parent_submission_id = $source->id;
         $child->resubmission_subject_ids = $subjectIds;
         $child->submission_sequence = $source->submission_sequence + 1;

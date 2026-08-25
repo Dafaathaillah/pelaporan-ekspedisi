@@ -101,7 +101,12 @@ class OperationalWorkflowTest extends TestCase
         $unit->documents()->create(['vendor_submission_id' => $parent->id, 'document_code' => 'KTP_VENDOR', 'document_name' => 'KTP Vendor', 'file_name' => 'ktp.pdf', 'original_name' => 'ktp.pdf', 'file_path' => 'private/vendor-documents/'.$parent->id.'/ktp.pdf', 'mime_type' => 'application/pdf', 'file_size' => 3, 'is_required' => true, 'uploaded_at' => now()]);
         Storage::disk('local')->put('private/vendor-documents/'.$parent->id.'/permit.pdf', 'pdf');
         $unit->documents()->create(['vendor_submission_id' => $parent->id, 'document_code' => 'MINE_PERMIT_PENGAWAS_1', 'document_name' => 'Mine Permit', 'file_name' => 'permit.pdf', 'original_name' => 'permit.pdf', 'file_path' => 'private/vendor-documents/'.$parent->id.'/permit.pdf', 'mime_type' => 'application/pdf', 'file_size' => 3, 'is_required' => false, 'uploaded_at' => now()]);
-        $this->actingAs($coordinator)->post('/coordinator/submission/'.$parent->id.'/request-resubmission', ['mode' => 'REQUEST_HEALTH', 'subject_ids' => [$unit->id]])->assertSessionHasNoErrors();
+        $this->actingAs($coordinator)->post('/coordinator/submission/'.$parent->id.'/request-resubmission', ['mode' => 'REQUEST_HEALTH', 'subject_ids' => [$unit->id]])->assertSessionHasErrors('reason');
+        $reason = 'Masa berlaku Surat Sehat sudah habis dan harus diperbarui sebelum pengajuan berikutnya.';
+        $this->actingAs($coordinator)->post('/coordinator/submission/'.$parent->id.'/request-resubmission', ['mode' => 'REQUEST_HEALTH', 'subject_ids' => [$unit->id], 'reason' => $reason])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('vendor_submissions', ['id' => $parent->id, 'resubmission_request_reason' => $reason]);
+        $this->actingAs($vendor)->get('/vendor')->assertInertia(fn (Assert $page) => $page
+            ->where('submissions.data.0.resubmission_request_reason', $reason));
         $payload = ['type' => 'WASKAT', 'parent_submission_id' => $parent->id, 'vendor_name' => 'Vendor Saya', 'applicant_name' => 'PIC', 'phone' => '081', 'units' => [['source_unit_id' => $unit->id, 'person_name' => 'Budi Waskat', 'documents' => []]]];
         $this->actingAs($vendor)->post('/vendor/submissions', $payload)->assertSessionHasErrors('units.0.documents.SURAT_SEHAT_VENDOR');
         $payload['units'][0]['documents']['SURAT_SEHAT_VENDOR'] = UploadedFile::fake()->create('surat-sehat.pdf', 20, 'application/pdf');
@@ -109,6 +114,7 @@ class OperationalWorkflowTest extends TestCase
         $third = VendorSubmission::where('parent_submission_id', $parent->id)->firstOrFail();
         $this->assertSame(3, $third->submission_sequence);
         $this->assertCount(3, $third->documents);
+        $this->assertSame($reason, $parent->fresh()->resubmission_request_reason);
         $this->actingAs($other)->get('/vendor/submissions/'.$third->id)->assertForbidden();
     }
 

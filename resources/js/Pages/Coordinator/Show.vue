@@ -10,6 +10,8 @@ const used = (p.submission.resubmissions || []).flatMap(
 const selected = ref(
     p.submission.units.filter((x) => !used.includes(x.id)).map((x) => x.id),
 );
+const healthReason = ref("");
+const healthReasonError = ref("");
 const choices = computed(() =>
     p.submission.status === "SUBMITTED"
         ? ["APPROVED", "REVISION", "REJECTED"]
@@ -35,12 +37,28 @@ const verify = (d, status) =>
         { status },
         { preserveScroll: true },
     );
-const request = (mode) =>
+const request = (mode) => {
+    healthReasonError.value = "";
+    if (mode === "REQUEST_HEALTH" && healthReason.value.trim().length < 10) {
+        healthReasonError.value =
+            "Jelaskan alasan permintaan Surat Sehat baru minimal 10 karakter.";
+        return;
+    }
     router.post(
         "/coordinator/submission/" + p.submission.id + "/request-resubmission",
-        { mode, subject_ids: selected.value },
-        { preserveScroll: true },
+        {
+            mode,
+            subject_ids: selected.value,
+            reason:
+                mode === "REQUEST_HEALTH" ? healthReason.value.trim() : null,
+        },
+        {
+            preserveScroll: true,
+            onError: (errors) =>
+                (healthReasonError.value = errors.reason || ""),
+        },
     );
+};
 const expired = computed(
     () =>
         p.submission.release_expired_at &&
@@ -316,8 +334,39 @@ const date = (v) => (v ? new Date(v).toLocaleDateString("id-ID") : "-");
                         class="btn mt-4 w-full"
                         @click="request('USE_EXISTING')"
                     >
-                        Dokumen Sesuai · Ajukan</button
-                    ><button
+                        Dokumen Sesuai · Ajukan
+                    </button>
+                    <label class="mt-4 block text-xs font-bold text-slate-700">
+                        Alasan meminta Surat Sehat baru
+                        <span class="text-red-600">*</span>
+                    </label>
+                    <textarea
+                        v-model="healthReason"
+                        class="field mt-2 min-h-28"
+                        maxlength="1500"
+                        placeholder="Contoh: Masa berlaku Surat Sehat telah habis atau hasil pemeriksaan tidak terbaca. Mohon unggah dokumen terbaru."
+                    />
+                    <div class="mt-1 flex justify-between gap-3 text-[11px]">
+                        <span
+                            :class="
+                                healthReasonError
+                                    ? 'text-red-600'
+                                    : 'text-slate-500'
+                            "
+                        >
+                            {{
+                                healthReasonError ||
+                                "Alasan ini akan ditampilkan kepada vendor."
+                            }}
+                        </span>
+                        <span class="shrink-0 text-slate-400"
+                            >{{ healthReason.length }}/1500</span
+                        >
+                    </div>
+                    <button
+                        :disabled="
+                            !selected.length || healthReason.trim().length < 10
+                        "
                         class="btn-ghost mt-3 w-full"
                         @click="request('REQUEST_HEALTH')"
                     >

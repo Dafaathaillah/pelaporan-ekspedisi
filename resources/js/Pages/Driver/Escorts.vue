@@ -23,8 +23,15 @@ const form = useForm({
 const waiting = computed(() =>
     props.items.filter((x) => x.escort_status === "WAITING"),
 );
+const active = computed(() =>
+    props.items.filter((x) => x.escort_status === "PROCESS"),
+);
 const mine = computed(() =>
-    props.items.filter((x) => x.escort_driver_id === user.value.id),
+    props.items.filter(
+        (x) =>
+            x.escort_driver_id === user.value.id ||
+            x.escort_closed_by === user.value.id,
+    ),
 );
 const dateTime = (v) =>
     new Date(v).toLocaleString("id-ID", {
@@ -116,10 +123,8 @@ const submitClose = () =>
             </article>
             <article class="metric-card">
                 <p>Sedang Di-escort</p>
-                <strong>{{
-                    mine.filter((x) => x.escort_status === "PROCESS").length
-                }}</strong
-                ><span>Unit yang sedang Anda proses</span>
+                <strong>{{ active.length }}</strong
+                ><span>Dapat ditutup oleh driver yang bertugas</span>
             </article>
             <article class="metric-card">
                 <p>Escort Selesai</p>
@@ -130,15 +135,14 @@ const submitClose = () =>
             </article>
         </section>
         <section class="panel mb-5">
-            <h2 class="panel-title">Escort aktif saya</h2>
+            <h2 class="panel-title">Escort Aktif Site BIB</h2>
             <p class="panel-copy">
-                Tutup escort setelah kendaraan tiba di tujuan.
+                Driver yang memulai dan menutup escort boleh berbeda. Identitas
+                keduanya tetap tercatat.
             </p>
             <div class="mt-4 grid gap-4 xl:grid-cols-2">
                 <article
-                    v-for="x in mine.filter(
-                        (i) => i.escort_status === 'PROCESS',
-                    )"
+                    v-for="x in active"
                     :key="x.id"
                     class="rounded-2xl border border-amber-200 bg-amber-50/50 p-5"
                 >
@@ -161,6 +165,23 @@ const submitClose = () =>
                         <b class="plate-badge">{{ x.vehicle_plate }}</b>
                     </div>
                     <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                        <div class="rounded-xl bg-white/80 p-3 sm:col-span-2">
+                            <dt class="text-xs text-slate-500">
+                                Escort dimulai oleh
+                            </dt>
+                            <dd class="font-semibold">
+                                {{ x.escort_driver?.name || "Driver" }} ·
+                                Lambung
+                                {{ x.escort_driver?.hull_number || "-" }}
+                            </dd>
+                            <p
+                                v-if="x.escort_driver_id !== user.id"
+                                class="mt-1 text-xs font-semibold text-amber-700"
+                            >
+                                Anda akan tercatat sebagai petugas penutup
+                                escort.
+                            </p>
+                        </div>
                         <div>
                             <dt class="text-xs text-slate-500">
                                 Driver kendaraan
@@ -183,14 +204,14 @@ const submitClose = () =>
                         </div>
                     </dl>
                     <button class="btn mt-5 w-full" @click="openClose(x)">
-                        Tutup Escort & Upload Bukti
+                        Tutup Escort sebagai Lambung {{ user.hull_number }}
                     </button>
                 </article>
                 <p
-                    v-if="!mine.some((x) => x.escort_status === 'PROCESS')"
+                    v-if="!active.length"
                     class="rounded-2xl bg-slate-50 p-8 text-center text-sm text-slate-500"
                 >
-                    Belum ada unit ekspedisi yang sedang Anda escort.
+                    Belum ada unit ekspedisi yang sedang dalam proses escort.
                 </p>
             </div>
         </section>
@@ -285,6 +306,23 @@ const submitClose = () =>
                     Ambil foto kendaraan di lokasi tujuan. Foto hanya dapat
                     disimpan ketika akurasi GPS maksimal ±5 meter.
                 </p>
+                <div
+                    class="mt-4 grid gap-2 rounded-xl bg-slate-50 p-3 text-xs sm:grid-cols-2"
+                >
+                    <p>
+                        <span class="block text-slate-500">Dimulai oleh</span>
+                        <b
+                            >{{ closing?.escort_driver?.name }} · Lambung
+                            {{ closing?.escort_driver?.hull_number }}</b
+                        >
+                    </p>
+                    <p>
+                        <span class="block text-slate-500"
+                            >Akan ditutup oleh</span
+                        >
+                        <b>{{ user.name }} · Lambung {{ user.hull_number }}</b>
+                    </p>
+                </div>
                 <label
                     class="mt-6 block cursor-pointer rounded-2xl border-2 border-dashed border-red-200 bg-red-50/40 p-5 text-center"
                     ><input
