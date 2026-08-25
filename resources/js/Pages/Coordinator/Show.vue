@@ -1,9 +1,15 @@
 <script setup>
 import AppShell from "@/Components/AppShell.vue";
+import { expeditionVehicleLabel } from "@/Utils/expeditionRequest";
 import { useForm, Link, router } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 const p = defineProps({ submission: Object });
-const used=(p.submission.resubmissions||[]).flatMap(x=>x.resubmission_subject_ids||[]);const selected = ref(p.submission.units.filter(x=>!used.includes(x.id)).map((x) => x.id));
+const used = (p.submission.resubmissions || []).flatMap(
+    (x) => x.resubmission_subject_ids || [],
+);
+const selected = ref(
+    p.submission.units.filter((x) => !used.includes(x.id)).map((x) => x.id),
+);
 const choices = computed(() =>
     p.submission.status === "SUBMITTED"
         ? ["APPROVED", "REVISION", "REJECTED"]
@@ -78,6 +84,81 @@ const date = (v) => (v ? new Date(v).toLocaleDateString("id-ID") : "-");
                 <p class="text-sm text-slate-500">
                     {{ submission.applicant_name }} · {{ submission.phone }}
                 </p>
+                <section
+                    v-if="submission.expedition_request"
+                    class="mt-5 overflow-hidden rounded-2xl border border-red-100 bg-gradient-to-br from-red-50 to-white"
+                >
+                    <div
+                        class="flex flex-wrap items-start justify-between gap-3 border-b border-red-100 px-4 py-3"
+                    >
+                        <div>
+                            <small
+                                class="font-black uppercase tracking-[.14em] text-red-600"
+                                >Request Ekspedisi</small
+                            >
+                            <h3 class="mt-1 text-lg font-black text-slate-950">
+                                {{
+                                    submission.expedition_request.request_number
+                                }}
+                            </h3>
+                        </div>
+                    </div>
+                    <div class="grid gap-4 p-4 text-sm sm:grid-cols-2">
+                        <div>
+                            <small class="text-slate-400"
+                                >Jenis kendaraan</small
+                            >
+                            <b class="block">{{
+                                expeditionVehicleLabel(
+                                    submission.expedition_request
+                                        .expedition_type,
+                                )
+                            }}</b>
+                        </div>
+                        <div>
+                            <small class="text-slate-400">Vendor tujuan</small>
+                            <b class="block">{{
+                                submission.expedition_request.vendor_company
+                                    .name
+                            }}</b>
+                        </div>
+                        <div>
+                            <small class="text-slate-400">Nomor PR</small>
+                            <b class="block">{{
+                                submission.expedition_request.pr_number ||
+                                "Belum rilis"
+                            }}</b>
+                        </div>
+                        <div>
+                            <small class="text-slate-400">Nomor PO</small>
+                            <b class="block">{{
+                                submission.expedition_request.po_number ||
+                                "Belum rilis"
+                            }}</b>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <small class="text-slate-400"
+                                >Rute perjalanan</small
+                            >
+                            <b class="block break-words"
+                                >{{ submission.expedition_request.route_from }}
+                                →
+                                {{ submission.expedition_request.route_to }}</b
+                            >
+                        </div>
+                        <div
+                            v-if="submission.expedition_request.description"
+                            class="sm:col-span-2"
+                        >
+                            <small class="text-slate-400"
+                                >Keterangan Purchasing</small
+                            >
+                            <p class="mt-1 whitespace-pre-wrap break-words">
+                                {{ submission.expedition_request.description }}
+                            </p>
+                        </div>
+                    </div>
+                </section>
                 <div
                     v-if="submission.released_at"
                     class="my-5 grid gap-3 sm:grid-cols-3"
@@ -107,7 +188,29 @@ const date = (v) => (v ? new Date(v).toLocaleDateString("id-ID") : "-");
                     :key="unit.id"
                     class="mb-5 rounded-2xl border p-4"
                 >
-                    <label class="flex items-center gap-3 text-lg font-black"><input v-model="selected" type="checkbox" :value="unit.id" :disabled="used.includes(unit.id)" class="rounded border-slate-300 text-red-600"/>{{ unit.subject_type==='UNIT' ? 'Unit '+unit.unit_order+' · '+unit.plate_number : 'Orang '+unit.unit_order+' · '+unit.person_name }}<small v-if="used.includes(unit.id)" class="text-emerald-600">Sudah diajukan ulang</small></label>
+                    <label class="flex items-center gap-3 text-lg font-black"
+                        ><input
+                            v-model="selected"
+                            type="checkbox"
+                            :value="unit.id"
+                            :disabled="used.includes(unit.id)"
+                            class="rounded border-slate-300 text-red-600"
+                        />{{
+                            unit.subject_type === "UNIT"
+                                ? "Unit " +
+                                  unit.unit_order +
+                                  " · " +
+                                  unit.plate_number
+                                : "Orang " +
+                                  unit.unit_order +
+                                  " · " +
+                                  unit.person_name
+                        }}<small
+                            v-if="used.includes(unit.id)"
+                            class="text-emerald-600"
+                            >Sudah diajukan ulang</small
+                        ></label
+                    >
                     <div class="mt-3 grid gap-3 md:grid-cols-2">
                         <div
                             v-for="d in unit.documents"
@@ -204,7 +307,9 @@ const date = (v) => (v ? new Date(v).toLocaleDateString("id-ID") : "-");
                 >
                     <h3 class="font-black">PENGAJUAN ULANG</h3>
                     <p class="mt-2 text-xs text-slate-500">
-                        Centang hanya orang/unit yang akan diajukan ulang. Periksa dokumen subjek terpilih sebelum menentukan tindakan.
+                        Centang hanya orang/unit yang akan diajukan ulang.
+                        Periksa dokumen subjek terpilih sebelum menentukan
+                        tindakan.
                     </p>
                     <button
                         :disabled="!allValid || !selected.length"

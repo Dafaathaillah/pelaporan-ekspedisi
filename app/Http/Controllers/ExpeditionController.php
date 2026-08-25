@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
 use App\Events\ExpeditionReportCreated;
 use App\Http\Requests\StoreExpeditionReportRequest;
 use App\Models\ExpeditionReport;
 use App\Models\User;
-use App\Enums\UserRole;
 use App\Support\BloodPressureAssessment;
+use App\Support\SafeBroadcast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,6 +24,7 @@ class ExpeditionController extends Controller
         $perPage = in_array((int) $request->per_page, [10, 25, 50, 100], true) ? (int) $request->per_page : 10;
         $reports = ExpeditionReport::where('created_by', $request->user()->id)->where('site', $request->user()->site)
             ->latest('arrived_at')->paginate($perPage)->withQueryString();
+
         return Inertia::render('Expedition/Index', ['vehicleTypes' => ['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya'], 'expeditionCompany' => $request->user()->name, 'reports' => $reports]);
     }
 
@@ -35,7 +37,7 @@ class ExpeditionController extends Controller
         $pressurePath = $request->file('blood_pressure_photo')->store('private/expedition-reports/'.$number, 'local');
         $assessment = BloodPressureAssessment::assess((int) $request->blood_pressure_systolic, (int) $request->blood_pressure_diastolic);
         $report = ExpeditionReport::create([...$request->safe()->except(['arrival_photo', 'blood_pressure_photo']), 'health_status' => $assessment['status'], 'health_status_label' => $assessment['label'], 'health_status_reason' => $assessment['reason'], 'expedition_company' => $request->user()->name, 'arrival_photo_path' => $arrivalPath, 'blood_pressure_photo_path' => $pressurePath, 'vendor_user_id' => $vendorUser?->id, 'report_number' => $number, 'arrived_at' => $now, 'created_by' => $request->user()->id, 'site' => $request->user()->site]);
-        ExpeditionReportCreated::dispatch($report);
+        SafeBroadcast::dispatch(new ExpeditionReportCreated($report));
 
         return back()->with('success', 'Laporan kedatangan berhasil dikirim.');
     }
@@ -58,6 +60,7 @@ class ExpeditionController extends Controller
         $location = Cache::remember($key, now()->addDays(30), function () use ($coordinates) {
             try {
                 $response = Http::timeout(8)->withHeaders(['User-Agent' => 'PPA-Pelaporan-Ekspedisi/1.0 (ICT Site BIB)', 'Referer' => config('app.url')])->get('https://nominatim.openstreetmap.org/reverse', ['format' => 'jsonv2', 'lat' => $coordinates['latitude'], 'lon' => $coordinates['longitude'], 'zoom' => 16, 'addressdetails' => 1, 'accept-language' => 'id']);
+
                 return $response->successful() ? $response->json('display_name') : null;
             } catch (\Throwable) {
                 return null;

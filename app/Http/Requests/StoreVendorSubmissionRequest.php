@@ -17,6 +17,7 @@ class StoreVendorSubmissionRequest extends FormRequest
     {
         return [
             'type' => ['required', Rule::enum(SubmissionType::class)], 'vendor_name' => ['required', 'string', 'max:150'],
+            'expedition_request_id' => ['nullable', 'uuid', 'exists:expedition_requests,id'],
             'applicant_name' => ['required', 'string', 'max:150'], 'phone' => ['required', 'string', 'max:30'],
             'description' => ['nullable', 'string', 'max:2000'], 'service_category' => ['nullable', Rule::in(['REGULAR', 'NON_REGULAR'])], 'planning_frequency' => ['nullable', Rule::in(['DAILY', 'WEEKLY', 'NON_REGULAR'])],
             'parent_submission_id' => ['nullable', 'uuid', 'exists:vendor_submissions,id'], 'documents' => ['nullable', 'array'],

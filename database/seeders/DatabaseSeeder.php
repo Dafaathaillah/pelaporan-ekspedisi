@@ -17,12 +17,15 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         foreach (UserRole::cases() as $role) {
-            if ($role === UserRole::DEVELOPER) continue;
+            if ($role === UserRole::DEVELOPER) {
+                continue;
+            }
             $permissions = match ($role) {
-                UserRole::COORDINATOR => ['coordinator.expedition', 'coordinator.vendor', 'users.manage'],
+                UserRole::COORDINATOR => ['coordinator.expedition', 'coordinator.requests', 'coordinator.vendor', 'coordinator.planning', 'users.manage', 'vendors.manage'],
                 UserRole::VENDOR => ['vendor.submission'],
                 UserRole::EXPEDITION => ['expedition.report'],
                 UserRole::DRIVER => ['driver.escort'],
+                UserRole::PURCHASING_ADMIN => ['purchasing.requests'],
             };
             User::updateOrCreate(['username' => $role->value], ['name' => ucfirst($role->value), 'email' => null, 'password' => 'password', 'role' => $role, 'site' => 'BIB', 'hull_number' => $role === UserRole::DRIVER ? '8001' : null, 'is_active' => true, 'permissions' => $permissions]);
         }

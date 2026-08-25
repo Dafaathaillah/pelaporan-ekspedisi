@@ -50,6 +50,10 @@
         font-size: 15px;
         line-height: 1.5;
     }
+    select {
+        border-width: 1px;
+        border-color: #b8c3d1;
+    }
     ::placeholder {
         color: #94a3b8;
         font-weight: 400;
@@ -59,10 +63,10 @@
 
 @layer components {
     .field {
-        @apply mt-2 w-full rounded-xl border-slate-200 bg-white px-4 py-3 text-[15px] leading-6 focus:border-red-400 focus:ring-red-200;
+        @apply mt-2 w-full rounded-xl border border-slate-400 bg-white px-4 py-3 text-[15px] leading-6 shadow-sm transition hover:border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100;
     }
     .control {
-        @apply w-full rounded-xl border-slate-200 bg-white px-3 py-3 text-[14px] font-medium leading-5 focus:border-red-400 focus:ring-red-100;
+        @apply w-full rounded-xl border border-slate-400 bg-white px-3 py-3 text-[14px] font-medium leading-5 shadow-sm transition hover:border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100;
     }
     .btn {
         @apply rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-red-100 transition hover:bg-red-700 disabled:opacity-50;
@@ -204,6 +208,8 @@
     .select-control,
     .status-select {
         appearance: none;
+        border-style: solid;
+        border-width: 1px;
         border-color: #dbe2ea;
         background-color: #fff;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m6 8 4 4 4-4' stroke='%2364758b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -301,7 +307,7 @@
         @apply mt-1 block whitespace-normal break-words text-[11px] leading-4 text-slate-600;
     }
     .app-footer {
-        @apply relative mt-8 overflow-hidden border-t border-slate-200 bg-white;
+        @apply relative shrink-0 overflow-hidden border-t border-slate-200 bg-white;
     }
     .app-footer-glow {
         @apply pointer-events-none absolute -left-16 top-0 h-24 w-64 rounded-full bg-red-100/50 blur-3xl;

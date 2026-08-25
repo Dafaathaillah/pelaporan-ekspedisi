@@ -69,10 +69,11 @@ class User extends Authenticatable
         if ($permissions === null) {
             $permissions = match ($this->role) {
                 UserRole::DEVELOPER => ['*'],
-                UserRole::COORDINATOR => ['coordinator.expedition', 'coordinator.vendor', 'users.manage'],
+                UserRole::COORDINATOR => ['coordinator.expedition', 'coordinator.requests', 'coordinator.vendor', 'coordinator.planning', 'users.manage', 'vendors.manage'],
                 UserRole::VENDOR => ['vendor.submission'],
                 UserRole::EXPEDITION => ['expedition.report'],
                 UserRole::DRIVER => ['driver.escort'],
+                UserRole::PURCHASING_ADMIN => ['purchasing.requests'],
             };
         }
 
@@ -88,14 +89,24 @@ class User extends Authenticatable
             if ($this->hasPermission('coordinator.vendor')) {
                 return '/coordinator/submissions/VISITOR';
             }
+            if ($this->hasPermission('coordinator.requests')) {
+                return '/coordinator/expedition-requests';
+            }
+            if ($this->hasPermission('coordinator.planning')) {
+                return '/coordinator/planning';
+            }
             if ($this->hasPermission('users.manage')) {
                 return '/coordinator/users';
+            }
+            if ($this->hasPermission('vendors.manage')) {
+                return '/coordinator/vendors';
             }
         }
 
         return match ($this->role) {
             UserRole::VENDOR => '/vendor',
             UserRole::DRIVER => '/driver/escorts',
+            UserRole::PURCHASING_ADMIN => '/purchasing/requests',
             default => '/expedition',
         };
     }

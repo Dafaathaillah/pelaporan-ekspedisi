@@ -51,6 +51,7 @@ const roleOptions = [
     { value: "vendor", label: "Vendor" },
     { value: "expedition", label: "Ekspedisi" },
     { value: "driver", label: "Driver Escort" },
+    { value: "purchasing_admin", label: "Admin Purchasing" },
 ];
 const editableRoleOptions = roleOptions.slice(1);
 if (props.canManageDevelopers) {
@@ -75,6 +76,9 @@ const vendorChanged = (value) => {
         props.vendorCompanies.find((company) => company.id == value)?.name ||
         "";
 };
+const selectAllCoordinatorPermissions = () => {
+    form.permissions = props.permissionOptions.map((option) => option.value);
+};
 const roleLabel = (role) =>
     ({
         coordinator: "Koordinator",
@@ -82,6 +86,7 @@ const roleLabel = (role) =>
         vendor: "Vendor",
         expedition: "Ekspedisi",
         driver: "Driver Escort",
+        purchasing_admin: "Admin Purchasing",
     })[role] || role;
 const applyFilters = () =>
     router.get("/coordinator/users", query.value, {
@@ -171,6 +176,24 @@ const save = () => {
             >Atur akun, peran, status, dan ruang akses setiap pengguna secara
             terpusat.</template
         >
+
+        <div
+            class="mb-5 flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-blue-950"
+        >
+            <div
+                class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-sm font-black text-blue-700 shadow-sm"
+            >
+                i
+            </div>
+            <div>
+                <b class="text-sm">Kontrol akun operasional</b>
+                <p class="mt-1 text-xs leading-5 text-blue-800/80">
+                    Koordinator dapat membuat dan mengubah seluruh role
+                    operasional. Akun Developer dilindungi dan tidak ditampilkan
+                    pada halaman ini.
+                </p>
+            </div>
+        </div>
 
         <div class="mb-5 grid gap-4 sm:grid-cols-3">
             <div class="metric-card">
@@ -567,9 +590,27 @@ const save = () => {
                         v-if="form.role === 'coordinator'"
                         class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4"
                     >
-                        <p class="text-sm font-black">
-                            Akses modul koordinator
-                        </p>
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-sm font-black">
+                                Akses modul koordinator
+                            </p>
+                            <div class="flex gap-2">
+                                <button
+                                    type="button"
+                                    class="text-xs font-bold text-red-600 hover:text-red-700"
+                                    @click="selectAllCoordinatorPermissions"
+                                >
+                                    Pilih semua
+                                </button>
+                                <button
+                                    type="button"
+                                    class="text-xs font-bold text-slate-500 hover:text-slate-700"
+                                    @click="form.permissions = []"
+                                >
+                                    Kosongkan
+                                </button>
+                            </div>
+                        </div>
                         <p class="mb-3 mt-1 text-xs text-slate-500">
                             Pilih halaman yang dapat dilihat dan dikelola akun
                             ini.
@@ -577,7 +618,7 @@ const save = () => {
                         <label
                             v-for="option in permissionOptions"
                             :key="option.value"
-                            class="mb-2 flex cursor-pointer gap-3 rounded-xl bg-white p-3 last:mb-0"
+                            class="mb-2 flex cursor-pointer gap-3 rounded-xl border border-slate-200 bg-white p-3 transition hover:border-red-200 hover:bg-red-50/30 last:mb-0"
                             ><input
                                 v-model="form.permissions"
                                 type="checkbox"
@@ -590,6 +631,7 @@ const save = () => {
                                 }}</small></span
                             ></label
                         >
+                        <span class="err">{{ form.errors.permissions }}</span>
                     </div>
                     <label
                         class="mt-5 flex items-center gap-3 rounded-xl border border-slate-200 p-4"

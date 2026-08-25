@@ -10,7 +10,19 @@ class SaveUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasPermission('users.manage') ?? false;
+        $actor = $this->user();
+        if (! $actor?->hasPermission('users.manage')) {
+            return false;
+        }
+
+        if ($actor->role !== UserRole::DEVELOPER) {
+            $managedUser = $this->route('managedUser');
+            if ($managedUser?->role === UserRole::DEVELOPER || $this->input('role') === UserRole::DEVELOPER->value) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function rules(): array
@@ -28,7 +40,7 @@ class SaveUserRequest extends FormRequest
             'site' => ['required', 'string', 'max:30'],
             'is_active' => ['required', 'boolean'],
             'permissions' => ['array'],
-            'permissions.*' => [Rule::in(['coordinator.expedition', 'coordinator.vendor', 'users.manage'])],
+            'permissions.*' => [Rule::in(['coordinator.expedition', 'coordinator.requests', 'coordinator.vendor', 'coordinator.planning', 'users.manage', 'vendors.manage'])],
         ];
     }
 

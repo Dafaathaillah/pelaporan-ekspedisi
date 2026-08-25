@@ -40,6 +40,7 @@ const can = (permission) => {
             vendor: "vendor.submission",
             driver: "driver.escort",
             expedition: "expedition.report",
+            purchasing_admin: "purchasing.requests",
         }[user.value.role]
     );
 };
@@ -53,6 +54,13 @@ const menus = computed(() => {
                 href: "/coordinator",
                 exact: true,
                 permission: "coordinator.expedition",
+            },
+            {
+                label: "Request Ekspedisi",
+                short: "Request",
+                icon: "route",
+                href: "/coordinator/expedition-requests",
+                permission: "coordinator.requests",
             },
             {
                 label: "Visitor",
@@ -91,7 +99,7 @@ const menus = computed(() => {
                 short: "Planning",
                 icon: "calendar",
                 href: "/coordinator/planning",
-                permission: "coordinator.vendor",
+                permission: "coordinator.planning",
             },
             {
                 label: "Manajemen User",
@@ -105,7 +113,7 @@ const menus = computed(() => {
                 short: "Vendor",
                 icon: "building",
                 href: "/coordinator/vendors",
-                permission: "users.manage",
+                permission: "vendors.manage",
             },
             {
                 label: "Ganti Password",
@@ -116,6 +124,12 @@ const menus = computed(() => {
         ].filter((item) => !item.permission || can(item.permission));
     if (user.value.role === "vendor")
         return [
+            {
+                label: "Request Ekspedisi",
+                short: "Request",
+                icon: "route",
+                href: "/vendor/expedition-requests",
+            },
             {
                 label: "Pengajuan Vendor",
                 short: "Pengajuan",
@@ -152,12 +166,35 @@ const menus = computed(() => {
                 href: "/profile",
             },
         ];
+    if (user.value.role === "purchasing_admin")
+        return [
+            {
+                label: "Request Ekspedisi",
+                short: "Request",
+                icon: "route",
+                href: "/purchasing/requests",
+                exact: true,
+            },
+            {
+                label: "Ganti Password",
+                short: "Password",
+                icon: "lock",
+                href: "/profile",
+            },
+        ];
     return [
         {
             label: "Laporan Kedatangan",
             short: "Laporan",
             icon: "truck",
             href: "/expedition",
+            exact: true,
+        },
+        {
+            label: "Planning Izin Lintas",
+            short: "Planning",
+            icon: "calendar",
+            href: "/expedition/planning",
         },
         {
             label: "Ganti Password",
@@ -236,7 +273,7 @@ const logout = () => {
                     </div>
                 </div>
             </div>
-            <div class="px-3 py-5">
+            <div class="min-h-0 flex-1 overflow-y-auto px-3 py-5">
                 <p
                     class="sidebar-reveal px-3 text-[10px] font-black uppercase tracking-[.18em] text-slate-400"
                     :class="{ 'sidebar-reveal-hidden': collapsed }"
@@ -268,7 +305,7 @@ const logout = () => {
                     >
                 </nav>
             </div>
-            <div class="mt-auto border-t border-slate-100 p-3">
+            <div class="shrink-0 border-t border-slate-100 bg-white p-3">
                 <div
                     class="mb-3 rounded-2xl bg-slate-50"
                     :class="collapsed ? 'p-2' : 'p-4'"

@@ -15,6 +15,7 @@ const open = ref(false);
 const search = ref("");
 const activeIndex = ref(0);
 const position = ref({});
+const teleportTarget = ref("body");
 const normalized = computed(() =>
     props.options.map((option) =>
         typeof option === "object"
@@ -53,6 +54,10 @@ const updatePosition = () => {
 };
 const show = async () => {
     if (props.disabled) return;
+    // Native <dialog> lives in the browser top layer. A dropdown teleported to
+    // <body> cannot appear above it regardless of z-index, so mount the panel
+    // inside the closest dialog when this select is used in a modal.
+    teleportTarget.value = root.value?.closest("dialog") || "body";
     open.value = true;
     search.value = "";
     activeIndex.value = Math.max(
@@ -136,7 +141,7 @@ onBeforeUnmount(() => {
             </svg>
         </button>
 
-        <Teleport to="body">
+        <Teleport :to="teleportTarget">
             <div
                 v-if="open"
                 class="fixed z-[120] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_60px_rgba(15,23,42,.22)]"

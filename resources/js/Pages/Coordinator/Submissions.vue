@@ -2,6 +2,7 @@
 import AppShell from "@/Components/AppShell.vue";
 import DataTableFooter from "@/Components/DataTableFooter.vue";
 import SortButton from "@/Components/SortButton.vue";
+import { expeditionVehicleLabel } from "@/Utils/expeditionRequest";
 import { Link, router, useForm } from "@inertiajs/vue3";
 import { computed, reactive, ref } from "vue";
 const p = defineProps({
@@ -106,7 +107,9 @@ const validity = (x) => {
           };
 };
 const canRequest = (x) =>
-    ["VISITOR", "WASKAT", "PERMIT_VENDOR_NON_SIMPER", "IJIN_LINTAS"].includes(x.type) &&
+    ["VISITOR", "WASKAT", "PERMIT_VENDOR_NON_SIMPER", "IJIN_LINTAS"].includes(
+        x.type,
+    ) &&
     x.release_expired_at &&
     new Date(x.release_expired_at) <= new Date() &&
     !x.resubmission_requested_at;
@@ -250,6 +253,7 @@ const requestAgain = (x) =>
                                 />
                             </th>
                             <th>Keterangan</th>
+                            <th>Request Ekspedisi</th>
                             <th>
                                 <SortButton
                                     label="Vendor"
@@ -301,6 +305,39 @@ const requestAgain = (x) =>
                             </td>
                             <td class="description-cell table-wrap-cell">
                                 {{ x.description || "-" }}
+                            </td>
+                            <td class="table-wrap-cell">
+                                <template v-if="x.expedition_request">
+                                    <b class="text-red-700">{{
+                                        x.expedition_request.request_number
+                                    }}</b>
+                                    <small
+                                        >{{
+                                            expeditionVehicleLabel(
+                                                x.expedition_request
+                                                    .expedition_type,
+                                            )
+                                        }}
+                                        ·
+                                        {{ x.expedition_request.route_from }} →
+                                        {{
+                                            x.expedition_request.route_to
+                                        }}</small
+                                    >
+                                    <small class="mt-1 block text-slate-500">
+                                        PR:
+                                        {{
+                                            x.expedition_request.pr_number ||
+                                            "Belum rilis"
+                                        }}
+                                        · PO:
+                                        {{
+                                            x.expedition_request.po_number ||
+                                            "Belum rilis"
+                                        }}
+                                    </small>
+                                </template>
+                                <span v-else>-</span>
                             </td>
                             <td class="table-wrap-cell">{{ x.vendor_name }}</td>
                             <td class="table-wrap-cell">
@@ -460,22 +497,55 @@ const requestAgain = (x) =>
             </div></Teleport
         >
         <section
-            v-if="['VISITOR','WASKAT','PERMIT_VENDOR_NON_SIMPER','IJIN_LINTAS'].includes(type)"
+            v-if="
+                [
+                    'VISITOR',
+                    'WASKAT',
+                    'PERMIT_VENDOR_NON_SIMPER',
+                    'IJIN_LINTAS',
+                ].includes(type)
+            "
             class="panel mt-5 overflow-hidden"
         >
-            <div class="flex flex-col gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
+            <div
+                class="flex flex-col gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between"
+            >
                 <div class="flex items-start gap-3">
-                    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-red-50 text-red-600">
-                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 2v3M16 2v3M3.5 9h17M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="m9 15 2 2 4-5"/></svg>
+                    <span
+                        class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-red-50 text-red-600"
+                    >
+                        <svg
+                            class="h-5 w-5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                        >
+                            <path
+                                d="M8 2v3M16 2v3M3.5 9h17M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
+                            />
+                            <path d="m9 15 2 2 4-5" />
+                        </svg>
                     </span>
                     <div>
-                    <h2 class="panel-title">Masa Berlaku & Pengajuan Ulang</h2>
-                    <p class="panel-copy mt-1 max-w-2xl">
-                        Release berlaku selama 7 hari. Periksa {{ subjectLabel }} dan validasi {{ renewalDocument }} sebelum membuat pengajuan ulang.
-                    </p>
+                        <h2 class="panel-title">
+                            Masa Berlaku & Pengajuan Ulang
+                        </h2>
+                        <p class="panel-copy mt-1 max-w-2xl">
+                            Release berlaku selama 7 hari. Periksa
+                            {{ subjectLabel }} dan validasi
+                            {{ renewalDocument }} sebelum membuat pengajuan
+                            ulang.
+                        </p>
                     </div>
                 </div>
-                <span class="w-fit rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">{{ items.data.filter((row) => row.released_at).length }} pengajuan</span>
+                <span
+                    class="w-fit rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600"
+                    >{{
+                        items.data.filter((row) => row.released_at).length
+                    }}
+                    pengajuan</span
+                >
             </div>
             <div class="mt-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
                 <article
@@ -485,33 +555,98 @@ const requestAgain = (x) =>
                 >
                     <div class="flex flex-1 flex-col p-5">
                         <div class="flex items-start justify-between gap-4">
-                            <span class="rounded-full px-2.5 py-1 text-[11px] font-black" :class="validity(x).tone.includes('red') ? 'bg-red-50 text-red-600' : validity(x).tone.includes('amber') ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'">{{ validity(x).label }}</span>
-                            <span class="text-xs font-bold text-slate-400">{{ x.units_count }} {{ subjectLabel }}</span>
+                            <span
+                                class="rounded-full px-2.5 py-1 text-[11px] font-black"
+                                :class="
+                                    validity(x).tone.includes('red')
+                                        ? 'bg-red-50 text-red-600'
+                                        : validity(x).tone.includes('amber')
+                                          ? 'bg-amber-50 text-amber-700'
+                                          : 'bg-emerald-50 text-emerald-700'
+                                "
+                                >{{ validity(x).label }}</span
+                            >
+                            <span class="text-xs font-bold text-slate-400"
+                                >{{ x.units_count }} {{ subjectLabel }}</span
+                            >
                         </div>
-                        <h3 class="mt-4 break-words text-base font-black leading-snug text-slate-900">{{ x.submission_number }}</h3>
-                        <p class="mt-1 text-sm font-semibold text-slate-600">{{ x.vendor_name }}</p>
-                        <div class="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-xl bg-slate-50 p-3">
+                        <h3
+                            class="mt-4 break-words text-base font-black leading-snug text-slate-900"
+                        >
+                            {{ x.submission_number }}
+                        </h3>
+                        <p class="mt-1 text-sm font-semibold text-slate-600">
+                            {{ x.vendor_name }}
+                        </p>
+                        <div
+                            class="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-xl bg-slate-50 p-3"
+                        >
                             <div>
-                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Release</p>
-                                <p class="mt-1 text-xs font-black text-slate-700">{{ date(x.released_at) }}</p>
+                                <p
+                                    class="text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                                >
+                                    Release
+                                </p>
+                                <p
+                                    class="mt-1 text-xs font-black text-slate-700"
+                                >
+                                    {{ date(x.released_at) }}
+                                </p>
                             </div>
-                            <svg class="h-4 w-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m-4-4 4 4-4 4"/></svg>
+                            <svg
+                                class="h-4 w-4 text-slate-300"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path d="M5 12h14m-4-4 4 4-4 4" />
+                            </svg>
                             <div class="text-right">
-                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Berakhir</p>
-                                <p class="mt-1 text-xs font-black text-red-600">{{ date(x.release_expired_at) }}</p>
+                                <p
+                                    class="text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                                >
+                                    Berakhir
+                                </p>
+                                <p class="mt-1 text-xs font-black text-red-600">
+                                    {{ date(x.release_expired_at) }}
+                                </p>
                             </div>
                         </div>
-                        <div v-if="x.resubmission_requested_at" class="mt-4 flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-xs font-bold leading-relaxed text-amber-800">
-                            <span class="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
+                        <div
+                            v-if="x.resubmission_requested_at"
+                            class="mt-4 flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-xs font-bold leading-relaxed text-amber-800"
+                        >
+                            <span
+                                class="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-500"
+                            ></span>
                             Menunggu vendor memperbarui {{ renewalDocument }}.
                         </div>
                     </div>
                     <div class="border-t border-slate-100 bg-slate-50/60 p-3">
-                        <Link v-if="canRequest(x)" :href="detail(x.id)" class="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-100">
-                            Review & Pilih {{ subjectLabel === 'unit' ? 'Unit' : 'Orang' }}
-                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+                        <Link
+                            v-if="canRequest(x)"
+                            :href="detail(x.id)"
+                            class="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-100"
+                        >
+                            Review & Pilih
+                            {{ subjectLabel === "unit" ? "Unit" : "Orang" }}
+                            <svg
+                                class="h-4 w-4"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path d="m9 18 6-6-6-6" />
+                            </svg>
                         </Link>
-                        <Link v-else :href="detail(x.id)" class="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-red-200 hover:text-red-600">Lihat Detail</Link>
+                        <Link
+                            v-else
+                            :href="detail(x.id)"
+                            class="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-red-200 hover:text-red-600"
+                            >Lihat Detail</Link
+                        >
                     </div>
                     <!--
                             <p class="mt-1 text-xs text-slate-500">

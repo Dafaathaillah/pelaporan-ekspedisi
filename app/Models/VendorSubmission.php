@@ -22,8 +22,21 @@ class VendorSubmission extends Model
     {
         return $this->hasMany(VendorDocument::class);
     }
-    public function units(){return $this->hasMany(VendorSubmissionUnit::class)->orderBy('unit_order');}
-    public function planningItems(){return $this->hasMany(PlanningItem::class);}
+
+    public function units()
+    {
+        return $this->hasMany(VendorSubmissionUnit::class)->orderBy('unit_order');
+    }
+
+    public function planningItems()
+    {
+        return $this->hasMany(PlanningItem::class);
+    }
+
+    public function expeditionRequest()
+    {
+        return $this->belongsTo(ExpeditionRequest::class);
+    }
 
     public function creator()
     {

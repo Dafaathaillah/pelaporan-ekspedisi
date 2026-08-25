@@ -12,4 +12,14 @@ class VendorCompany extends Model
     {
         return ['is_active' => 'boolean'];
     }
+
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
+
+    public function expeditionRequests()
+    {
+        return $this->hasMany(ExpeditionRequest::class);
+    }
 }

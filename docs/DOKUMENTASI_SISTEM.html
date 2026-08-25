@@ -1,0 +1,731 @@
+﻿<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dokumentasi Sistem Pelaporan Ekspedisi PPA BIB</title>
+<style>
+@page { size: A4; margin: 18mm 15mm 20mm; }
+* { box-sizing: border-box; }
+html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; color: #172033; font-size: 10.2pt; line-height: 1.55; }
+body { margin: 0; background: #fff; }
+body::before { content: "PPA Â· SITE BORNEO INDOBARA"; position: fixed; top: -12mm; left: 0; right: 0; color: #d9232e; font-size: 7.5pt; font-weight: 700; letter-spacing: 1.8px; border-bottom: 1px solid #f1d7da; padding-bottom: 3mm; }
+body::after { content: "Kolaborasi SCM Â· FAW Â· ICT"; position: fixed; bottom: -13mm; left: 0; color: #7b8498; font-size: 7.5pt; letter-spacing: .5px; }
+h1 { color: #b81420; font-size: 25pt; line-height: 1.12; margin: 30mm 0 6mm; max-width: 155mm; }
+h1 + p { color: #5a6478; font-size: 11pt; }
+h2 { page-break-before: always; color: #111a2d; font-size: 18pt; line-height: 1.2; margin: 0 0 7mm; padding-bottom: 3mm; border-bottom: 2px solid #e3272d; }
+h2:first-of-type { page-break-before: auto; margin-top: 15mm; }
+h3 { color: #c41c27; font-size: 12.5pt; margin: 7mm 0 2.5mm; page-break-after: avoid; }
+h4 { font-size: 11pt; margin: 5mm 0 2mm; page-break-after: avoid; }
+p { margin: 0 0 3.5mm; orphans: 3; widows: 3; }
+ul, ol { margin: 0 0 4mm 6mm; padding-left: 5mm; }
+li { margin-bottom: 1.3mm; }
+table { width: 100%; border-collapse: collapse; margin: 4mm 0 6mm; font-size: 8.7pt; page-break-inside: auto; }
+thead { display: table-header-group; }
+tr { page-break-inside: avoid; }
+th { background: #fff0f1; color: #991722; text-align: left; font-weight: 700; }
+th, td { border: 1px solid #dfe3eb; padding: 2.3mm 2.5mm; vertical-align: top; overflow-wrap: anywhere; }
+blockquote { border-left: 3px solid #e3272d; margin: 4mm 0; padding: 2mm 4mm; background: #fff7f7; }
+code { font-family: Consolas, "SFMono-Regular", monospace; font-size: 8.7pt; background: #f3f5f8; padding: .2mm 1mm; border-radius: 1mm; overflow-wrap: anywhere; }
+pre { background: #151c2c; color: #f7f9fc; border-radius: 3mm; padding: 4mm; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 8.2pt; line-height: 1.45; page-break-inside: avoid; }
+pre code { background: transparent; padding: 0; color: inherit; }
+hr { border: 0; border-top: 1px solid #e3e6ec; margin: 7mm 0; }
+a { color: #c41c27; text-decoration: none; }
+strong { color: #111a2d; }
+@media print { a { color: inherit; } }
+</style>
+</head>
+<body>
+
+
+<h1>Dokumentasi Sistem Pelaporan Ekspedisi &amp; Pengajuan Dokumen Vendor</h1>
+<p><strong>PT Putra Perkasa Abadi â€” Site Borneo Indobara (BIB)</strong><br><strong>Kolaborasi SCM Â· FAW Â· ICT</strong><br>Versi dokumentasi: 1.0 â€” 25 Agustus 2026</p>
+<hr>
+<h2>1. Ringkasan Eksekutif</h2>
+<p>Sistem ini merupakan portal operasional terintegrasi untuk:</p>
+<ul>
+<li>mencatat kedatangan kendaraan ekspedisi di Underpass;</li>
+<li>mengelola pengajuan Visitor, Waskat, Permit Vendor Non Simper, dan Ijin Lintas;</li>
+<li>memeriksa dokumen per orang atau per unit;</li>
+<li>mengatur masa berlaku, release, revisi, penolakan, penutupan, dan pengajuan ulang;</li>
+<li>menyusun Planning Escort satu bulan ke depan dengan drag-and-drop;</li>
+<li>menjalankan escort kendaraan ekspedisi oleh Driver Escort;</li>
+<li>menyimpan bukti foto dan koordinat maksimal Â±5 meter;</li>
+<li>menampilkan pembaruan dan notifikasi secara realtime melalui Laravel Reverb;</li>
+<li>mengelola pengguna, hak akses, serta master vendor.</li>
+</ul>
+<p>Antarmuka menggunakan identitas merah-putih lembut, responsif untuk desktop, tablet, dan mobile. Pada mobile, navigasi utama berada di bawah dan menu tambahan tersedia melalui <strong>Lainnya</strong>.</p>
+<h2>2. Ruang Lingkup Modul</h2>
+<table>
+<thead>
+<tr>
+<th>Modul</th>
+<th>Fungsi utama</th>
+<th>Pengguna utama</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Autentikasi</td>
+<td>Login username, logout, pembatasan percobaan login</td>
+<td>Semua role</td>
+</tr>
+<tr>
+<td>Ekspedisi</td>
+<td>Input kedatangan, tensi, foto, GPS, riwayat per akun</td>
+<td>Ekspedisi</td>
+</tr>
+<tr>
+<td>Monitoring Ekspedisi</td>
+<td>Dashboard, chart interaktif, filter, DataTable, CSV, informasi escort</td>
+<td>Koordinator/Developer</td>
+</tr>
+<tr>
+<td>Pengajuan Vendor</td>
+<td>Visitor, Waskat, Permit Non Simper, Ijin Lintas, upload PDF per subjek</td>
+<td>Vendor</td>
+</tr>
+<tr>
+<td>Review Dokumen</td>
+<td>Verifikasi dokumen, catatan, status, unduh per file/semua file</td>
+<td>Koordinator/Developer</td>
+</tr>
+<tr>
+<td>Pengajuan Ulang</td>
+<td>Pemilihan orang/unit dan pemeriksaan Surat Sehat</td>
+<td>Koordinator dan Vendor</td>
+</tr>
+<tr>
+<td>Planning Escort</td>
+<td>Kalender 30 hari, drag-and-drop, evidence WA</td>
+<td>Koordinator/Developer</td>
+</tr>
+<tr>
+<td>Driver Escort</td>
+<td>Ambil unit ekspedisi, proses, close dengan foto dan GPS</td>
+<td>Driver</td>
+</tr>
+<tr>
+<td>Manajemen User</td>
+<td>CRUD akun, permission koordinator, relasi vendor, nomor lambung</td>
+<td>Koordinator/Developer</td>
+</tr>
+<tr>
+<td>Manajemen Vendor</td>
+<td>Master 35 vendor, kategori dan status</td>
+<td>Koordinator/Developer</td>
+</tr>
+<tr>
+<td>Profil</td>
+<td>Perubahan profil dan password sendiri</td>
+<td>Semua role</td>
+</tr>
+<tr>
+<td>Realtime</td>
+<td>Notifikasi dan refresh data tanpa polling</td>
+<td>Semua role terkait</td>
+</tr>
+</tbody></table>
+<h2>3. Teknologi dan Arsitektur</h2>
+<h3>3.1 Stack</h3>
+<ul>
+<li>Backend: PHP 8.2+, Laravel 12, Eloquent ORM.</li>
+<li>Frontend: Vue 3, Inertia.js, Tailwind CSS, Vite.</li>
+<li>Database: SQLite untuk default development; MySQL/MariaDB direkomendasikan untuk produksi.</li>
+<li>Realtime: Laravel Reverb, Laravel Echo, Pusher protocol.</li>
+<li>Queue: Laravel database queue; Redis direkomendasikan untuk produksi skala lebih besar.</li>
+<li>File privat: Laravel local disk di <code>storage/app/private</code>.</li>
+<li>Geocoding: OpenStreetMap Nominatim dengan cache 30 hari.</li>
+<li>Pengujian: PHPUnit 11 dan Laravel Feature Test.</li>
+</ul>
+<h3>3.2 Aliran Sistem</h3>
+<pre><code class="language-text">Browser / Mobile
+      â”‚ HTTPS + Inertia
+      â–¼
+Web Server (Nginx/Apache)
+      â”‚
+      â”œâ”€â”€ Laravel HTTP â”€â”€ Database
+      â”œâ”€â”€ Storage privat â”€â”€ Dokumen &amp; foto
+      â”œâ”€â”€ Queue Worker â”€â”€ Event broadcast
+      â””â”€â”€ Reverb WebSocket â”€â”€ Update realtime
+</code></pre>
+<p>Semua aksi sensitif tetap divalidasi di server. Pemeriksaan role di UI hanya untuk pengalaman pengguna dan bukan pengganti middleware backend.</p>
+<h2>4. Role dan Hak Akses</h2>
+<h3>4.1 Developer</h3>
+<p>Role tertinggi. Developer melewati pemeriksaan role/permission dan dapat mengakses seluruh modul Koordinator. Akun Developer:</p>
+<ul>
+<li>tidak tampil bagi Koordinator;</li>
+<li>tidak dapat dibuat atau diedit oleh Koordinator;</li>
+<li>hanya dibuat/diperbarui melalui CLI server;</li>
+<li>mempunyai permission wildcard <code>*</code>.</li>
+</ul>
+<p>Perintah aman:</p>
+<pre><code class="language-bash">php artisan developer:create developer --name=&quot;Developer Sistem&quot; --site=BIB
+</code></pre>
+<p>Password diminta secara tersembunyi dan minimal 12 karakter. Hindari opsi <code>--password</code> pada production karena dapat masuk ke shell history.</p>
+<h3>4.2 Koordinator</h3>
+<p>Super admin operasional pada site yang sama. Permission dapat dibatasi per modul:</p>
+<ul>
+<li><code>coordinator.expedition</code>: dashboard dan monitoring ekspedisi;</li>
+<li><code>coordinator.vendor</code>: pengajuan vendor dan Planning Escort;</li>
+<li><code>users.manage</code>: manajemen user dan master vendor.</li>
+</ul>
+<h3>4.3 Vendor</h3>
+<ul>
+<li>hanya melihat pengajuan yang dibuat oleh akunnya sendiri;</li>
+<li>terhubung ke satu <code>vendor_company_id</code> dari master vendor;</li>
+<li>membuat pengajuan dan mengunggah dokumen PDF;</li>
+<li>menerima permintaan pengajuan ulang/Surat Sehat;</li>
+<li>melihat Monitoring Sarana yang terkait akun;</li>
+<li>dapat mengganti password sendiri.</li>
+</ul>
+<h3>4.4 Ekspedisi</h3>
+<ul>
+<li>membuat laporan kedatangan kendaraan;</li>
+<li>nama perusahaan ekspedisi berasal dari akun login;</li>
+<li>Vendor/Pengirim tetap berupa input manual;</li>
+<li>riwayat laporan dibatasi pada data buatan akun sendiri;</li>
+<li>mengambil foto kedatangan dan foto alat tensi dari kamera.</li>
+</ul>
+<h3>4.5 Driver</h3>
+<ul>
+<li>hanya melihat kendaraan <strong>ekspedisi</strong> berstatus menunggu atau escort miliknya sendiri;</li>
+<li>memilih kendaraan yang akan diproses;</li>
+<li>satu kendaraan hanya dapat diambil satu driver (database row locking);</li>
+<li>akun Driver wajib mempunyai nomor lambung yang unik per site;</li>
+<li>menutup escort dengan foto langsung dan koordinat akurat.</li>
+</ul>
+<h2>5. Alur Operasional</h2>
+<h3>5.1 Pelaporan Kedatangan Ekspedisi</h3>
+<ol>
+<li>Akun Ekspedisi login.</li>
+<li>Isi driver, nomor HP, nomor polisi, vendor/pengirim, tujuan, dan jenis kendaraan.</li>
+<li>Isi sistolik dan diastolik. Sistem menilai status kesehatan secara realtime.</li>
+<li>Ambil foto kedatangan dan foto layar alat tensi melalui kamera.</li>
+<li>Untuk setiap foto, browser meminta GPS hingga akurasi maksimal Â±5 meter.</li>
+<li>Sistem melakukan reverse geocoding untuk menampilkan nama area.</li>
+<li>Kirim laporan. Jam kedatangan dicatat server.</li>
+<li>Koordinator dan Driver menerima event realtime.</li>
+</ol>
+<p>Validasi penting:</p>
+<ul>
+<li>sistolik 60â€“250 mmHg;</li>
+<li>diastolik 30â€“150 mmHg dan harus lebih kecil dari sistolik;</li>
+<li>foto JPG/JPEG/PNG/WebP maksimal 8 MB;</li>
+<li>koordinat latitude/longitude valid;</li>
+<li>akurasi GPS maksimal 5 meter.</li>
+</ul>
+<h3>5.2 Penilaian Tensi Otomatis</h3>
+<p>Sistem selalu menggunakan hasil yang paling berat dari sistolik atau diastolik.</p>
+<table>
+<thead>
+<tr>
+<th>Kondisi</th>
+<th>Status</th>
+<th>Alasan</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Sistolik â‰¥180 atau diastolik â‰¥110</td>
+<td>Unfit</td>
+<td>Sangat tinggi; perlu evaluasi medis segera</td>
+</tr>
+<tr>
+<td>Sistolik 160â€“179 atau diastolik 100â€“109</td>
+<td>Unfit / Pending</td>
+<td>Cukup tinggi; perlu evaluasi dokter</td>
+</tr>
+<tr>
+<td>Sistolik 140â€“159 atau diastolik 90â€“99</td>
+<td>Pending</td>
+<td>Perlu pemeriksaan/monitoring lanjutan</td>
+</tr>
+<tr>
+<td>Sistolik 120â€“139 atau diastolik 80â€“89</td>
+<td>Fit dengan Catatan Medis</td>
+<td>Dapat bekerja dengan catatan/rekomendasi</td>
+</tr>
+<tr>
+<td>Sistolik &lt;120 dan diastolik &lt;80</td>
+<td>Fit</td>
+<td>Tekanan darah normal</td>
+</tr>
+</tbody></table>
+<p>Nilai seperti <code>10/10</code> ditolak oleh validasi batas minimum server dan tidak dapat disimpan.</p>
+<h3>5.3 Pengajuan Vendor</h3>
+<p>Jenis subjek:</p>
+<ul>
+<li>Visitor: orang;</li>
+<li>Waskat: orang;</li>
+<li>Permit Vendor Non Simper: orang;</li>
+<li>Ijin Lintas: unit/kendaraan.</li>
+</ul>
+<p>Satu pengajuan dapat berisi satu atau beberapa orang/unit. Dokumen disimpan per subjek agar review dan pengajuan ulang dapat dilakukan sebagian.</p>
+<h4>Dokumen Visitor</h4>
+<ul>
+<li>Surat Tugas â€” wajib;</li>
+<li>KTP â€” wajib.</li>
+</ul>
+<h4>Dokumen Waskat</h4>
+<ul>
+<li>KTP Vendor â€” wajib;</li>
+<li>Foto 4x4 Latar Merah â€” wajib;</li>
+<li>Surat Sehat Vendor â€” wajib;</li>
+<li>Mine Permit Pengawas 1/2, SPDK, JSA/IK, Sosialisasi JSA â€” opsional.</li>
+</ul>
+<h4>Dokumen Permit Vendor Non Simper</h4>
+<ul>
+<li>Foto 4x4, KTP, MCU â€” wajib;</li>
+<li>SPDK dan Mine Permit Custodian â€” opsional.</li>
+</ul>
+<h4>Dokumen Ijin Lintas</h4>
+<ul>
+<li>Foto Unit 4 Sisi, KTP, SIM, STNK, KIR, Surat Ijin Lintas, Surat Sehat â€” wajib.</li>
+<li>Kategori layanan: Regular atau Non Regular.</li>
+<li>Frekuensi planning: Daily, Weekly, atau Non Regular.</li>
+</ul>
+<p>Upload mendukung drag-and-drop, paste file, dan pemilihan file. Hanya PDF dengan ukuran maksimal 3 MB per dokumen.</p>
+<h3>5.4 Status Pengajuan</h3>
+<pre><code class="language-text">SUBMITTED â†’ APPROVED / REVISION / REJECTED
+APPROVED  â†’ RELEASED
+RELEASED  â†’ CLOSED atau kedaluwarsa/pengajuan ulang
+</code></pre>
+<ul>
+<li><code>SUBMITTED</code>: baru diajukan.</li>
+<li><code>APPROVED</code>: dokumen disetujui.</li>
+<li><code>REVISION</code>: vendor perlu memperbaiki data/dokumen.</li>
+<li><code>REJECTED</code>: pengajuan ditolak dan tidak masuk planning.</li>
+<li><code>RELEASED</code>: izin telah dirilis; berlaku 7 hari.</li>
+<li><code>CLOSED</code>: siklus pengajuan selesai.</li>
+</ul>
+<p>Koordinator dapat memverifikasi setiap dokumen sebagai pending/valid/tidak valid, memberi catatan, mengubah status, serta mengunduh satu dokumen atau seluruh dokumen sebagai arsip.</p>
+<h3>5.5 Pengajuan Ulang</h3>
+<ul>
+<li>Pengajuan ulang dimulai oleh Koordinator.</li>
+<li>Koordinator memilih satu atau beberapa orang/unit yang benar-benar diajukan ulang.</li>
+<li>Dokumen lama dipertahankan sesuai subjek.</li>
+<li>Vendor hanya memperbarui Surat Sehat ketika diminta dan dokumen lain tetap memakai data terdahulu.</li>
+<li>Setiap release berlaku 7 hari dari <code>released_at</code> sampai <code>release_expired_at</code>.</li>
+<li>Waskat maksimal dua kali pengajuan ulang; pengajuan berikutnya wajib Permit.</li>
+<li>Ijin Lintas Regular dapat diteruskan; Non Regular bersifat opsional sesuai kebutuhan.</li>
+</ul>
+<h3>5.6 Planning Escort</h3>
+<ul>
+<li>Semua pengajuan non-ditolak dapat tersedia di planning sesuai aturan aplikasi.</li>
+<li>Ijin Lintas <code>RELEASED</code> Regular Daily dibuat untuk setiap hari masa berlaku.</li>
+<li>Ijin Lintas Weekly dibuat pada tanggal release dan dapat dipindahkan.</li>
+<li>Non Regular tidak dibuat berulang secara otomatis.</li>
+<li>Koordinator dapat menarik kartu ke tanggal lain dalam kalender satu bulan ke depan.</li>
+<li>Pada layar sentuh, kartu dipilih lalu tanggal tujuan dipilih.</li>
+<li>Evidence WhatsApp dapat dilampirkan dan dibuka kembali.</li>
+<li>Filter mencakup kata kunci, tipe, status, waktu, dan urutan.</li>
+</ul>
+<h3>5.7 Driver Escort</h3>
+<p>Hanya laporan kedatangan ekspedisi yang dapat di-escort. Pengajuan Visitor, Waskat, Permit, dan Ijin Lintas tidak muncul sebagai pekerjaan Driver.</p>
+<pre><code class="language-text">WAITING â†’ PROCESS â†’ CLOSED
+</code></pre>
+<ol>
+<li>Driver memilih kendaraan berstatus <code>WAITING</code>.</li>
+<li>Sistem mengunci row untuk mencegah dua driver mengambil kendaraan yang sama.</li>
+<li>Status menjadi <code>PROCESS</code>; tanggal/jam mulai dan identitas driver/nomor lambung tersimpan.</li>
+<li>Driver mengambil foto close escort di lokasi tujuan.</li>
+<li>GPS wajib mencapai akurasi maksimal Â±5 meter.</li>
+<li>Status menjadi <code>CLOSED</code>; jam selesai, foto, koordinat, akurasi, dan nama lokasi tersimpan.</li>
+<li>Tabel Koordinator diperbarui realtime tanpa mengembalikan pengguna ke atas halaman.</li>
+</ol>
+<h2>6. Dashboard dan DataTable</h2>
+<p>Seluruh tabel utama menggunakan pemrosesan server-side:</p>
+<ul>
+<li>pencarian, filter, sorting, pagination, dan jumlah baris diproses backend;</li>
+<li>interaksi tidak melakukan full page refresh;</li>
+<li>posisi scroll dan konteks halaman dipertahankan;</li>
+<li>teks panjang dibungkus (<code>wrap</code>) dan tidak dipotong keluar kartu;</li>
+<li>ekspor CSV mengikuti filter aktif;</li>
+<li>status loading tampil untuk operasi lambat.</li>
+</ul>
+<p>Chart pola kedatangan bersifat interaktif: hover/touch menampilkan detail per jam. Label harus menggunakan wrapping/ruang yang cukup agar tidak terpotong.</p>
+<h2>7. Realtime dengan Laravel Reverb</h2>
+<h3>7.1 Channel Privat</h3>
+<table>
+<thead>
+<tr>
+<th>Channel</th>
+<th>Pengguna</th>
+<th>Tujuan</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>coordinator.{site}</code></td>
+<td>Developer/Koordinator berizin pada site</td>
+<td>Pengajuan, laporan, escort</td>
+</tr>
+<tr>
+<td><code>vendor.{userId}</code></td>
+<td>User vendor itu sendiri</td>
+<td>Perubahan status/pengajuan ulang</td>
+</tr>
+<tr>
+<td><code>driver.{site}</code></td>
+<td>Driver berizin pada site</td>
+<td>Laporan ekspedisi dan perubahan escort</td>
+</tr>
+<tr>
+<td><code>App.Models.User.{id}</code></td>
+<td>User itu sendiri</td>
+<td>Channel privat Laravel</td>
+</tr>
+</tbody></table>
+<h3>7.2 Event</h3>
+<ul>
+<li><code>ExpeditionReportCreated</code></li>
+<li><code>ExpeditionEscortUpdated</code></li>
+<li><code>VendorSubmissionCreated</code></li>
+<li><code>VendorSubmissionUpdated</code></li>
+<li><code>VendorSubmissionStatusChanged</code></li>
+<li><code>VendorResubmissionRequested</code></li>
+</ul>
+<p>Event escort dan laporan memakai <code>ShouldBroadcastNow</code>. Event vendor yang memakai queue memerlukan worker aktif.</p>
+<h3>7.3 Konfigurasi Lokal</h3>
+<pre><code class="language-env">BROADCAST_CONNECTION=reverb
+QUEUE_CONNECTION=database
+REVERB_APP_ID=ppa-expedition
+REVERB_APP_KEY=ganti-dengan-key-acak
+REVERB_APP_SECRET=ganti-dengan-secret-kuat
+REVERB_HOST=127.0.0.1
+REVERB_PORT=8080
+REVERB_SCHEME=http
+REVERB_SERVER_HOST=0.0.0.0
+REVERB_SERVER_PORT=8080
+REVERB_ALLOWED_ORIGINS=&quot;127.0.0.1,localhost&quot;
+VITE_REVERB_APP_KEY=&quot;${REVERB_APP_KEY}&quot;
+VITE_REVERB_HOST=&quot;${REVERB_HOST}&quot;
+VITE_REVERB_PORT=&quot;${REVERB_PORT}&quot;
+VITE_REVERB_SCHEME=&quot;${REVERB_SCHEME}&quot;
+</code></pre>
+<p>Jalankan:</p>
+<pre><code class="language-bash">php artisan reverb:start --debug
+php artisan queue:work --tries=3 --timeout=90
+npm run dev
+php artisan serve
+</code></pre>
+<h3>7.4 Konfigurasi Produksi</h3>
+<p>Gunakan host publik yang sama atau subdomain WebSocket, TLS <code>https/wss</code>, origin eksplisit, dan Supervisor/systemd agar Reverb serta queue selalu hidup.</p>
+<p>Contoh nilai bila WebSocket diproksi melalui domain utama:</p>
+<pre><code class="language-env">APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://ekspedisi.ppabib.com
+REVERB_HOST=ekspedisi.ppabib.com
+REVERB_PORT=443
+REVERB_SCHEME=https
+REVERB_SERVER_HOST=127.0.0.1
+REVERB_SERVER_PORT=8080
+REVERB_ALLOWED_ORIGINS=&quot;https://ekspedisi.ppabib.com&quot;
+VITE_REVERB_HOST=&quot;${REVERB_HOST}&quot;
+VITE_REVERB_PORT=&quot;${REVERB_PORT}&quot;
+VITE_REVERB_SCHEME=&quot;${REVERB_SCHEME}&quot;
+</code></pre>
+<p>Sesudah mengubah variabel <code>VITE_*</code>, wajib menjalankan <code>npm run build</code> karena nilainya ditanam ke aset frontend.</p>
+<h2>8. Instalasi Development</h2>
+<p>Persyaratan: PHP 8.2+, Composer, Node.js 20+, npm, ekstensi PHP sesuai Laravel, dan database.</p>
+<pre><code class="language-bash">composer install
+copy .env.example .env
+php artisan key:generate
+php artisan migrate
+npm install
+npm run build
+</code></pre>
+<p>Untuk data awal:</p>
+<pre><code class="language-bash">php artisan db:seed
+</code></pre>
+<p>Untuk reset total development beserta seeder:</p>
+<pre><code class="language-bash">php artisan migrate:fresh --seed
+</code></pre>
+<p><strong>Peringatan:</strong> <code>migrate:fresh</code> menghapus seluruh tabel. Jangan digunakan pada production.</p>
+<p>Jalankan seluruh proses development melalui:</p>
+<pre><code class="language-bash">composer run dev
+</code></pre>
+<h2>9. Data Awal dan Akun Demo</h2>
+<p>Seeder standar membuat role dasar dengan username sesuai nama role dan password <code>password</code>, kecuali Developer. Seeder akun vendor operasional juga membuat contoh:</p>
+<table>
+<thead>
+<tr>
+<th>Jenis</th>
+<th>Username contoh</th>
+<th>Password contoh</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Vendor DMA</td>
+<td><code>vendor_dma</code></td>
+<td><code>Vendor123!</code></td>
+</tr>
+<tr>
+<td>Vendor BUMDES</td>
+<td><code>vendor_bumdes</code></td>
+<td><code>Vendor123!</code></td>
+</tr>
+<tr>
+<td>Vendor SJPL</td>
+<td><code>vendor_sinar</code></td>
+<td><code>Vendor123!</code></td>
+</tr>
+<tr>
+<td>Ekspedisi Borneo</td>
+<td><code>expedition_borneo</code></td>
+<td><code>Expedition123!</code></td>
+</tr>
+<tr>
+<td>Ekspedisi Mitra</td>
+<td><code>expedition_mitra</code></td>
+<td><code>Expedition123!</code></td>
+</tr>
+<tr>
+<td>Ekspedisi Trans</td>
+<td><code>expedition_trans</code></td>
+<td><code>Expedition123!</code></td>
+</tr>
+</tbody></table>
+<p>Semua kredensial tersebut hanya untuk development/demo. Pada production, jangan menjalankan seeder dummy dan wajib ganti seluruh password.</p>
+<p><code>VendorAccountDataSeeder</code> bersifat destruktif terhadap data operasional terkait: direktori dokumen/laporan privat dibersihkan dan tabel operasional ditruncate. Gunakan hanya pada database development yang telah dipastikan.</p>
+<h2>10. Deployment Produksi</h2>
+<h3>10.1 Persiapan</h3>
+<ol>
+<li>Siapkan Linux server, Nginx/Apache, PHP-FPM 8.2+, MySQL/MariaDB, Node/npm untuk build, dan TLS.</li>
+<li>Arahkan document root ke folder <code>public</code>, bukan root repository.</li>
+<li>Salin <code>.env</code>, isi kredensial produksi, dan buat <code>APP_KEY</code> satu kali.</li>
+<li>Pastikan user web server dapat menulis <code>storage</code> dan <code>bootstrap/cache</code>.</li>
+</ol>
+<h3>10.2 Perintah Deployment</h3>
+<pre><code class="language-bash">composer install --no-dev --optimize-autoloader
+npm ci
+npm run build
+php artisan migrate --force
+php artisan storage:link
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+</code></pre>
+<p><code>storage:link</code> hanya untuk file publik. Dokumen/foto sensitif tetap di disk privat dan disajikan melalui controller berotorisasi.</p>
+<h3>10.3 Proses Latar Belakang</h3>
+<p>Supervisor/systemd harus menjaga proses berikut:</p>
+<pre><code class="language-bash">php artisan queue:work --sleep=1 --tries=3 --timeout=90
+php artisan reverb:start --host=127.0.0.1 --port=8080
+</code></pre>
+<p>Setelah deployment baru:</p>
+<pre><code class="language-bash">php artisan queue:restart
+</code></pre>
+<p>Reverb juga perlu direstart agar kode/config baru terambil.</p>
+<h3>10.4 Nginx WebSocket Proxy</h3>
+<pre><code class="language-nginx">location /app/ {
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection &quot;Upgrade&quot;;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_pass http://127.0.0.1:8080;
+}
+
+location /apps/ {
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_pass http://127.0.0.1:8080;
+}
+</code></pre>
+<p>Sesuaikan path dengan konfigurasi Reverb yang digunakan dan uji endpoint broadcasting authentication dalam keadaan login.</p>
+<h2>11. Ngrok untuk Uji Publik</h2>
+<p>Ngrok hanya untuk staging/uji, bukan pengganti konfigurasi production permanen.</p>
+<ol>
+<li>Jalankan aplikasi, Reverb, queue, dan Vite/build.</li>
+<li>Jalankan gateway proyek jika digunakan: <code>npm run gateway:ngrok</code>.</li>
+<li>Jalankan tunnel HTTPS ke gateway/web server.</li>
+<li>Ubah <code>APP_URL</code>, <code>REVERB_HOST</code>, <code>REVERB_SCHEME=https</code>, port publik 443, <code>VITE_REVERB_*</code>, dan allowed origins.</li>
+<li>Jalankan <code>php artisan optimize:clear</code> dan <code>npm run build</code>.</li>
+<li>Restart Reverb dan queue.</li>
+</ol>
+<p>Key/secret Reverb dibuat sendiri. Key dikirim ke browser dan bukan rahasia; secret hanya berada di server dan tidak boleh menggunakan nilai contoh.</p>
+<h2>12. Keamanan</h2>
+<ul>
+<li>Password disimpan dalam bentuk hash melalui cast Laravel.</li>
+<li>Password asli tidak dapat dan tidak boleh ditampilkan kembali oleh Manajemen User.</li>
+<li>Gunakan fitur reset/ganti password, bukan penyimpanan plain text.</li>
+<li>Login dibatasi 5 percobaan berdasarkan username + IP.</li>
+<li>Akun nonaktif tidak dapat login.</li>
+<li>Authorization diterapkan melalui middleware role, permission, site, dan kepemilikan data.</li>
+<li>File sensitif berada di storage privat dan hanya dibuka melalui route terautentikasi.</li>
+<li>Gunakan HTTPS agar kamera, geolocation, session, dan WebSocket aman.</li>
+<li>Set <code>APP_DEBUG=false</code>, secure cookie, dan kredensial database terbatas pada production.</li>
+<li>Backup database dan <code>storage/app/private</code> sebagai satu kesatuan.</li>
+</ul>
+<h2>13. Backup dan Pemulihan</h2>
+<p>Backup minimum harian:</p>
+<ul>
+<li>database;</li>
+<li><code>storage/app/private/vendor-documents</code>;</li>
+<li><code>storage/app/private/expedition-reports</code>;</li>
+<li><code>storage/app/private/escort-close</code>;</li>
+<li><code>.env</code> melalui secret manager yang aman (bukan arsip publik).</li>
+</ul>
+<p>Lakukan uji restore berkala pada lingkungan terpisah. Setelah restore, jalankan <code>php artisan optimize:clear</code> dan verifikasi relasi file-database.</p>
+<h2>14. Pengujian dan Quality Gate</h2>
+<pre><code class="language-bash">php artisan test
+npm run build
+./vendor/bin/pint --test
+</code></pre>
+<p>Cakupan pengujian yang tersedia mencakup:</p>
+<ul>
+<li>autentikasi dan password;</li>
+<li>hak akses Developer/Koordinator/Vendor/Ekspedisi/Driver;</li>
+<li>filter, sorting, dan aksi DataTable;</li>
+<li>alur pengajuan dan Surat Sehat;</li>
+<li>notifikasi belum dibuka;</li>
+<li>escort eksklusif, foto close, dan GPS â‰¤5 meter;</li>
+<li>penilaian tensi berdasarkan tingkat terberat;</li>
+<li>metadata SEO dan sitemap publik.</li>
+</ul>
+<h2>15. Troubleshooting</h2>
+<h3>Halaman putih setelah deployment</h3>
+<ol>
+<li>Periksa <code>storage/logs/laravel.log</code> dan log web server.</li>
+<li>Pastikan <code>public/build/manifest.json</code> ada (<code>npm run build</code>).</li>
+<li>Pastikan permission <code>storage</code> dan <code>bootstrap/cache</code> benar.</li>
+<li>Jalankan <code>php artisan optimize:clear</code>.</li>
+<li>Periksa <code>APP_URL</code>, proxy HTTPS, dan session cookie.</li>
+</ol>
+<h3>Realtime tidak masuk</h3>
+<ol>
+<li>Pastikan indikator <strong>Realtime terhubung</strong>.</li>
+<li>Pastikan Reverb dan queue worker hidup.</li>
+<li>Periksa Console/Network browser: koneksi harus <code>wss://</code> pada HTTPS.</li>
+<li>Pastikan <code>REVERB_ALLOWED_ORIGINS</code> memuat domain penuh.</li>
+<li>Pastikan konfigurasi <code>VITE_REVERB_*</code> sudah di-build ulang.</li>
+<li>Pastikan route <code>/broadcasting/auth</code> tidak 401/403.</li>
+<li>Jalankan <code>php scripts/verify-reverb.php</code> sesuai lingkungan.</li>
+</ol>
+<h3>Kamera/GPS tidak bekerja</h3>
+<ul>
+<li>wajib HTTPS atau localhost;</li>
+<li>izinkan Camera dan Precise Location pada browser;</li>
+<li>matikan mode hemat lokasi;</li>
+<li>ambil foto di area terbuka;</li>
+<li>tunggu hingga akurasi â‰¤5 meter;</li>
+<li>jangan memilih gambar lama jika bukti wajib diambil langsung.</li>
+</ul>
+<h3>DataTable tampak lama/tidak berubah</h3>
+<ul>
+<li>pastikan request server-side berhasil;</li>
+<li>periksa filter tanggal dan site;</li>
+<li>periksa event Reverb;</li>
+<li>gunakan Muat Ulang tanpa full page refresh;</li>
+<li>hard refresh setelah deployment aset frontend baru.</li>
+</ul>
+<h3>Gagal menyimpan user</h3>
+<ul>
+<li>username/email harus unik;</li>
+<li>password akun baru minimal 8 karakter;</li>
+<li>Driver wajib nomor lambung unik per site;</li>
+<li>Vendor wajib dipasangkan ke Master Vendor;</li>
+<li>Koordinator tidak dapat membuat/mengubah Developer.</li>
+</ul>
+<h2>16. Operasional Harian</h2>
+<h3>Checklist awal shift</h3>
+<ul>
+<li>login dan pastikan indikator realtime terhubung;</li>
+<li>periksa badge pengajuan belum dibuka;</li>
+<li>periksa kedatangan hari ini dan status tensi;</li>
+<li>periksa kendaraan <code>WAITING</code> dan <code>PROCESS</code>;</li>
+<li>periksa planning hari ini serta evidence;</li>
+<li>tindak lanjuti pengajuan mendekati kedaluwarsa.</li>
+</ul>
+<h3>Checklist akhir shift</h3>
+<ul>
+<li>pastikan escort proses telah ditutup atau diserahterimakan;</li>
+<li>periksa foto dan lokasi close escort;</li>
+<li>ekspor data bila diperlukan;</li>
+<li>catat pengajuan revisi/ditolak;</li>
+<li>pastikan queue dan Reverb sehat.</li>
+</ul>
+<h2>17. Struktur Direktori Penting</h2>
+<table>
+<thead>
+<tr>
+<th>Lokasi</th>
+<th>Isi</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>app/Http/Controllers</code></td>
+<td>Alur HTTP dan otorisasi data</td>
+</tr>
+<tr>
+<td><code>app/Http/Requests</code></td>
+<td>Validasi input</td>
+</tr>
+<tr>
+<td><code>app/Models</code></td>
+<td>Model dan relasi database</td>
+</tr>
+<tr>
+<td><code>app/Events</code></td>
+<td>Event realtime</td>
+</tr>
+<tr>
+<td><code>app/Services</code></td>
+<td>Persyaratan dokumen dan planning</td>
+</tr>
+<tr>
+<td><code>app/Support</code></td>
+<td>Penilaian tensi</td>
+</tr>
+<tr>
+<td><code>resources/js/Pages</code></td>
+<td>Halaman Vue per role</td>
+</tr>
+<tr>
+<td><code>resources/js/Components</code></td>
+<td>Komponen UI bersama</td>
+</tr>
+<tr>
+<td><code>resources/js/echo.js</code></td>
+<td>Bootstrap realtime client</td>
+</tr>
+<tr>
+<td><code>database/migrations</code></td>
+<td>Evolusi skema</td>
+</tr>
+<tr>
+<td><code>database/seeders</code></td>
+<td>Master dan data development</td>
+</tr>
+<tr>
+<td><code>routes/web.php</code></td>
+<td>Route aplikasi</td>
+</tr>
+<tr>
+<td><code>routes/channels.php</code></td>
+<td>Otorisasi channel privat</td>
+</tr>
+<tr>
+<td><code>storage/app/private</code></td>
+<td>Dokumen dan foto privat</td>
+</tr>
+<tr>
+<td><code>tests</code></td>
+<td>Unit dan feature tests</td>
+</tr>
+</tbody></table>
+<h2>18. Catatan Pengembangan Lanjutan</h2>
+<ul>
+<li>Tambahkan audit log immutable untuk perubahan status, user, dan dokumen.</li>
+<li>Tambahkan retention policy dan checksum file.</li>
+<li>Gunakan antivirus scanning untuk seluruh upload di production.</li>
+<li>Pindahkan file privat ke object storage dengan signed URL bila volume meningkat.</li>
+<li>Tambahkan health check queue/Reverb dan alert monitoring.</li>
+<li>Tambahkan persetujuan medis formal bila status tensi digunakan sebagai keputusan keselamatan. Penilaian saat ini adalah aturan sistem dan bukan diagnosis dokter.</li>
+</ul>
+<hr>
+<p><strong>Pemilik proses:</strong> SCM &amp; FAW<br><strong>Dukungan aplikasi:</strong> ICT<br><strong>Identitas:</strong> PT Putra Perkasa Abadi â€” Site Borneo Indobara</p>
+
+
+</body>
+</html>
+

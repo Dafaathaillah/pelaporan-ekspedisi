@@ -6,13 +6,14 @@ use App\Enums\SubmissionStatus;
 use App\Enums\SubmissionType;
 use App\Enums\UserRole;
 use App\Models\ExpeditionReport;
+use App\Models\PlanningItem;
 use App\Models\User;
-use App\Models\VendorSubmission;
 use App\Models\VendorCompany;
+use App\Models\VendorSubmission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -60,11 +61,11 @@ class OperationalWorkflowTest extends TestCase
         $this->actingAs($vendor)->get('/vendor?search=Pemohon%20Dicari&history_type=VISITOR&status=SUBMITTED&sort=vendor_name&direction=asc&per_page=25')
             ->assertOk()->assertInertia(fn (Assert $page) => $page->component('Vendor/Index')->has('submissions.data', 1)->where('submissions.data.0.vendor_name', 'Vendor Dicari'));
 
-        $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR, 'permissions' => ['coordinator.vendor']]);
+        $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR, 'permissions' => ['coordinator.vendor', 'coordinator.planning']]);
         $this->actingAs($coordinator)->get('/coordinator/planning')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Coordinator/Planning')->has('items', 1));
         $this->actingAs($coordinator)->patch('/coordinator/planning/'.$planningId, ['planned_date' => now()->toDateString()])->assertSessionHasNoErrors();
         $this->assertTrue(DB::table('planning_items')->where('id', $planningId)->whereDate('planned_date', now()->toDateString())->exists());
-        $this->assertSame(now()->toDateString(), \App\Models\PlanningItem::findOrFail($planningId)->toArray()['planned_date']);
+        $this->assertSame(now()->toDateString(), PlanningItem::findOrFail($planningId)->toArray()['planned_date']);
         $this->actingAs($coordinator)->get('/coordinator/submissions/VISITOR?search=Dicari&status=SUBMITTED&date_from='.now()->toDateString().'&date_to='.now()->toDateString().'&sort=vendor_name&direction=desc&per_page=10')
             ->assertOk()->assertInertia(fn (Assert $page) => $page->component('Coordinator/Submissions')->has('items.data', 1)->where('items.data.0.id', $submission->id));
         $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', ['status' => 'APPROVED', 'coordinator_note' => 'Lengkap'])->assertSessionHasNoErrors();
@@ -95,13 +96,13 @@ class OperationalWorkflowTest extends TestCase
         $other = User::factory()->create(['role' => UserRole::VENDOR, 'permissions' => ['vendor.submission']]);
         $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR, 'permissions' => ['coordinator.vendor']]);
         $parent = VendorSubmission::create(['submission_number' => 'WSK-PARENT', 'type' => SubmissionType::WASKAT, 'vendor_name' => 'Vendor Saya', 'applicant_name' => 'PIC', 'phone' => '081', 'status' => SubmissionStatus::CLOSED, 'submission_sequence' => 2, 'submitted_at' => now()->subDays(10), 'released_at' => now()->subDays(8), 'release_expired_at' => now()->subDay(), 'created_by' => $vendor->id, 'site' => 'BIB']);
-        $unit=$parent->units()->create(['subject_type'=>'PERSON','person_name'=>'Budi Waskat','unit_order'=>1]);
+        $unit = $parent->units()->create(['subject_type' => 'PERSON', 'person_name' => 'Budi Waskat', 'unit_order' => 1]);
         Storage::disk('local')->put('private/vendor-documents/'.$parent->id.'/ktp.pdf', 'pdf');
-        $unit->documents()->create(['vendor_submission_id'=>$parent->id,'document_code' => 'KTP_VENDOR', 'document_name' => 'KTP Vendor', 'file_name' => 'ktp.pdf', 'original_name' => 'ktp.pdf', 'file_path' => 'private/vendor-documents/'.$parent->id.'/ktp.pdf', 'mime_type' => 'application/pdf', 'file_size' => 3, 'is_required' => true, 'uploaded_at' => now()]);
+        $unit->documents()->create(['vendor_submission_id' => $parent->id, 'document_code' => 'KTP_VENDOR', 'document_name' => 'KTP Vendor', 'file_name' => 'ktp.pdf', 'original_name' => 'ktp.pdf', 'file_path' => 'private/vendor-documents/'.$parent->id.'/ktp.pdf', 'mime_type' => 'application/pdf', 'file_size' => 3, 'is_required' => true, 'uploaded_at' => now()]);
         Storage::disk('local')->put('private/vendor-documents/'.$parent->id.'/permit.pdf', 'pdf');
-        $unit->documents()->create(['vendor_submission_id'=>$parent->id,'document_code' => 'MINE_PERMIT_PENGAWAS_1', 'document_name' => 'Mine Permit', 'file_name' => 'permit.pdf', 'original_name' => 'permit.pdf', 'file_path' => 'private/vendor-documents/'.$parent->id.'/permit.pdf', 'mime_type' => 'application/pdf', 'file_size' => 3, 'is_required' => false, 'uploaded_at' => now()]);
-        $this->actingAs($coordinator)->post('/coordinator/submission/'.$parent->id.'/request-resubmission',['mode'=>'REQUEST_HEALTH','subject_ids'=>[$unit->id]])->assertSessionHasNoErrors();
-        $payload = ['type' => 'WASKAT', 'parent_submission_id' => $parent->id, 'vendor_name' => 'Vendor Saya', 'applicant_name' => 'PIC', 'phone' => '081', 'units'=>[['source_unit_id'=>$unit->id,'person_name'=>'Budi Waskat','documents'=>[]]]];
+        $unit->documents()->create(['vendor_submission_id' => $parent->id, 'document_code' => 'MINE_PERMIT_PENGAWAS_1', 'document_name' => 'Mine Permit', 'file_name' => 'permit.pdf', 'original_name' => 'permit.pdf', 'file_path' => 'private/vendor-documents/'.$parent->id.'/permit.pdf', 'mime_type' => 'application/pdf', 'file_size' => 3, 'is_required' => false, 'uploaded_at' => now()]);
+        $this->actingAs($coordinator)->post('/coordinator/submission/'.$parent->id.'/request-resubmission', ['mode' => 'REQUEST_HEALTH', 'subject_ids' => [$unit->id]])->assertSessionHasNoErrors();
+        $payload = ['type' => 'WASKAT', 'parent_submission_id' => $parent->id, 'vendor_name' => 'Vendor Saya', 'applicant_name' => 'PIC', 'phone' => '081', 'units' => [['source_unit_id' => $unit->id, 'person_name' => 'Budi Waskat', 'documents' => []]]];
         $this->actingAs($vendor)->post('/vendor/submissions', $payload)->assertSessionHasErrors('units.0.documents.SURAT_SEHAT_VENDOR');
         $payload['units'][0]['documents']['SURAT_SEHAT_VENDOR'] = UploadedFile::fake()->create('surat-sehat.pdf', 20, 'application/pdf');
         $this->actingAs($vendor)->post('/vendor/submissions', $payload)->assertSessionHasNoErrors();

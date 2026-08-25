@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\ExpeditionEscortUpdated;
 use App\Models\ExpeditionReport;
+use App\Support\SafeBroadcast;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +33,7 @@ class DriverEscortController extends Controller
             abort_if($item->escort_status !== 'WAITING' || $item->escort_driver_id, 422, 'Unit ekspedisi sudah diambil driver escort lain.');
             $item->update(['escort_status' => 'PROCESS', 'escort_driver_id' => $request->user()->id, 'escort_started_at' => now()]);
         });
-        ExpeditionEscortUpdated::dispatch($report->fresh());
+        SafeBroadcast::dispatch(new ExpeditionEscortUpdated($report->fresh()));
 
         return back()->with('success', 'Escort dimulai. Selesaikan tugas dan unggah bukti close di lokasi tujuan.');
     }
@@ -57,7 +58,7 @@ class DriverEscortController extends Controller
             'escort_close_location_accuracy' => $data['accuracy'], 'escort_close_location_name' => $data['location_name'] ?? null,
             'escort_close_photo_captured_at' => $data['captured_at'],
         ]);
-        ExpeditionEscortUpdated::dispatch($report->fresh());
+        SafeBroadcast::dispatch(new ExpeditionEscortUpdated($report->fresh()));
 
         return back()->with('success', 'Escort berhasil ditutup. Foto dan koordinat telah tersimpan.');
     }
@@ -67,6 +68,7 @@ class DriverEscortController extends Controller
         $allowed = $report->escort_driver_id === $request->user()->id
             || (in_array($request->user()->role->value, ['developer', 'coordinator'], true) && $report->site === $request->user()->site);
         abort_unless($allowed && $report->escort_close_photo_path && Storage::disk('local')->exists($report->escort_close_photo_path), 404);
+
         return Storage::disk('local')->response($report->escort_close_photo_path);
     }
 
@@ -76,8 +78,10 @@ class DriverEscortController extends Controller
         $key = 'escort-geocode:'.round((float) $coordinates['latitude'], 5).':'.round((float) $coordinates['longitude'], 5);
         $name = Cache::remember($key, now()->addDays(30), function () use ($coordinates) {
             $response = Http::timeout(8)->withHeaders(['User-Agent' => 'PPA-Pelaporan-Ekspedisi/1.0 (ICT Site BIB)'])->get('https://nominatim.openstreetmap.org/reverse', ['format' => 'jsonv2', 'lat' => $coordinates['latitude'], 'lon' => $coordinates['longitude'], 'zoom' => 16, 'accept-language' => 'id']);
+
             return $response->successful() ? $response->json('display_name') : null;
         });
+
         return response()->json(['display_name' => $name]);
     }
 }

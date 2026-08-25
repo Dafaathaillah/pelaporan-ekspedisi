@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\PlanningUpdated;
 use App\Models\PlanningItem;
+use App\Support\SafeBroadcast;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -32,6 +34,8 @@ class PlanningController extends Controller
         abort_unless($planningItem->submission->site === $request->user()->site, 403);
         $data = $request->validate(['planned_date' => ['nullable', 'date', 'after_or_equal:today', 'before_or_equal:'.now()->addMonth()->toDateString()], 'position' => ['nullable', 'integer', 'min:0', 'max:1000']]);
         $planningItem->update($data + ['updated_by' => $request->user()->id]);
+        SafeBroadcast::dispatch(new PlanningUpdated($planningItem->fresh('submission')));
+
         return back()->with('success', $data['planned_date'] ? 'Planning berhasil dijadwalkan.' : 'Item dikembalikan ke daftar belum terjadwal.');
     }
 
@@ -39,15 +43,19 @@ class PlanningController extends Controller
     {
         abort_unless($planningItem->submission->site === $request->user()->site, 403);
         $data = $request->validate(['evidence' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120']]);
-        if ($planningItem->evidence_path) Storage::disk('local')->delete($planningItem->evidence_path);
+        if ($planningItem->evidence_path) {
+            Storage::disk('local')->delete($planningItem->evidence_path);
+        }
         $path = $data['evidence']->store('private/planning-evidence/'.$planningItem->id, 'local');
         $planningItem->update(['evidence_path' => $path, 'evidence_name' => $data['evidence']->getClientOriginalName(), 'updated_by' => $request->user()->id]);
+
         return back()->with('success', 'Evidence WhatsApp berhasil dilampirkan.');
     }
 
     public function showEvidence(Request $request, PlanningItem $planningItem)
     {
         abort_unless($planningItem->submission->site === $request->user()->site && $planningItem->evidence_path && Storage::disk('local')->exists($planningItem->evidence_path), 404);
+
         return Storage::disk('local')->response($planningItem->evidence_path, $planningItem->evidence_name);
     }
 }

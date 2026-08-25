@@ -77,4 +77,76 @@ class UserManagementTest extends TestCase
 
         $this->assertSame(['vendor.submission'], $vendor->fresh()->permissions);
     }
+
+    public function test_coordinator_can_create_and_change_all_non_developer_roles(): void
+    {
+        $coordinator = User::factory()->create([
+            'role' => UserRole::COORDINATOR,
+            'permissions' => ['users.manage'],
+        ]);
+
+        $payload = [
+            'name' => 'Admin Purchasing',
+            'username' => 'purchasing.admin',
+            'email' => null,
+            'password' => 'password123',
+            'role' => 'purchasing_admin',
+            'vendor_company_id' => null,
+            'hull_number' => null,
+            'site' => 'BIB',
+            'is_active' => true,
+            'permissions' => [],
+        ];
+
+        $this->actingAs($coordinator)->post('/coordinator/users', $payload)
+            ->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        $managed = User::where('username', 'purchasing.admin')->firstOrFail();
+        $this->assertSame(UserRole::PURCHASING_ADMIN, $managed->role);
+        $this->assertSame(['purchasing.requests'], $managed->permissions);
+
+        $this->actingAs($coordinator)->patch('/coordinator/users/'.$managed->id, [
+            ...$payload,
+            'name' => 'Driver Escort Baru',
+            'password' => '',
+            'role' => 'driver',
+            'hull_number' => '8110',
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        $managed->refresh();
+        $this->assertSame(UserRole::DRIVER, $managed->role);
+        $this->assertSame('8110', $managed->hull_number);
+        $this->assertSame(['driver.escort'], $managed->permissions);
+    }
+
+    public function test_all_coordinator_module_permissions_can_be_saved_independently(): void
+    {
+        $coordinator = User::factory()->create([
+            'role' => UserRole::COORDINATOR,
+            'permissions' => ['users.manage'],
+        ]);
+        $permissions = [
+            'coordinator.expedition',
+            'coordinator.requests',
+            'coordinator.vendor',
+            'coordinator.planning',
+            'users.manage',
+            'vendors.manage',
+        ];
+
+        $this->actingAs($coordinator)->post('/coordinator/users', [
+            'name' => 'Koordinator Lengkap',
+            'username' => 'coordinator.lengkap',
+            'email' => null,
+            'password' => 'password123',
+            'role' => 'coordinator',
+            'vendor_company_id' => null,
+            'hull_number' => null,
+            'site' => 'BIB',
+            'is_active' => true,
+            'permissions' => $permissions,
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        $this->assertSame($permissions, User::where('username', 'coordinator.lengkap')->firstOrFail()->permissions);
+    }
 }

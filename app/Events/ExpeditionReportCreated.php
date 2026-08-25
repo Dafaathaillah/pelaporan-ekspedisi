@@ -4,11 +4,11 @@ namespace App\Events;
 
 use App\Models\ExpeditionReport;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class ExpeditionReportCreated implements ShouldBroadcastNow
+class ExpeditionReportCreated implements ShouldBroadcast
 {
     use Dispatchable,SerializesModels;
 

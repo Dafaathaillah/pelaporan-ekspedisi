@@ -23,18 +23,21 @@ class VendorCompanyController extends Controller
     public function store(Request $request)
     {
         VendorCompany::create($this->validated($request));
+
         return back()->with('success', 'Master vendor berhasil ditambahkan.');
     }
 
     public function update(Request $request, VendorCompany $vendorCompany)
     {
         $vendorCompany->update($this->validated($request, $vendorCompany));
+
         return back()->with('success', 'Master vendor berhasil diperbarui.');
     }
 
     private function validated(Request $request, ?VendorCompany $vendor = null): array
     {
         $request->merge(['name' => mb_strtoupper(trim((string) $request->name)), 'abbreviation' => mb_strtoupper(trim((string) $request->abbreviation))]);
+
         return $request->validate(['name' => ['required', 'string', 'max:200', Rule::unique('vendor_companies', 'name')->ignore($vendor)], 'abbreviation' => ['required', 'string', 'max:30', Rule::unique('vendor_companies', 'abbreviation')->ignore($vendor)], 'category' => ['required', Rule::in(['REGULAR', 'NON_REGULAR'])], 'remarks' => ['nullable', 'string', 'max:255'], 'is_active' => ['required', 'boolean']]);
     }
 }

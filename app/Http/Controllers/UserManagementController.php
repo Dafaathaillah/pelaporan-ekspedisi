@@ -34,9 +34,12 @@ class UserManagementController extends Controller
             'users' => $users,
             'filters' => $request->only('search', 'role', 'status', 'sort', 'direction', 'per_page'),
             'permissionOptions' => [
-                ['value' => 'coordinator.expedition', 'label' => 'Monitoring Ekspedisi', 'description' => 'Dashboard kedatangan dan ekspor data ekspedisi.'],
-                ['value' => 'coordinator.vendor', 'label' => 'Monitoring Pengajuan Vendor', 'description' => 'Visitor, Waskat, Permit Non Simper, dan Ijin Lintas.'],
+                ['value' => 'coordinator.expedition', 'label' => 'Monitoring Ekspedisi', 'description' => 'Dashboard kedatangan, detail escort, filter, dan ekspor data.'],
+                ['value' => 'coordinator.requests', 'label' => 'Request Ekspedisi', 'description' => 'Membuat dan memonitor request ekspedisi untuk vendor.'],
+                ['value' => 'coordinator.vendor', 'label' => 'Pengajuan Vendor', 'description' => 'Review Visitor, Waskat, Permit Non Simper, dan Ijin Lintas.'],
+                ['value' => 'coordinator.planning', 'label' => 'Planning Escort', 'description' => 'Mengatur agenda escort, tanggal, dan evidence planning.'],
                 ['value' => 'users.manage', 'label' => 'Manajemen Pengguna', 'description' => 'Membuat akun serta mengatur role dan akses modul.'],
+                ['value' => 'vendors.manage', 'label' => 'Manajemen Vendor', 'description' => 'Mengelola master perusahaan vendor dan statusnya.'],
             ],
             'vendorCompanies' => VendorCompany::where('is_active', true)->orderBy('name')->get(['id', 'name', 'abbreviation']),
             'canManageDevelopers' => $request->user()->role === UserRole::DEVELOPER,
@@ -80,11 +83,14 @@ class UserManagementController extends Controller
         } else {
             $data['vendor_company_id'] = null;
         }
-        if ($data['role'] !== UserRole::DRIVER->value) $data['hull_number'] = null;
+        if ($data['role'] !== UserRole::DRIVER->value) {
+            $data['hull_number'] = null;
+        }
         $data['permissions'] = match ($data['role']) {
             UserRole::DEVELOPER->value => ['*'],
             UserRole::EXPEDITION->value => ['expedition.report'],
             UserRole::DRIVER->value => ['driver.escort'],
+            UserRole::PURCHASING_ADMIN->value => ['purchasing.requests'],
             UserRole::VENDOR->value => ['vendor.submission'],
             default => array_values(array_unique($data['permissions'] ?? [])),
         };

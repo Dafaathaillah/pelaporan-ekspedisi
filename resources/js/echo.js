@@ -96,9 +96,44 @@ export function connect(user) {
                     href: `/coordinator/submissions/${p.type}`,
                 });
                 coordinatorRefresh(p);
+            })
+            .listen(".ExpeditionRequestUpdated", (p) => {
+                notify({
+                    title: "PR/PO request diperbarui",
+                    message: `${p.number} · PR ${p.pr_number || "-"} · PO ${p.po_number || "-"}`,
+                    href: "/coordinator/expedition-requests",
+                });
+                if (location.pathname === "/coordinator/expedition-requests")
+                    reload(["items"]);
+                if (
+                    location.pathname.includes(
+                        "/coordinator/submissions/IJIN_LINTAS",
+                    )
+                )
+                    reload(["items"]);
+            })
+            .listen(".PlanningUpdated", (p) => {
+                notify({
+                    title: "Planning Izin Lintas diperbarui",
+                    message: `${p.vendor} · ${p.planned_date || "Belum dijadwalkan"}`,
+                    href: "/coordinator/planning",
+                });
+                if (location.pathname === "/coordinator/planning")
+                    reload(["items", "dates", "range"]);
             });
     if (user.role === "vendor")
         echo.private(`vendor.${user.id}`)
+            .listen(".ExpeditionRequestCreated", (p) => {
+                notify({
+                    title: "Request ekspedisi baru",
+                    message: `${p.number} · ${p.route}`,
+                    href: "/vendor/expedition-requests",
+                });
+                if (location.pathname === "/vendor")
+                    reload(["expeditionRequests"]);
+                if (location.pathname === "/vendor/expedition-requests")
+                    reload(["items"]);
+            })
             .listen(".VendorSubmissionStatusChanged", (p) => {
                 notify({
                     title: "Status pengajuan diperbarui",
@@ -116,7 +151,40 @@ export function connect(user) {
                     href: "/vendor",
                 });
                 reload(["submissions"]);
+            })
+            .listen(".ExpeditionRequestUpdated", (p) => {
+                notify({
+                    title: "Nomor PR/PO diperbarui",
+                    message: `${p.number} · PR ${p.pr_number || "-"} · PO ${p.po_number || "-"}`,
+                    href: "/vendor/expedition-requests",
+                });
+                if (location.pathname === "/vendor/expedition-requests")
+                    reload(["items"]);
+                if (location.pathname === "/vendor")
+                    reload(["expeditionRequests"]);
+            })
+            .listen(".PlanningUpdated", (p) => {
+                notify({
+                    title: "Tanggal planning diperbarui",
+                    message: `${p.number} · ${p.planned_date || "Belum dijadwalkan"}`,
+                    href: "/vendor/expedition-requests",
+                });
+                if (location.pathname === "/vendor/expedition-requests")
+                    reload(["items"]);
             });
+    if (user.role === "expedition")
+        echo.private(`expedition.${user.site}`).listen(
+            ".PlanningUpdated",
+            (p) => {
+                notify({
+                    title: "Planning tersinkron",
+                    message: `${p.vendor} · ${p.planned_date || "Belum dijadwalkan"}`,
+                    href: "/expedition/planning",
+                });
+                if (location.pathname === "/expedition/planning")
+                    reload(["items"]);
+            },
+        );
     if (user.role === "driver")
         echo.private(`driver.${user.site}`)
             .listen(".ExpeditionReportCreated", (p) => {
