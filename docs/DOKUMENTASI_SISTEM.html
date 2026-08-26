@@ -276,7 +276,7 @@ User ──&lt; PushSubscription
 <li>memilih kendaraan yang akan diproses;</li>
 <li>satu kendaraan hanya dapat diambil satu driver (database row locking);</li>
 <li>akun Driver wajib mempunyai nomor lambung; satu sarana/nomor lambung dapat digunakan beberapa akun Driver;</li>
-<li>menutup escort dengan foto langsung dan koordinat akurat.</li>
+<li>menutup escort tanpa upload foto, dengan koordinat akurat maksimal ±5 meter.</li>
 <li>driver yang memulai dan driver yang menutup escort dapat berbeda; keduanya disimpan sebagai audit operasional.</li>
 </ul>
 <h3>4.6 Admin Purchasing</h3>
@@ -443,9 +443,9 @@ RELEASED  → CLOSED atau kedaluwarsa/pengajuan ulang
 <li>Sistem mengunci row untuk mencegah dua driver mengambil kendaraan yang sama.</li>
 <li>Status menjadi <code>PROCESS</code>; tanggal/jam mulai serta identitas driver pemulai/nomor lambung tersimpan.</li>
 <li>Seluruh driver berizin pada site dapat melihat escort aktif. Driver yang menutup boleh berbeda dari driver yang memulai.</li>
-<li>Driver penutup mengambil foto close escort di lokasi tujuan.</li>
+<li>Driver penutup membuka konfirmasi close di lokasi tujuan; sistem langsung mengambil koordinat tanpa meminta upload foto.</li>
 <li>GPS wajib mencapai akurasi maksimal ±5 meter.</li>
-<li>Status menjadi <code>CLOSED</code>; identitas driver penutup, jam selesai, foto, koordinat, akurasi, dan nama lokasi tersimpan.</li>
+<li>Status menjadi <code>CLOSED</code>; identitas driver penutup, jam selesai, koordinat, akurasi, dan nama lokasi tersimpan.</li>
 <li>Penutupan memakai database row locking sehingga dua driver tidak dapat menutup escort yang sama secara bersamaan.</li>
 <li>Tabel Koordinator menampilkan <strong>Driver Mulai Escort</strong> dan <strong>Driver Close Escort</strong>, lalu diperbarui realtime tanpa mengembalikan pengguna ke atas halaman.</li>
 </ol>
@@ -768,7 +768,7 @@ npm run build
 <li>Request Ekspedisi, pembaruan PR/PO, dan relasi Izin Lintas;</li>
 <li>planning Izin Lintas dari akun Ekspedisi serta sinkronisasi ke Vendor/Koordinator;</li>
 <li>notifikasi belum dibuka;</li>
-<li>escort eksklusif saat claim, pemulai/penutup berbeda, foto close, dan GPS ≤5 meter;</li>
+<li>escort eksklusif saat claim, pemulai/penutup berbeda, close tanpa foto, dan GPS ≤5 meter;</li>
 <li>penilaian tensi berdasarkan tingkat terberat;</li>
 <li>metadata SEO dan sitemap publik.</li>
 <li>subscription Web Push per perangkat, keamanan endpoint, dan pemetaan penerima berdasarkan role/site/vendor.</li>

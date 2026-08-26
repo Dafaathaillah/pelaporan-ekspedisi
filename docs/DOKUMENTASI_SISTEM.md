@@ -158,7 +158,7 @@ Super admin operasional pada site yang sama. Permission dapat dibatasi per modul
 - memilih kendaraan yang akan diproses;
 - satu kendaraan hanya dapat diambil satu driver (database row locking);
 - akun Driver wajib mempunyai nomor lambung; satu sarana/nomor lambung dapat digunakan beberapa akun Driver;
-- menutup escort dengan foto langsung dan koordinat akurat.
+- menutup escort tanpa upload foto, dengan koordinat akurat maksimal ±5 meter.
 - driver yang memulai dan driver yang menutup escort dapat berbeda; keduanya disimpan sebagai audit operasional.
 
 ### 4.6 Admin Purchasing
@@ -312,9 +312,9 @@ WAITING → PROCESS → CLOSED
 2. Sistem mengunci row untuk mencegah dua driver mengambil kendaraan yang sama.
 3. Status menjadi `PROCESS`; tanggal/jam mulai serta identitas driver pemulai/nomor lambung tersimpan.
 4. Seluruh driver berizin pada site dapat melihat escort aktif. Driver yang menutup boleh berbeda dari driver yang memulai.
-5. Driver penutup mengambil foto close escort di lokasi tujuan.
+5. Driver penutup membuka konfirmasi close di lokasi tujuan; sistem langsung mengambil koordinat tanpa meminta upload foto.
 6. GPS wajib mencapai akurasi maksimal ±5 meter.
-7. Status menjadi `CLOSED`; identitas driver penutup, jam selesai, foto, koordinat, akurasi, dan nama lokasi tersimpan.
+7. Status menjadi `CLOSED`; identitas driver penutup, jam selesai, koordinat, akurasi, dan nama lokasi tersimpan.
 8. Penutupan memakai database row locking sehingga dua driver tidak dapat menutup escort yang sama secara bersamaan.
 9. Tabel Koordinator menampilkan **Driver Mulai Escort** dan **Driver Close Escort**, lalu diperbarui realtime tanpa mengembalikan pengguna ke atas halaman.
 
@@ -658,7 +658,7 @@ Cakupan pengujian yang tersedia mencakup:
 - Request Ekspedisi, pembaruan PR/PO, dan relasi Izin Lintas;
 - planning Izin Lintas dari akun Ekspedisi serta sinkronisasi ke Vendor/Koordinator;
 - notifikasi belum dibuka;
-- escort eksklusif saat claim, pemulai/penutup berbeda, foto close, dan GPS ≤5 meter;
+- escort eksklusif saat claim, pemulai/penutup berbeda, close tanpa foto, dan GPS ≤5 meter;
 - penilaian tensi berdasarkan tingkat terberat;
 - metadata SEO dan sitemap publik.
 - subscription Web Push per perangkat, keamanan endpoint, dan pemetaan penerima berdasarkan role/site/vendor.

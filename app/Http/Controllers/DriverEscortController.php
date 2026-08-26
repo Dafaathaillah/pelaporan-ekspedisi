@@ -38,36 +38,34 @@ class DriverEscortController extends Controller
         });
         SafeBroadcast::dispatch(new ExpeditionEscortUpdated($report->fresh()));
 
-        return back()->with('success', 'Escort dimulai. Selesaikan tugas dan unggah bukti close di lokasi tujuan.');
+        return back()->with('success', 'Escort dimulai. Selesaikan tugas dan lakukan close escort di lokasi tujuan.');
     }
 
     public function close(Request $request, ExpeditionReport $report)
     {
         abort_unless($report->site === $request->user()->site && $report->escort_status === 'PROCESS', 403);
         $data = $request->validate([
-            'close_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'accuracy' => ['required', 'numeric', 'min:0', 'max:5'],
             'location_name' => ['nullable', 'string', 'max:1000'],
             'captured_at' => ['required', 'date'],
         ], [
-            'accuracy.max' => 'Akurasi lokasi close escort wajib maksimal ±5 meter. Aktifkan GPS dan ambil ulang foto di area terbuka.',
+            'accuracy.max' => 'Akurasi lokasi close escort wajib maksimal ±5 meter. Aktifkan GPS dan coba kembali di area terbuka.',
         ]);
-        $path = $data['close_photo']->store('private/escort-close/'.$report->id, 'local');
-        DB::transaction(function () use ($request, $report, $data, $path) {
+        DB::transaction(function () use ($request, $report, $data) {
             $item = ExpeditionReport::lockForUpdate()->findOrFail($report->id);
             abort_unless($item->site === $request->user()->site && $item->escort_status === 'PROCESS', 422, 'Escort sudah ditutup driver lain.');
             $item->update([
                 'escort_status' => 'CLOSED', 'escort_closed_at' => now(), 'escort_closed_by' => $request->user()->id,
-                'escort_close_photo_path' => $path, 'escort_close_latitude' => $data['latitude'],
+                'escort_close_photo_path' => null, 'escort_close_latitude' => $data['latitude'],
                 'escort_close_longitude' => $data['longitude'], 'escort_close_location_accuracy' => $data['accuracy'],
                 'escort_close_location_name' => $data['location_name'] ?? null, 'escort_close_photo_captured_at' => $data['captured_at'],
             ]);
         });
         SafeBroadcast::dispatch(new ExpeditionEscortUpdated($report->fresh()));
 
-        return back()->with('success', 'Escort berhasil ditutup. Foto dan koordinat telah tersimpan.');
+        return back()->with('success', 'Escort berhasil ditutup. Koordinat dan identitas driver penutup telah tersimpan.');
     }
 
     public function photo(Request $request, ExpeditionReport $report)

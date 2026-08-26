@@ -9,11 +9,9 @@ const props = defineProps({ items: Array });
 const user = computed(() => usePage().props.auth.user),
     selectedClaim = ref(null),
     closing = ref(null),
-    preview = ref(null),
     locating = ref(false),
     locationError = ref("");
 const form = useForm({
-    close_photo: null,
     latitude: "",
     longitude: "",
     accuracy: "",
@@ -55,16 +53,12 @@ const claim = () => {
 };
 const openClose = (x) => {
     closing.value = x;
-    preview.value = null;
     locationError.value = "";
     form.reset();
     form.clearErrors();
+    captureLocation();
 };
-const photoSelected = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    form.close_photo = file;
-    preview.value = URL.createObjectURL(file);
+const captureLocation = async () => {
     locating.value = true;
     locationError.value = "";
     try {
@@ -88,7 +82,7 @@ const photoSelected = async (e) => {
             error?.code === 1
                 ? "Izin lokasi ditolak. Aktifkan GPS dan izin lokasi browser."
                 : error?.message ||
-                  "Koordinat belum diperoleh. Pastikan GPS aktif lalu ambil foto ulang.";
+                  "Koordinat belum diperoleh. Pastikan GPS aktif lalu coba kembali.";
     } finally {
         locating.value = false;
     }
@@ -99,7 +93,6 @@ const submitClose = () =>
         preserveScroll: true,
         onSuccess: () => {
             closing.value = null;
-            preview.value = null;
         },
     });
 </script>
@@ -131,7 +124,7 @@ const submitClose = () =>
                 <strong>{{
                     mine.filter((x) => x.escort_status === "CLOSED").length
                 }}</strong
-                ><span>Bukti close telah tersimpan</span>
+                ><span>Lokasi dan petugas close tercatat</span>
             </article>
         </section>
         <section class="panel mb-5">
@@ -296,15 +289,15 @@ const submitClose = () =>
                 <p
                     class="text-[11px] font-semibold uppercase tracking-[.15em] text-red-600"
                 >
-                    Bukti Close Escort Ekspedisi
+                    Konfirmasi Close Escort Ekspedisi
                 </p>
                 <h2 class="mt-2 text-2xl font-semibold">
                     {{ closing?.expedition_company }} ·
                     {{ closing?.vehicle_plate }}
                 </h2>
                 <p class="mt-2 text-sm text-slate-500">
-                    Ambil foto kendaraan di lokasi tujuan. Foto hanya dapat
-                    disimpan ketika akurasi GPS maksimal ±5 meter.
+                    Pastikan Anda berada di lokasi tujuan. Escort hanya dapat
+                    ditutup ketika akurasi GPS maksimal ±5 meter.
                 </p>
                 <div
                     class="mt-4 grid gap-2 rounded-xl bg-slate-50 p-3 text-xs sm:grid-cols-2"
@@ -323,30 +316,9 @@ const submitClose = () =>
                         <b>{{ user.name }} · Lambung {{ user.hull_number }}</b>
                     </p>
                 </div>
-                <label
-                    class="mt-6 block cursor-pointer rounded-2xl border-2 border-dashed border-red-200 bg-red-50/40 p-5 text-center"
-                    ><input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        class="hidden"
-                        @change="photoSelected"
-                    /><img
-                        v-if="preview"
-                        :src="preview"
-                        class="mx-auto max-h-64 rounded-xl object-contain"
-                    /><template v-else
-                        ><span
-                            class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-red-600 text-2xl text-white"
-                            >📷</span
-                        ><b class="mt-3 block"
-                            >Ambil Foto Close Escort</b
-                        ></template
-                    ></label
-                >
                 <div
                     v-if="locating"
-                    class="mt-3 rounded-xl bg-blue-50 p-3 text-sm text-blue-700"
+                    class="mt-6 rounded-xl bg-blue-50 p-4 text-sm text-blue-700"
                 >
                     Mencari GPS presisi maksimal ±5 meter. Tetap di area
                     terbuka...
@@ -366,10 +338,14 @@ const submitClose = () =>
                         >Buka Maps</a
                     >
                 </div>
-                <p v-if="locationError" class="err">{{ locationError }}</p>
+                <div v-if="locationError" class="mt-4 rounded-xl bg-red-50 p-4">
+                    <p class="err">{{ locationError }}</p>
+                    <button type="button" class="btn-ghost mt-3" @click="captureLocation">
+                        Coba Ambil Lokasi Lagi
+                    </button>
+                </div>
                 <p class="err">
                     {{
-                        form.errors.close_photo ||
                         form.errors.latitude ||
                         form.errors.accuracy
                     }}
