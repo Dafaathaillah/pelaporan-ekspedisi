@@ -2,7 +2,7 @@
 
 **PT Putra Perkasa Abadi — Site Borneo Indobara (BIB)**  
 **Kolaborasi SCM · FAW · ICT**  
-Versi dokumentasi: 1.2 — 26 Agustus 2026
+Versi dokumentasi: 1.3 — 26 Agustus 2026
 
 ---
 
@@ -71,6 +71,38 @@ Web Server (Nginx/Apache)
 
 Semua aksi sensitif tetap divalidasi di server. Pemeriksaan role di UI hanya untuk pengalaman pengguna dan bukan pengganti middleware backend.
 
+### 3.3 Model Data Utama
+
+| Entitas/tabel | Tanggung jawab | Relasi penting |
+|---|---|---|
+| `users` | Identitas akun, role, site, status aktif, permission, perusahaan Vendor, dan nomor lambung Driver | Vendor mengarah ke `vendor_companies`; laporan/pengajuan menyimpan pembuat; escort menyimpan driver mulai dan driver close |
+| `vendor_companies` | Master perusahaan Vendor, singkatan, kategori Regular/Non Regular, dan status aktif | Memiliki banyak akun Vendor dan menjadi tujuan Request Ekspedisi |
+| `expedition_requests` | Request dari Purchasing/Koordinator/Developer, jenis kendaraan, rute, PR, PO, status, dan evidence | Ditujukan ke satu perusahaan Vendor dan dapat dipilih satu Ijin Lintas |
+| `vendor_submissions` | Header pengajuan Visitor, Waskat, Permit Non Simper, atau Ijin Lintas | Memiliki banyak subjek, dokumen, dan planning; opsional mengarah ke Request Ekspedisi |
+| `vendor_submission_units` | Orang atau unit di dalam satu pengajuan | Orang memakai `person_name`; unit Ijin Lintas memakai `plate_number` |
+| `vendor_documents` | Metadata dan lokasi file privat per subjek | Mengarah ke pengajuan dan subjek; memiliki status verifikasi |
+| `planning_items` | Agenda tanggal Planning Escort, posisi kartu, dan evidence | Mengarah ke pengajuan Vendor dan diperbarui Koordinator/Ekspedisi |
+| `expedition_reports` | Kedatangan kendaraan, tensi, foto, GPS, vendor/pengirim, serta seluruh siklus escort | Dibuat akun Ekspedisi; dapat diklaim dan ditutup akun Driver |
+| `push_subscriptions` | Endpoint Web Push per user dan perangkat/browser | Dipakai untuk push ketika halaman berada di background atau tertutup |
+| `jobs` / `failed_jobs` | Antrean event broadcast dan Web Push | Diproses oleh queue worker |
+
+Relasi bisnis ringkas:
+
+```text
+VendorCompany ──< User(Vendor)
+      │
+      ├──< ExpeditionRequest ──0..1── VendorSubmission(Ijin Lintas)
+      │                                  ├──< SubmissionSubject
+      │                                  │       └──< VendorDocument
+      │                                  └──< PlanningItem
+      │
+User(Expedition) ──< ExpeditionReport >── User(Driver mulai/close)
+
+User ──< PushSubscription
+```
+
+File fisik tidak disimpan sebagai blob database. Database menyimpan metadata dan path, sedangkan file berada di storage privat serta hanya dikirim melalui controller yang memeriksa autentikasi dan kepemilikan/hak akses.
+
 ## 4. Role dan Hak Akses
 
 ### 4.1 Developer
@@ -98,7 +130,8 @@ Super admin operasional pada site yang sama. Permission dapat dibatasi per modul
 - `coordinator.vendor`: pengajuan vendor dan Planning Escort;
 - `coordinator.requests`: Request Ekspedisi dan pembaruan PR/PO;
 - `coordinator.planning`: kalender Planning Escort;
-- `users.manage`: manajemen user dan master vendor.
+- `users.manage`: manajemen akun selain Developer;
+- `vendors.manage`: manajemen master perusahaan Vendor.
 
 ### 4.3 Vendor
 
@@ -124,9 +157,18 @@ Super admin operasional pada site yang sama. Permission dapat dibatasi per modul
 - melihat kendaraan **ekspedisi** berstatus menunggu, seluruh escort aktif pada site, serta riwayat yang dimulai/ditutup olehnya;
 - memilih kendaraan yang akan diproses;
 - satu kendaraan hanya dapat diambil satu driver (database row locking);
-- akun Driver wajib mempunyai nomor lambung yang unik per site;
+- akun Driver wajib mempunyai nomor lambung; satu sarana/nomor lambung dapat digunakan beberapa akun Driver;
 - menutup escort dengan foto langsung dan koordinat akurat.
 - driver yang memulai dan driver yang menutup escort dapat berbeda; keduanya disimpan sebagai audit operasional.
+
+### 4.6 Admin Purchasing
+
+- membuat Request Ekspedisi untuk perusahaan Vendor tujuan;
+- menentukan jenis kendaraan, rute asal, rute tujuan, serta keterangan operasional;
+- mengisi dan memperbarui nomor PR dan/atau PO setelah diterbitkan;
+- memantau status request pada site akunnya;
+- menerima pembaruan realtime terkait Request Ekspedisi;
+- tidak memiliki akses ke pengajuan Vendor, escort, atau administrasi pengguna kecuali diberikan melalui role lain pada pengembangan berikutnya.
 
 ## 5. Alur Operasional
 
@@ -434,6 +476,39 @@ Jalankan seluruh proses development melalui:
 composer run dev
 ```
 
+### 8.1 Konfigurasi `.env` Lokal
+
+Contoh minimum untuk MySQL lokal:
+
+```env
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://127.0.0.1:8000
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=pelaporan_ekspedisi
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+Nama database harus sama persis. Kesalahan seperti `pelaporan_ekpedisi` dan `pelaporan_ekspedisi` akan mengarah ke dua database berbeda. Setelah mengubah `.env`, jalankan:
+
+```bash
+php artisan optimize:clear
+php artisan migrate
+```
+
+Periksa koneksi dan jumlah akun:
+
+```bash
+php artisan migrate:status
+php artisan tinker --execute="dump(\App\Models\User::count());"
+```
+
+Jika hasil jumlah akun `0`, aplikasi tidak dapat menerima login apa pun sampai akun dibuat atau seeder development dijalankan.
+
 ## 9. Data Awal dan Akun Demo
 
 Seeder standar membuat role dasar dengan username sesuai nama role dan password `password`, kecuali Developer. Seeder akun vendor operasional juga membuat contoh:
@@ -590,6 +665,19 @@ Cakupan pengujian yang tersedia mencakup:
 
 ## 15. Troubleshooting
 
+### Tidak dapat login di lokal
+
+1. Pastikan halaman `http://127.0.0.1:8000/login` dapat dibuka.
+2. Periksa `APP_URL`; untuk lokal gunakan `http://127.0.0.1:8000`, bukan URL ngrok/production.
+3. Periksa ejaan `DB_DATABASE` dan pastikan menunjuk database yang benar.
+4. Jalankan `php artisan migrate:status` untuk memastikan skema tersedia.
+5. Periksa jumlah akun dengan `php artisan tinker --execute="dump(\App\Models\User::count());"`.
+6. Jika database development masih kosong, jalankan `php artisan db:seed`.
+7. Bersihkan rate limiter dan cache melalui `php artisan optimize:clear` jika sudah gagal login berulang kali.
+8. Pastikan akun memiliki `is_active = 1`; login hanya menerima username aktif.
+
+`DatabaseSeeder` memanggil `VendorAccountDataSeeder` yang membersihkan data operasional dummy dan file privat terkait. Seeder ini hanya boleh dijalankan pada database development yang memang boleh diisi ulang, bukan pada production.
+
 ### Halaman putih setelah deployment
 
 1. Periksa `storage/logs/laravel.log` dan log web server.
@@ -640,7 +728,7 @@ Cakupan pengujian yang tersedia mencakup:
 
 - username/email harus unik;
 - password akun baru minimal 8 karakter;
-- Driver wajib nomor lambung unik per site;
+- Driver wajib memiliki nomor lambung; beberapa akun Driver boleh menggunakan nomor lambung yang sama;
 - Vendor wajib dipasangkan ke Master Vendor;
 - Koordinator tidak dapat membuat/mengubah Developer.
 
@@ -706,6 +794,7 @@ Cakupan pengujian yang tersedia mencakup:
 | 1.0 | 25 Agustus 2026 | Dokumentasi awal seluruh modul, role, deployment, Reverb, keamanan, dan operasional. |
 | 1.1 | 25 Agustus 2026 | Request Ekspedisi dan PR/PO, planning oleh Ekspedisi, sinkronisasi Vendor/Koordinator, escort dengan driver mulai/close berbeda, alasan wajib Surat Sehat, serta hasil quality gate terbaru. |
 | 1.2 | 26 Agustus 2026 | Web Push Chrome/mobile berbasis VAPID dan Service Worker, subscription per perangkat, ikon ringan, pemetaan penerima, serta fallback Reverb untuk layar aktif. |
+| 1.3 | 26 Agustus 2026 | Sinkronisasi dokumentasi implementasi terbaru, role Admin Purchasing, pemisahan permission Koordinator, konfigurasi database lokal, serta troubleshooting login lokal dan database kosong. |
 
 ---
 

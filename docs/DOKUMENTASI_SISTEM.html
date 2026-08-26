@@ -9,8 +9,8 @@
 * { box-sizing: border-box; }
 html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; color: #172033; font-size: 10.2pt; line-height: 1.55; }
 body { margin: 0; background: #fff; }
-body::before { content: "PPA Â· SITE BORNEO INDOBARA"; position: fixed; top: -12mm; left: 0; right: 0; color: #d9232e; font-size: 7.5pt; font-weight: 700; letter-spacing: 1.8px; border-bottom: 1px solid #f1d7da; padding-bottom: 3mm; }
-body::after { content: "Kolaborasi SCM Â· FAW Â· ICT"; position: fixed; bottom: -13mm; left: 0; color: #7b8498; font-size: 7.5pt; letter-spacing: .5px; }
+body::before { content: "PPA · SITE BORNEO INDOBARA"; position: fixed; top: -12mm; left: 0; right: 0; color: #d9232e; font-size: 7.5pt; font-weight: 700; letter-spacing: 1.8px; border-bottom: 1px solid #f1d7da; padding-bottom: 3mm; }
+body::after { content: "Kolaborasi SCM · FAW · ICT"; position: fixed; bottom: -13mm; left: 0; color: #7b8498; font-size: 7.5pt; letter-spacing: .5px; }
 h1 { color: #b81420; font-size: 25pt; line-height: 1.12; margin: 30mm 0 6mm; max-width: 155mm; }
 h1 + p { color: #5a6478; font-size: 11pt; }
 h2 { page-break-before: always; color: #111a2d; font-size: 18pt; line-height: 1.2; margin: 0 0 7mm; padding-bottom: 3mm; border-bottom: 2px solid #e3272d; }
@@ -36,8 +36,9 @@ strong { color: #111a2d; }
 </style>
 </head>
 <body>
+
 <h1>Dokumentasi Sistem Pelaporan Ekspedisi &amp; Pengajuan Dokumen Vendor</h1>
-<p><strong>PT Putra Perkasa Abadi — Site Borneo Indobara (BIB)</strong><br><strong>Kolaborasi SCM · FAW · ICT</strong><br>Versi dokumentasi: 1.2 — 26 Agustus 2026</p>
+<p><strong>PT Putra Perkasa Abadi — Site Borneo Indobara (BIB)</strong><br><strong>Kolaborasi SCM · FAW · ICT</strong><br>Versi dokumentasi: 1.3 — 26 Agustus 2026</p>
 <hr>
 <h2>1. Ringkasan Eksekutif</h2>
 <p>Sistem ini merupakan portal operasional terintegrasi untuk:</p>
@@ -154,6 +155,79 @@ Web Server (Nginx/Apache)
       └── Reverb WebSocket ── Update realtime
 </code></pre>
 <p>Semua aksi sensitif tetap divalidasi di server. Pemeriksaan role di UI hanya untuk pengalaman pengguna dan bukan pengganti middleware backend.</p>
+<h3>3.3 Model Data Utama</h3>
+<table>
+<thead>
+<tr>
+<th>Entitas/tabel</th>
+<th>Tanggung jawab</th>
+<th>Relasi penting</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>users</code></td>
+<td>Identitas akun, role, site, status aktif, permission, perusahaan Vendor, dan nomor lambung Driver</td>
+<td>Vendor mengarah ke <code>vendor_companies</code>; laporan/pengajuan menyimpan pembuat; escort menyimpan driver mulai dan driver close</td>
+</tr>
+<tr>
+<td><code>vendor_companies</code></td>
+<td>Master perusahaan Vendor, singkatan, kategori Regular/Non Regular, dan status aktif</td>
+<td>Memiliki banyak akun Vendor dan menjadi tujuan Request Ekspedisi</td>
+</tr>
+<tr>
+<td><code>expedition_requests</code></td>
+<td>Request dari Purchasing/Koordinator/Developer, jenis kendaraan, rute, PR, PO, status, dan evidence</td>
+<td>Ditujukan ke satu perusahaan Vendor dan dapat dipilih satu Ijin Lintas</td>
+</tr>
+<tr>
+<td><code>vendor_submissions</code></td>
+<td>Header pengajuan Visitor, Waskat, Permit Non Simper, atau Ijin Lintas</td>
+<td>Memiliki banyak subjek, dokumen, dan planning; opsional mengarah ke Request Ekspedisi</td>
+</tr>
+<tr>
+<td><code>vendor_submission_units</code></td>
+<td>Orang atau unit di dalam satu pengajuan</td>
+<td>Orang memakai <code>person_name</code>; unit Ijin Lintas memakai <code>plate_number</code></td>
+</tr>
+<tr>
+<td><code>vendor_documents</code></td>
+<td>Metadata dan lokasi file privat per subjek</td>
+<td>Mengarah ke pengajuan dan subjek; memiliki status verifikasi</td>
+</tr>
+<tr>
+<td><code>planning_items</code></td>
+<td>Agenda tanggal Planning Escort, posisi kartu, dan evidence</td>
+<td>Mengarah ke pengajuan Vendor dan diperbarui Koordinator/Ekspedisi</td>
+</tr>
+<tr>
+<td><code>expedition_reports</code></td>
+<td>Kedatangan kendaraan, tensi, foto, GPS, vendor/pengirim, serta seluruh siklus escort</td>
+<td>Dibuat akun Ekspedisi; dapat diklaim dan ditutup akun Driver</td>
+</tr>
+<tr>
+<td><code>push_subscriptions</code></td>
+<td>Endpoint Web Push per user dan perangkat/browser</td>
+<td>Dipakai untuk push ketika halaman berada di background atau tertutup</td>
+</tr>
+<tr>
+<td><code>jobs</code> / <code>failed_jobs</code></td>
+<td>Antrean event broadcast dan Web Push</td>
+<td>Diproses oleh queue worker</td>
+</tr>
+</tbody></table>
+<p>Relasi bisnis ringkas:</p>
+<pre><code class="language-text">VendorCompany ──&lt; User(Vendor)
+      │
+      ├──&lt; ExpeditionRequest ──0..1── VendorSubmission(Ijin Lintas)
+      │                                  ├──&lt; SubmissionSubject
+      │                                  │       └──&lt; VendorDocument
+      │                                  └──&lt; PlanningItem
+      │
+User(Expedition) ──&lt; ExpeditionReport &gt;── User(Driver mulai/close)
+
+User ──&lt; PushSubscription
+</code></pre>
+<p>File fisik tidak disimpan sebagai blob database. Database menyimpan metadata dan path, sedangkan file berada di storage privat serta hanya dikirim melalui controller yang memeriksa autentikasi dan kepemilikan/hak akses.</p>
 <h2>4. Role dan Hak Akses</h2>
 <h3>4.1 Developer</h3>
 <p>Role tertinggi. Developer melewati pemeriksaan role/permission dan dapat mengakses seluruh modul Koordinator. Akun Developer:</p>
@@ -174,7 +248,8 @@ Web Server (Nginx/Apache)
 <li><code>coordinator.vendor</code>: pengajuan vendor dan Planning Escort;</li>
 <li><code>coordinator.requests</code>: Request Ekspedisi dan pembaruan PR/PO;</li>
 <li><code>coordinator.planning</code>: kalender Planning Escort;</li>
-<li><code>users.manage</code>: manajemen user dan master vendor.</li>
+<li><code>users.manage</code>: manajemen akun selain Developer;</li>
+<li><code>vendors.manage</code>: manajemen master perusahaan Vendor.</li>
 </ul>
 <h3>4.3 Vendor</h3>
 <ul>
@@ -200,9 +275,18 @@ Web Server (Nginx/Apache)
 <li>melihat kendaraan <strong>ekspedisi</strong> berstatus menunggu, seluruh escort aktif pada site, serta riwayat yang dimulai/ditutup olehnya;</li>
 <li>memilih kendaraan yang akan diproses;</li>
 <li>satu kendaraan hanya dapat diambil satu driver (database row locking);</li>
-<li>akun Driver wajib mempunyai nomor lambung yang unik per site;</li>
+<li>akun Driver wajib mempunyai nomor lambung; satu sarana/nomor lambung dapat digunakan beberapa akun Driver;</li>
 <li>menutup escort dengan foto langsung dan koordinat akurat.</li>
 <li>driver yang memulai dan driver yang menutup escort dapat berbeda; keduanya disimpan sebagai audit operasional.</li>
+</ul>
+<h3>4.6 Admin Purchasing</h3>
+<ul>
+<li>membuat Request Ekspedisi untuk perusahaan Vendor tujuan;</li>
+<li>menentukan jenis kendaraan, rute asal, rute tujuan, serta keterangan operasional;</li>
+<li>mengisi dan memperbarui nomor PR dan/atau PO setelah diterbitkan;</li>
+<li>memantau status request pada site akunnya;</li>
+<li>menerima pembaruan realtime terkait Request Ekspedisi;</li>
+<li>tidak memiliki akses ke pengajuan Vendor, escort, atau administrasi pengguna kecuali diberikan melalui role lain pada pengembangan berikutnya.</li>
 </ul>
 <h2>5. Alur Operasional</h2>
 <h3>5.1 Pelaporan Kedatangan Ekspedisi</h3>
@@ -512,6 +596,28 @@ npm run build
 <p>Jalankan seluruh proses development melalui:</p>
 <pre><code class="language-bash">composer run dev
 </code></pre>
+<h3>8.1 Konfigurasi <code>.env</code> Lokal</h3>
+<p>Contoh minimum untuk MySQL lokal:</p>
+<pre><code class="language-env">APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://127.0.0.1:8000
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=pelaporan_ekspedisi
+DB_USERNAME=root
+DB_PASSWORD=
+</code></pre>
+<p>Nama database harus sama persis. Kesalahan seperti <code>pelaporan_ekpedisi</code> dan <code>pelaporan_ekspedisi</code> akan mengarah ke dua database berbeda. Setelah mengubah <code>.env</code>, jalankan:</p>
+<pre><code class="language-bash">php artisan optimize:clear
+php artisan migrate
+</code></pre>
+<p>Periksa koneksi dan jumlah akun:</p>
+<pre><code class="language-bash">php artisan migrate:status
+php artisan tinker --execute=&quot;dump(\App\Models\User::count());&quot;
+</code></pre>
+<p>Jika hasil jumlah akun <code>0</code>, aplikasi tidak dapat menerima login apa pun sampai akun dibuat atau seeder development dijalankan.</p>
 <h2>9. Data Awal dan Akun Demo</h2>
 <p>Seeder standar membuat role dasar dengan username sesuai nama role dan password <code>password</code>, kecuali Developer. Seeder akun vendor operasional juga membuat contoh:</p>
 <table>
@@ -668,6 +774,18 @@ npm run build
 <li>subscription Web Push per perangkat, keamanan endpoint, dan pemetaan penerima berdasarkan role/site/vendor.</li>
 </ul>
 <h2>15. Troubleshooting</h2>
+<h3>Tidak dapat login di lokal</h3>
+<ol>
+<li>Pastikan halaman <code>http://127.0.0.1:8000/login</code> dapat dibuka.</li>
+<li>Periksa <code>APP_URL</code>; untuk lokal gunakan <code>http://127.0.0.1:8000</code>, bukan URL ngrok/production.</li>
+<li>Periksa ejaan <code>DB_DATABASE</code> dan pastikan menunjuk database yang benar.</li>
+<li>Jalankan <code>php artisan migrate:status</code> untuk memastikan skema tersedia.</li>
+<li>Periksa jumlah akun dengan <code>php artisan tinker --execute=&quot;dump(\App\Models\User::count());&quot;</code>.</li>
+<li>Jika database development masih kosong, jalankan <code>php artisan db:seed</code>.</li>
+<li>Bersihkan rate limiter dan cache melalui <code>php artisan optimize:clear</code> jika sudah gagal login berulang kali.</li>
+<li>Pastikan akun memiliki <code>is_active = 1</code>; login hanya menerima username aktif.</li>
+</ol>
+<p><code>DatabaseSeeder</code> memanggil <code>VendorAccountDataSeeder</code> yang membersihkan data operasional dummy dan file privat terkait. Seeder ini hanya boleh dijalankan pada database development yang memang boleh diisi ulang, bukan pada production.</p>
 <h3>Halaman putih setelah deployment</h3>
 <ol>
 <li>Periksa <code>storage/logs/laravel.log</code> dan log web server.</li>
@@ -718,7 +836,7 @@ npm run build
 <ul>
 <li>username/email harus unik;</li>
 <li>password akun baru minimal 8 karakter;</li>
-<li>Driver wajib nomor lambung unik per site;</li>
+<li>Driver wajib memiliki nomor lambung; beberapa akun Driver boleh menggunakan nomor lambung yang sama;</li>
 <li>Vendor wajib dipasangkan ke Master Vendor;</li>
 <li>Koordinator tidak dapat membuat/mengubah Developer.</li>
 </ul>
@@ -849,8 +967,14 @@ npm run build
 <td>26 Agustus 2026</td>
 <td>Web Push Chrome/mobile berbasis VAPID dan Service Worker, subscription per perangkat, ikon ringan, pemetaan penerima, serta fallback Reverb untuk layar aktif.</td>
 </tr>
+<tr>
+<td>1.3</td>
+<td>26 Agustus 2026</td>
+<td>Sinkronisasi dokumentasi implementasi terbaru, role Admin Purchasing, pemisahan permission Koordinator, konfigurasi database lokal, serta troubleshooting login lokal dan database kosong.</td>
+</tr>
 </tbody></table>
 <hr>
 <p><strong>Pemilik proses:</strong> SCM &amp; FAW<br><strong>Dukungan aplikasi:</strong> ICT<br><strong>Identitas:</strong> PT Putra Perkasa Abadi — Site Borneo Indobara</p>
 
-</body></html>
+</body>
+</html>

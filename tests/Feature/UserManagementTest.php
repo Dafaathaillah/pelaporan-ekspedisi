@@ -149,4 +149,29 @@ class UserManagementTest extends TestCase
 
         $this->assertSame($permissions, User::where('username', 'coordinator.lengkap')->firstOrFail()->permissions);
     }
+
+    public function test_multiple_driver_accounts_can_share_the_same_hull_number(): void
+    {
+        $coordinator = User::factory()->create([
+            'role' => UserRole::COORDINATOR,
+            'permissions' => ['users.manage'],
+        ]);
+
+        foreach (['driver.8001.a', 'driver.8001.b', 'driver.8001.c'] as $index => $username) {
+            $this->actingAs($coordinator)->post('/coordinator/users', [
+                'name' => 'Driver Lambung 8001 '.($index + 1),
+                'username' => $username,
+                'email' => null,
+                'password' => 'password123',
+                'role' => 'driver',
+                'vendor_company_id' => null,
+                'hull_number' => '8001',
+                'site' => 'BIB',
+                'is_active' => true,
+                'permissions' => [],
+            ])->assertSessionHasNoErrors()->assertSessionHas('success');
+        }
+
+        $this->assertSame(3, User::where('site', 'BIB')->where('hull_number', '8001')->count());
+    }
 }

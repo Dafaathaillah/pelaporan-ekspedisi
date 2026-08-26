@@ -582,7 +582,8 @@ const save = () => {
                             ><small
                                 class="mt-1 block font-normal text-slate-500"
                                 >Nomor ini tampil pada aktivitas escort dan
-                                monitoring koordinator.</small
+                                monitoring koordinator. Satu nomor lambung
+                                dapat digunakan oleh beberapa akun driver.</small
                             ></label
                         >
                     </div>
