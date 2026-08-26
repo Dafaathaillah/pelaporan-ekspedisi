@@ -2,7 +2,7 @@
 
 **PT Putra Perkasa Abadi — Site Borneo Indobara (BIB)**  
 **Kolaborasi SCM · FAW · ICT**  
-Versi dokumentasi: 1.1 — 25 Agustus 2026
+Versi dokumentasi: 1.2 — 26 Agustus 2026
 
 ---
 
@@ -368,6 +368,39 @@ VITE_REVERB_SCHEME="${REVERB_SCHEME}"
 
 Sesudah mengubah variabel `VITE_*`, wajib menjalankan `npm run build` karena nilainya ditanam ke aset frontend.
 
+### 7.5 Web Push Chrome dan Mobile
+
+Web Push melengkapi Reverb untuk kondisi tab berada di background atau aplikasi telah ditutup:
+
+```text
+Laravel business action
+  ├─ Reverb → Laravel Echo → refresh/toast saat halaman aktif
+  └─ Web Push (VAPID) → browser push service → Service Worker → notifikasi Chrome/mobile
+```
+
+Subscription disimpan per akun dan per perangkat pada tabel `push_subscriptions`. Setelah login, pengguna menekan **Aktifkan Notifikasi Chrome** dan menyetujui izin browser. Saat halaman sedang terlihat, Service Worker tidak menampilkan notifikasi OS agar tidak ganda dengan toast Reverb. Saat tab tersembunyi atau ditutup, notifikasi persisten ditampilkan dan dapat membuka aplikasi melalui `/dashboard` sesuai role.
+
+Event Web Push mencakup Request Ekspedisi, perubahan PR/PO, pengajuan dan status Vendor, permintaan Surat Sehat beserta alasan, Planning Escort, kedatangan Ekspedisi, dan perubahan status Escort. Penerima dibatasi berdasarkan role, site, perusahaan Vendor, izin modul, status akun aktif, dan subscription perangkat.
+
+Konfigurasi production:
+
+```env
+VAPID_SUBJECT="https://ekspedisi.ppabib.com"
+VAPID_PUBLIC_KEY="isi-public-key"
+VAPID_PRIVATE_KEY="isi-private-key-rahasia"
+```
+
+Generate key satu kali dengan `php artisan webpush:vapid`. Jika OpenSSL Windows tidak dapat membuat EC key, gunakan `npx web-push generate-vapid-keys --json`, lalu simpan hasilnya ke secret production. **Jangan mengganti VAPID key** setelah pengguna berlangganan karena subscription lama tidak akan dapat menerima push.
+
+Persyaratan operasional:
+
+- domain HTTPS valid; localhost hanya untuk pengembangan;
+- `php artisan migrate --force` sudah menjalankan migration `push_subscriptions`;
+- queue worker selalu hidup karena pengiriman berjalan asynchronous;
+- Service Worker `/service-worker.js` dan manifest tidak diblokir web server/CDN;
+- Chrome Android mendukung notifikasi browser; pada iPhone/iPad, pengguna perlu memasang web sebagai Home Screen dan menggunakan iOS/iPadOS yang mendukung Web Push;
+- pengguna harus memberikan izin pada setiap browser/perangkat yang ingin menerima notifikasi.
+
 ## 8. Instalasi Development
 
 Persyaratan: PHP 8.2+, Composer, Node.js 20+, npm, ekstensi PHP sesuai Laravel, dan database.
@@ -530,13 +563,13 @@ npm run build
 
 Jalankan `optimize:clear` **sebelum** test. Jangan menjalankan test setelah `config:cache` production tanpa membersihkan cache terlebih dahulu karena konfigurasi session/CSRF production dapat menyebabkan respons 419 palsu pada test HTTP.
 
-Hasil verifikasi versi 1.1 pada 25 Agustus 2026:
+Hasil verifikasi versi 1.2 pada 26 Agustus 2026:
 
-- 61 test lulus;
-- 490 assertions lulus;
+- 64 test lulus;
+- 503 assertions lulus;
 - Laravel Pint lulus tanpa pelanggaran format;
-- Vite production build berhasil (819 modul);
-- seluruh 23 migration berstatus `Ran`;
+- Vite production build berhasil (821 modul);
+- seluruh 27 migration berstatus `Ran`;
 - route, configuration, dan Blade cache berhasil dibuat setelah build.
 - broadcast nyata ke Reverb berhasil (`REVERB_BROADCAST_OK`), queue worker aktif, tanpa failed/pending job.
 
@@ -553,6 +586,7 @@ Cakupan pengujian yang tersedia mencakup:
 - escort eksklusif saat claim, pemulai/penutup berbeda, foto close, dan GPS ≤5 meter;
 - penilaian tensi berdasarkan tingkat terberat;
 - metadata SEO dan sitemap publik.
+- subscription Web Push per perangkat, keamanan endpoint, dan pemetaan penerima berdasarkan role/site/vendor.
 
 ## 15. Troubleshooting
 
@@ -573,6 +607,17 @@ Cakupan pengujian yang tersedia mencakup:
 5. Pastikan konfigurasi `VITE_REVERB_*` sudah di-build ulang.
 6. Pastikan route `/broadcasting/auth` tidak 401/403.
 7. Jalankan `php scripts/verify-reverb.php` sesuai lingkungan.
+
+### Notifikasi Chrome tidak masuk ketika web ditutup
+
+1. Login lalu tekan **Aktifkan Notifikasi Chrome** dan pastikan notifikasi uji diterima.
+2. Pastikan izin Notifications untuk domain bernilai **Allow**, bukan Block.
+3. Pastikan tabel `push_subscriptions` berisi endpoint untuk akun dan perangkat tersebut.
+4. Pastikan `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, dan `VAPID_SUBJECT` tersedia pada proses queue worker.
+5. Restart worker setelah konfigurasi berubah: `php artisan queue:restart`.
+6. Pastikan worker memproses queue `default` dan tidak ada data pada `failed_jobs`.
+7. Periksa log Laravel; kegagalan Web Push dicatat tanpa membatalkan transaksi bisnis utama.
+8. Pada Android, pastikan notifikasi Chrome tidak dimatikan oleh sistem atau battery optimization.
 
 ### Kamera/GPS tidak bekerja
 
@@ -660,6 +705,7 @@ Cakupan pengujian yang tersedia mencakup:
 |---|---|---|
 | 1.0 | 25 Agustus 2026 | Dokumentasi awal seluruh modul, role, deployment, Reverb, keamanan, dan operasional. |
 | 1.1 | 25 Agustus 2026 | Request Ekspedisi dan PR/PO, planning oleh Ekspedisi, sinkronisasi Vendor/Koordinator, escort dengan driver mulai/close berbeda, alasan wajib Surat Sehat, serta hasil quality gate terbaru. |
+| 1.2 | 26 Agustus 2026 | Web Push Chrome/mobile berbasis VAPID dan Service Worker, subscription per perangkat, ikon ringan, pemetaan penerima, serta fallback Reverb untuk layar aktif. |
 
 ---
 

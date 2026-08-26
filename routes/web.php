@@ -8,6 +8,7 @@ use App\Http\Controllers\ExpeditionPlanningController;
 use App\Http\Controllers\ExpeditionRequestController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\VendorCompanyController;
 use App\Http\Controllers\VendorController;
@@ -24,6 +25,10 @@ Route::get('/sitemap.xml', function () {
     return response($xml, 200)->header('Content-Type', 'application/xml; charset=UTF-8');
 })->name('sitemap');
 Route::middleware('auth')->group(function () {
+    Route::get('/push/config', [PushSubscriptionController::class, 'config'])->name('push.config');
+    Route::post('/push/subscriptions', [PushSubscriptionController::class, 'store'])->name('push.subscriptions.store');
+    Route::delete('/push/subscriptions', [PushSubscriptionController::class, 'destroy'])->name('push.subscriptions.destroy');
+    Route::post('/push/test', [PushSubscriptionController::class, 'test'])->name('push.test');
     Route::get('/dashboard', fn () => redirect(request()->user()->homePath()))->name('dashboard');
     Route::middleware(['role:expedition', 'permission:expedition.report'])->prefix('expedition')->group(function () {
         Route::get('/', [ExpeditionController::class, 'index'])->name('expedition.index');

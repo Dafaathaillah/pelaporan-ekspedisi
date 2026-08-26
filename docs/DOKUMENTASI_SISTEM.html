@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="id">
 <head>
 <meta charset="utf-8">
@@ -37,7 +37,7 @@ strong { color: #111a2d; }
 </head>
 <body>
 <h1>Dokumentasi Sistem Pelaporan Ekspedisi &amp; Pengajuan Dokumen Vendor</h1>
-<p><strong>PT Putra Perkasa Abadi — Site Borneo Indobara (BIB)</strong><br><strong>Kolaborasi SCM · FAW · ICT</strong><br>Versi dokumentasi: 1.1 — 25 Agustus 2026</p>
+<p><strong>PT Putra Perkasa Abadi — Site Borneo Indobara (BIB)</strong><br><strong>Kolaborasi SCM · FAW · ICT</strong><br>Versi dokumentasi: 1.2 — 26 Agustus 2026</p>
 <hr>
 <h2>1. Ringkasan Eksekutif</h2>
 <p>Sistem ini merupakan portal operasional terintegrasi untuk:</p>
@@ -470,6 +470,29 @@ VITE_REVERB_PORT=&quot;${REVERB_PORT}&quot;
 VITE_REVERB_SCHEME=&quot;${REVERB_SCHEME}&quot;
 </code></pre>
 <p>Sesudah mengubah variabel <code>VITE_*</code>, wajib menjalankan <code>npm run build</code> karena nilainya ditanam ke aset frontend.</p>
+<h3>7.5 Web Push Chrome dan Mobile</h3>
+<p>Web Push melengkapi Reverb untuk kondisi tab berada di background atau aplikasi telah ditutup:</p>
+<pre><code class="language-text">Laravel business action
+  ├─ Reverb → Laravel Echo → refresh/toast saat halaman aktif
+  └─ Web Push (VAPID) → browser push service → Service Worker → notifikasi Chrome/mobile
+</code></pre>
+<p>Subscription disimpan per akun dan per perangkat pada tabel <code>push_subscriptions</code>. Setelah login, pengguna menekan <strong>Aktifkan Notifikasi Chrome</strong> dan menyetujui izin browser. Saat halaman sedang terlihat, Service Worker tidak menampilkan notifikasi OS agar tidak ganda dengan toast Reverb. Saat tab tersembunyi atau ditutup, notifikasi persisten ditampilkan dan dapat membuka aplikasi melalui <code>/dashboard</code> sesuai role.</p>
+<p>Event Web Push mencakup Request Ekspedisi, perubahan PR/PO, pengajuan dan status Vendor, permintaan Surat Sehat beserta alasan, Planning Escort, kedatangan Ekspedisi, dan perubahan status Escort. Penerima dibatasi berdasarkan role, site, perusahaan Vendor, izin modul, status akun aktif, dan subscription perangkat.</p>
+<p>Konfigurasi production:</p>
+<pre><code class="language-env">VAPID_SUBJECT=&quot;https://ekspedisi.ppabib.com&quot;
+VAPID_PUBLIC_KEY=&quot;isi-public-key&quot;
+VAPID_PRIVATE_KEY=&quot;isi-private-key-rahasia&quot;
+</code></pre>
+<p>Generate key satu kali dengan <code>php artisan webpush:vapid</code>. Jika OpenSSL Windows tidak dapat membuat EC key, gunakan <code>npx web-push generate-vapid-keys --json</code>, lalu simpan hasilnya ke secret production. <strong>Jangan mengganti VAPID key</strong> setelah pengguna berlangganan karena subscription lama tidak akan dapat menerima push.</p>
+<p>Persyaratan operasional:</p>
+<ul>
+<li>domain HTTPS valid; localhost hanya untuk pengembangan;</li>
+<li><code>php artisan migrate --force</code> sudah menjalankan migration <code>push_subscriptions</code>;</li>
+<li>queue worker selalu hidup karena pengiriman berjalan asynchronous;</li>
+<li>Service Worker <code>/service-worker.js</code> dan manifest tidak diblokir web server/CDN;</li>
+<li>Chrome Android mendukung notifikasi browser; pada iPhone/iPad, pengguna perlu memasang web sebagai Home Screen dan menggunakan iOS/iPadOS yang mendukung Web Push;</li>
+<li>pengguna harus memberikan izin pada setiap browser/perangkat yang ingin menerima notifikasi.</li>
+</ul>
 <h2>8. Instalasi Development</h2>
 <p>Persyaratan: PHP 8.2+, Composer, Node.js 20+, npm, ekstensi PHP sesuai Laravel, dan database.</p>
 <pre><code class="language-bash">composer install
@@ -619,13 +642,13 @@ npm run build
 ./vendor/bin/pint --test
 </code></pre>
 <p>Jalankan <code>optimize:clear</code> <strong>sebelum</strong> test. Jangan menjalankan test setelah <code>config:cache</code> production tanpa membersihkan cache terlebih dahulu karena konfigurasi session/CSRF production dapat menyebabkan respons 419 palsu pada test HTTP.</p>
-<p>Hasil verifikasi versi 1.1 pada 25 Agustus 2026:</p>
+<p>Hasil verifikasi versi 1.2 pada 26 Agustus 2026:</p>
 <ul>
-<li>61 test lulus;</li>
-<li>490 assertions lulus;</li>
+<li>64 test lulus;</li>
+<li>503 assertions lulus;</li>
 <li>Laravel Pint lulus tanpa pelanggaran format;</li>
-<li>Vite production build berhasil (819 modul);</li>
-<li>seluruh 23 migration berstatus <code>Ran</code>;</li>
+<li>Vite production build berhasil (821 modul);</li>
+<li>seluruh 27 migration berstatus <code>Ran</code>;</li>
 <li>route, configuration, dan Blade cache berhasil dibuat setelah build.</li>
 <li>broadcast nyata ke Reverb berhasil (<code>REVERB_BROADCAST_OK</code>), queue worker aktif, tanpa failed/pending job.</li>
 </ul>
@@ -642,6 +665,7 @@ npm run build
 <li>escort eksklusif saat claim, pemulai/penutup berbeda, foto close, dan GPS ≤5 meter;</li>
 <li>penilaian tensi berdasarkan tingkat terberat;</li>
 <li>metadata SEO dan sitemap publik.</li>
+<li>subscription Web Push per perangkat, keamanan endpoint, dan pemetaan penerima berdasarkan role/site/vendor.</li>
 </ul>
 <h2>15. Troubleshooting</h2>
 <h3>Halaman putih setelah deployment</h3>
@@ -661,6 +685,17 @@ npm run build
 <li>Pastikan konfigurasi <code>VITE_REVERB_*</code> sudah di-build ulang.</li>
 <li>Pastikan route <code>/broadcasting/auth</code> tidak 401/403.</li>
 <li>Jalankan <code>php scripts/verify-reverb.php</code> sesuai lingkungan.</li>
+</ol>
+<h3>Notifikasi Chrome tidak masuk ketika web ditutup</h3>
+<ol>
+<li>Login lalu tekan <strong>Aktifkan Notifikasi Chrome</strong> dan pastikan notifikasi uji diterima.</li>
+<li>Pastikan izin Notifications untuk domain bernilai <strong>Allow</strong>, bukan Block.</li>
+<li>Pastikan tabel <code>push_subscriptions</code> berisi endpoint untuk akun dan perangkat tersebut.</li>
+<li>Pastikan <code>VAPID_PUBLIC_KEY</code>, <code>VAPID_PRIVATE_KEY</code>, dan <code>VAPID_SUBJECT</code> tersedia pada proses queue worker.</li>
+<li>Restart worker setelah konfigurasi berubah: <code>php artisan queue:restart</code>.</li>
+<li>Pastikan worker memproses queue <code>default</code> dan tidak ada data pada <code>failed_jobs</code>.</li>
+<li>Periksa log Laravel; kegagalan Web Push dicatat tanpa membatalkan transaksi bisnis utama.</li>
+<li>Pada Android, pastikan notifikasi Chrome tidak dimatikan oleh sistem atau battery optimization.</li>
 </ol>
 <h3>Kamera/GPS tidak bekerja</h3>
 <ul>
@@ -809,9 +844,13 @@ npm run build
 <td>25 Agustus 2026</td>
 <td>Request Ekspedisi dan PR/PO, planning oleh Ekspedisi, sinkronisasi Vendor/Koordinator, escort dengan driver mulai/close berbeda, alasan wajib Surat Sehat, serta hasil quality gate terbaru.</td>
 </tr>
+<tr>
+<td>1.2</td>
+<td>26 Agustus 2026</td>
+<td>Web Push Chrome/mobile berbasis VAPID dan Service Worker, subscription per perangkat, ikon ringan, pemetaan penerima, serta fallback Reverb untuk layar aktif.</td>
+</tr>
 </tbody></table>
 <hr>
 <p><strong>Pemilik proses:</strong> SCM &amp; FAW<br><strong>Dukungan aplikasi:</strong> ICT<br><strong>Identitas:</strong> PT Putra Perkasa Abadi — Site Borneo Indobara</p>
 
-</body>
-</html>
+</body></html>

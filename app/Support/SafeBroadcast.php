@@ -19,5 +19,7 @@ class SafeBroadcast
                 'exception' => $exception::class,
             ]);
         }
+
+        app(OperationalPushDispatcher::class)->dispatch($event);
     }
 }
