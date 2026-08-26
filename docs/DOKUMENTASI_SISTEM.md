@@ -16,7 +16,7 @@ Sistem ini merupakan portal operasional terintegrasi untuk:
 - mengatur masa berlaku, release, revisi, penolakan, penutupan, dan pengajuan ulang;
 - menyusun Planning Escort satu bulan ke depan dengan drag-and-drop;
 - menjalankan escort kendaraan ekspedisi oleh Driver Escort;
-- menyimpan bukti foto dan koordinat maksimal ±5 meter;
+- menyimpan bukti foto dan koordinat maksimal ±100 meter serta nilai presisi aktual;
 - menampilkan pembaruan dan notifikasi secara realtime melalui Laravel Reverb;
 - mengelola pengguna, hak akses, serta master vendor.
 - mengelola Request Ekspedisi, nomor PR/PO, dan relasinya dengan Izin Lintas;
@@ -158,7 +158,7 @@ Super admin operasional pada site yang sama. Permission dapat dibatasi per modul
 - memilih kendaraan yang akan diproses;
 - satu kendaraan hanya dapat diambil satu driver (database row locking);
 - akun Driver wajib mempunyai nomor lambung; satu sarana/nomor lambung dapat digunakan beberapa akun Driver;
-- menutup escort tanpa upload foto, dengan koordinat akurat maksimal ±5 meter.
+- menutup escort tanpa upload foto, dengan koordinat maksimal ±100 meter dan presisi aktual yang tetap tercatat.
 - driver yang memulai dan driver yang menutup escort dapat berbeda; keduanya disimpan sebagai audit operasional.
 
 ### 4.6 Admin Purchasing
@@ -178,7 +178,7 @@ Super admin operasional pada site yang sama. Permission dapat dibatasi per modul
 2. Isi driver, nomor HP, nomor polisi, vendor/pengirim, tujuan, dan jenis kendaraan.
 3. Isi sistolik dan diastolik. Sistem menilai status kesehatan secara realtime.
 4. Ambil foto kedatangan dan foto layar alat tensi melalui kamera.
-5. Untuk setiap foto, browser meminta GPS hingga akurasi maksimal ±5 meter.
+5. Untuk setiap foto, browser meminta GPS hingga akurasi maksimal ±100 meter agar proses lebih cepat; nilai presisi aktual tetap disimpan.
 6. Sistem melakukan reverse geocoding untuk menampilkan nama area.
 7. Kirim laporan. Jam kedatangan dicatat server.
 8. Koordinator dan Driver menerima event realtime.
@@ -189,7 +189,7 @@ Validasi penting:
 - diastolik 30–150 mmHg dan harus lebih kecil dari sistolik;
 - foto JPG/JPEG/PNG/WebP maksimal 8 MB;
 - koordinat latitude/longitude valid;
-- akurasi GPS maksimal 5 meter.
+- akurasi GPS maksimal 100 meter; semakin kecil nilainya semakin presisi.
 
 ### 5.2 Penilaian Tensi Otomatis
 
@@ -313,7 +313,7 @@ WAITING → PROCESS → CLOSED
 3. Status menjadi `PROCESS`; tanggal/jam mulai serta identitas driver pemulai/nomor lambung tersimpan.
 4. Seluruh driver berizin pada site dapat melihat escort aktif. Driver yang menutup boleh berbeda dari driver yang memulai.
 5. Driver penutup membuka konfirmasi close di lokasi tujuan; sistem langsung mengambil koordinat tanpa meminta upload foto.
-6. GPS wajib mencapai akurasi maksimal ±5 meter.
+6. GPS wajib mencapai akurasi maksimal ±100 meter dan sistem menampilkan nilai presisi aktual.
 7. Status menjadi `CLOSED`; identitas driver penutup, jam selesai, koordinat, akurasi, dan nama lokasi tersimpan.
 8. Penutupan memakai database row locking sehingga dua driver tidak dapat menutup escort yang sama secara bersamaan.
 9. Tabel Koordinator menampilkan **Driver Mulai Escort** dan **Driver Close Escort**, lalu diperbarui realtime tanpa mengembalikan pengguna ke atas halaman.
@@ -658,7 +658,7 @@ Cakupan pengujian yang tersedia mencakup:
 - Request Ekspedisi, pembaruan PR/PO, dan relasi Izin Lintas;
 - planning Izin Lintas dari akun Ekspedisi serta sinkronisasi ke Vendor/Koordinator;
 - notifikasi belum dibuka;
-- escort eksklusif saat claim, pemulai/penutup berbeda, close tanpa foto, dan GPS ≤5 meter;
+- escort eksklusif saat claim, pemulai/penutup berbeda, close tanpa foto, dan GPS ≤100 meter;
 - penilaian tensi berdasarkan tingkat terberat;
 - metadata SEO dan sitemap publik.
 - subscription Web Push per perangkat, keamanan endpoint, dan pemetaan penerima berdasarkan role/site/vendor.
@@ -713,7 +713,7 @@ Cakupan pengujian yang tersedia mencakup:
 - izinkan Camera dan Precise Location pada browser;
 - matikan mode hemat lokasi;
 - ambil foto di area terbuka;
-- tunggu hingga akurasi ≤5 meter;
+- tunggu hingga akurasi ≤100 meter; nilai aktual tetap ditampilkan dan disimpan;
 - jangan memilih gambar lama jika bukti wajib diambil langsung.
 
 ### DataTable tampak lama/tidak berubah

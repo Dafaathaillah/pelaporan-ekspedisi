@@ -1,6 +1,6 @@
-export const MAX_PHOTO_LOCATION_ACCURACY = 5;
+export const MAX_PHOTO_LOCATION_ACCURACY = 100;
 
-export const getPreciseLocation = ({ timeout = 45000 } = {}) =>
+export const getPreciseLocation = ({ timeout = 15000 } = {}) =>
     new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
             reject(new Error("GPS tidak didukung browser ini."));

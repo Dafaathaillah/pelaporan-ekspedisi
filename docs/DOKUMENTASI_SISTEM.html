@@ -49,7 +49,7 @@ strong { color: #111a2d; }
 <li>mengatur masa berlaku, release, revisi, penolakan, penutupan, dan pengajuan ulang;</li>
 <li>menyusun Planning Escort satu bulan ke depan dengan drag-and-drop;</li>
 <li>menjalankan escort kendaraan ekspedisi oleh Driver Escort;</li>
-<li>menyimpan bukti foto dan koordinat maksimal ±5 meter;</li>
+<li>menyimpan bukti foto dan koordinat maksimal ±100 meter serta nilai presisi aktual;</li>
 <li>menampilkan pembaruan dan notifikasi secara realtime melalui Laravel Reverb;</li>
 <li>mengelola pengguna, hak akses, serta master vendor.</li>
 <li>mengelola Request Ekspedisi, nomor PR/PO, dan relasinya dengan Izin Lintas;</li>
@@ -276,7 +276,7 @@ User ──&lt; PushSubscription
 <li>memilih kendaraan yang akan diproses;</li>
 <li>satu kendaraan hanya dapat diambil satu driver (database row locking);</li>
 <li>akun Driver wajib mempunyai nomor lambung; satu sarana/nomor lambung dapat digunakan beberapa akun Driver;</li>
-<li>menutup escort tanpa upload foto, dengan koordinat akurat maksimal ±5 meter.</li>
+<li>menutup escort tanpa upload foto, dengan koordinat maksimal ±100 meter dan presisi aktual yang tetap tercatat.</li>
 <li>driver yang memulai dan driver yang menutup escort dapat berbeda; keduanya disimpan sebagai audit operasional.</li>
 </ul>
 <h3>4.6 Admin Purchasing</h3>
@@ -295,7 +295,7 @@ User ──&lt; PushSubscription
 <li>Isi driver, nomor HP, nomor polisi, vendor/pengirim, tujuan, dan jenis kendaraan.</li>
 <li>Isi sistolik dan diastolik. Sistem menilai status kesehatan secara realtime.</li>
 <li>Ambil foto kedatangan dan foto layar alat tensi melalui kamera.</li>
-<li>Untuk setiap foto, browser meminta GPS hingga akurasi maksimal ±5 meter.</li>
+<li>Untuk setiap foto, browser meminta GPS hingga akurasi maksimal ±100 meter agar proses lebih cepat; nilai presisi aktual tetap disimpan.</li>
 <li>Sistem melakukan reverse geocoding untuk menampilkan nama area.</li>
 <li>Kirim laporan. Jam kedatangan dicatat server.</li>
 <li>Koordinator dan Driver menerima event realtime.</li>
@@ -306,7 +306,7 @@ User ──&lt; PushSubscription
 <li>diastolik 30–150 mmHg dan harus lebih kecil dari sistolik;</li>
 <li>foto JPG/JPEG/PNG/WebP maksimal 8 MB;</li>
 <li>koordinat latitude/longitude valid;</li>
-<li>akurasi GPS maksimal 5 meter.</li>
+<li>akurasi GPS maksimal 100 meter; semakin kecil nilainya semakin presisi.</li>
 </ul>
 <h3>5.2 Penilaian Tensi Otomatis</h3>
 <p>Sistem selalu menggunakan hasil yang paling berat dari sistolik atau diastolik.</p>
@@ -444,7 +444,7 @@ RELEASED  → CLOSED atau kedaluwarsa/pengajuan ulang
 <li>Status menjadi <code>PROCESS</code>; tanggal/jam mulai serta identitas driver pemulai/nomor lambung tersimpan.</li>
 <li>Seluruh driver berizin pada site dapat melihat escort aktif. Driver yang menutup boleh berbeda dari driver yang memulai.</li>
 <li>Driver penutup membuka konfirmasi close di lokasi tujuan; sistem langsung mengambil koordinat tanpa meminta upload foto.</li>
-<li>GPS wajib mencapai akurasi maksimal ±5 meter.</li>
+<li>GPS wajib mencapai akurasi maksimal ±100 meter dan sistem menampilkan nilai presisi aktual.</li>
 <li>Status menjadi <code>CLOSED</code>; identitas driver penutup, jam selesai, koordinat, akurasi, dan nama lokasi tersimpan.</li>
 <li>Penutupan memakai database row locking sehingga dua driver tidak dapat menutup escort yang sama secara bersamaan.</li>
 <li>Tabel Koordinator menampilkan <strong>Driver Mulai Escort</strong> dan <strong>Driver Close Escort</strong>, lalu diperbarui realtime tanpa mengembalikan pengguna ke atas halaman.</li>
@@ -768,7 +768,7 @@ npm run build
 <li>Request Ekspedisi, pembaruan PR/PO, dan relasi Izin Lintas;</li>
 <li>planning Izin Lintas dari akun Ekspedisi serta sinkronisasi ke Vendor/Koordinator;</li>
 <li>notifikasi belum dibuka;</li>
-<li>escort eksklusif saat claim, pemulai/penutup berbeda, close tanpa foto, dan GPS ≤5 meter;</li>
+<li>escort eksklusif saat claim, pemulai/penutup berbeda, close tanpa foto, dan GPS ≤100 meter;</li>
 <li>penilaian tensi berdasarkan tingkat terberat;</li>
 <li>metadata SEO dan sitemap publik.</li>
 <li>subscription Web Push per perangkat, keamanan endpoint, dan pemetaan penerima berdasarkan role/site/vendor.</li>
@@ -821,7 +821,7 @@ npm run build
 <li>izinkan Camera dan Precise Location pada browser;</li>
 <li>matikan mode hemat lokasi;</li>
 <li>ambil foto di area terbuka;</li>
-<li>tunggu hingga akurasi ≤5 meter;</li>
+<li>tunggu hingga akurasi ≤100 meter; nilai aktual tetap ditampilkan dan disimpan;</li>
 <li>jangan memilih gambar lama jika bukti wajib diambil langsung.</li>
 </ul>
 <h3>DataTable tampak lama/tidak berubah</h3>

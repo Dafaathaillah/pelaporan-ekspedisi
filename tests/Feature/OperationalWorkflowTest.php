@@ -31,10 +31,10 @@ class OperationalWorkflowTest extends TestCase
             'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80,
             'arrival_photo' => UploadedFile::fake()->image('kedatangan.jpg'),
             'blood_pressure_photo' => UploadedFile::fake()->image('tensi.jpg'),
-            'arrival_latitude' => -3.3212345, 'arrival_longitude' => 115.6123456, 'arrival_location_accuracy' => 4, 'arrival_location_name' => 'Site BIB, Kalimantan Selatan', 'arrival_photo_captured_at' => now()->toISOString(),
-            'blood_pressure_latitude' => -3.3212345, 'blood_pressure_longitude' => 115.6123456, 'blood_pressure_location_accuracy' => 3, 'blood_pressure_location_name' => 'Site BIB, Kalimantan Selatan', 'blood_pressure_photo_captured_at' => now()->toISOString(),
+            'arrival_latitude' => -3.3212345, 'arrival_longitude' => 115.6123456, 'arrival_location_accuracy' => 87, 'arrival_location_name' => 'Site BIB, Kalimantan Selatan', 'arrival_photo_captured_at' => now()->toISOString(),
+            'blood_pressure_latitude' => -3.3212345, 'blood_pressure_longitude' => 115.6123456, 'blood_pressure_location_accuracy' => 99, 'blood_pressure_location_name' => 'Site BIB, Kalimantan Selatan', 'blood_pressure_photo_captured_at' => now()->toISOString(),
         ])->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('expedition_reports', ['vehicle_plate' => 'DA 1234 XX', 'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80, 'health_status' => 'FIT_WITH_NOTE', 'health_status_label' => 'Fit dengan Catatan Medis']);
+        $this->assertDatabaseHas('expedition_reports', ['vehicle_plate' => 'DA 1234 XX', 'arrival_location_accuracy' => 87, 'blood_pressure_location_accuracy' => 99, 'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80, 'health_status' => 'FIT_WITH_NOTE', 'health_status_label' => 'Fit dengan Catatan Medis']);
 
         ExpeditionReport::create(['report_number' => 'EXP-ALPHA', 'expedition_company' => 'Alpha Logistik', 'driver_name' => 'Andi', 'driver_phone' => '0800', 'vehicle_plate' => 'DA 1 AA', 'vehicle_type' => 'Pickup', 'sender_vendor' => 'Vendor Beta', 'destination' => 'Office', 'arrived_at' => now()->subDay(), 'created_by' => $expedition->id, 'site' => 'BIB']);
         $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR, 'permissions' => ['coordinator.expedition']]);

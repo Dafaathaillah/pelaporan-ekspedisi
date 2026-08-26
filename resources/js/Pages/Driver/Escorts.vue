@@ -297,7 +297,8 @@ const submitClose = () =>
                 </h2>
                 <p class="mt-2 text-sm text-slate-500">
                     Pastikan Anda berada di lokasi tujuan. Escort hanya dapat
-                    ditutup ketika akurasi GPS maksimal ±5 meter.
+                    ditutup ketika akurasi GPS maksimal ±100 meter. Presisi
+                    aktual tetap dicatat oleh sistem.
                 </p>
                 <div
                     class="mt-4 grid gap-2 rounded-xl bg-slate-50 p-3 text-xs sm:grid-cols-2"
@@ -320,8 +321,7 @@ const submitClose = () =>
                     v-if="locating"
                     class="mt-6 rounded-xl bg-blue-50 p-4 text-sm text-blue-700"
                 >
-                    Mencari GPS presisi maksimal ±5 meter. Tetap di area
-                    terbuka...
+                    Mencari lokasi dengan akurasi maksimal ±100 meter...
                 </div>
                 <div
                     v-else-if="form.latitude"

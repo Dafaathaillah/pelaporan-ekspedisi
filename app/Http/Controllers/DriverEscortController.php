@@ -47,11 +47,11 @@ class DriverEscortController extends Controller
         $data = $request->validate([
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
-            'accuracy' => ['required', 'numeric', 'min:0', 'max:5'],
+            'accuracy' => ['required', 'numeric', 'min:0', 'max:100'],
             'location_name' => ['nullable', 'string', 'max:1000'],
             'captured_at' => ['required', 'date'],
         ], [
-            'accuracy.max' => 'Akurasi lokasi close escort wajib maksimal ±5 meter. Aktifkan GPS dan coba kembali di area terbuka.',
+            'accuracy.max' => 'Akurasi lokasi close escort wajib di bawah atau sama dengan ±100 meter. Aktifkan GPS dan coba kembali.',
         ]);
         DB::transaction(function () use ($request, $report, $data) {
             $item = ExpeditionReport::lockForUpdate()->findOrFail($report->id);

@@ -409,8 +409,7 @@ onBeforeUnmount(clearPreviews);
                         v-if="locating.arrival"
                         class="mt-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700"
                     >
-                        Mencari GPS presisi maksimal ±5 meter. Tetap di area
-                        terbuka...
+                        Mencari lokasi dengan akurasi maksimal ±100 meter...
                     </div>
                     <div
                         v-else-if="form.arrival_latitude"
@@ -501,8 +500,7 @@ onBeforeUnmount(clearPreviews);
                         v-if="locating.pressure"
                         class="mt-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700"
                     >
-                        Mencari GPS presisi maksimal ±5 meter. Tetap di area
-                        terbuka...
+                        Mencari lokasi dengan akurasi maksimal ±100 meter...
                     </div>
                     <div
                         v-else-if="form.blood_pressure_latitude"

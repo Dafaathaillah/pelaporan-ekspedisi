@@ -69,7 +69,7 @@ class DriverEscortWorkflowTest extends TestCase
         $this->assertSame('8010', $report->fresh()->escortCloser->hull_number);
     }
 
-    public function test_close_escort_rejects_location_accuracy_above_five_meters(): void
+    public function test_close_escort_accepts_accuracy_up_to_one_hundred_meters(): void
     {
         $expedition = User::factory()->create(['role' => UserRole::EXPEDITION]);
         $driver = User::factory()->create(['role' => UserRole::DRIVER, 'hull_number' => '8001', 'permissions' => ['driver.escort']]);
@@ -79,7 +79,26 @@ class DriverEscortWorkflowTest extends TestCase
         $this->actingAs($driver)->post('/driver/escorts/'.$report->id.'/close', [
             'latitude' => -3.5131255,
             'longitude' => 115.6062433,
-            'accuracy' => 6,
+            'accuracy' => 87,
+            'location_name' => 'Site BIB',
+            'captured_at' => now()->toISOString(),
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('CLOSED', $report->fresh()->escort_status);
+        $this->assertSame(87, $report->fresh()->escort_close_location_accuracy);
+    }
+
+    public function test_close_escort_rejects_location_accuracy_above_one_hundred_meters(): void
+    {
+        $expedition = User::factory()->create(['role' => UserRole::EXPEDITION]);
+        $driver = User::factory()->create(['role' => UserRole::DRIVER, 'hull_number' => '8001', 'permissions' => ['driver.escort']]);
+        $report = $this->report($expedition);
+        $this->actingAs($driver)->patch('/driver/escorts/'.$report->id.'/claim')->assertSessionHasNoErrors();
+
+        $this->actingAs($driver)->post('/driver/escorts/'.$report->id.'/close', [
+            'latitude' => -3.5131255,
+            'longitude' => 115.6062433,
+            'accuracy' => 101,
             'location_name' => 'Site BIB',
             'captured_at' => now()->toISOString(),
         ])->assertSessionHasErrors('accuracy');
