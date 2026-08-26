@@ -612,11 +612,19 @@ const healthStatusClass = (status) =>
                             </td>
                             <td>
                                 <div
-                                    v-if="x.arrival_latitude"
+                                    v-if="
+                                        x.arrival_latitude ||
+                                        x.blood_pressure_latitude
+                                    "
                                     class="w-full whitespace-normal rounded-xl border border-slate-100 bg-slate-50/80 p-3"
                                 >
+                                    <div v-if="x.arrival_latitude">
+                                        <span
+                                            class="text-[9px] font-black uppercase tracking-wider text-red-600"
+                                            >Foto Kedatangan</span
+                                        >
                                     <b
-                                        class="block leading-relaxed text-slate-800"
+                                        class="mt-1 block leading-relaxed text-slate-800"
                                         >{{
                                             x.arrival_location_name ||
                                             "Nama daerah tidak tersedia"
@@ -646,6 +654,50 @@ const healthStatusClass = (status) =>
                                         class="mt-2 inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1.5 text-[10px] font-black text-red-600 transition hover:bg-red-600 hover:text-white"
                                         >Buka Maps ↗</a
                                     >
+                                    </div>
+                                    <div
+                                        v-if="x.blood_pressure_latitude"
+                                        class="mt-3 border-t border-slate-200 pt-3"
+                                    >
+                                        <span
+                                            class="text-[9px] font-black uppercase tracking-wider text-red-600"
+                                            >Foto Tensi</span
+                                        >
+                                        <b
+                                            class="mt-1 block leading-relaxed text-slate-800"
+                                            >{{
+                                                x.blood_pressure_location_name ||
+                                                "Nama daerah tidak tersedia"
+                                            }}</b
+                                        >
+                                        <span
+                                            class="mt-1 block font-mono text-[10px] text-slate-500"
+                                            >{{ x.blood_pressure_latitude }},
+                                            {{ x.blood_pressure_longitude }}</span
+                                        >
+                                        <span
+                                            v-if="
+                                                x.blood_pressure_location_accuracy !==
+                                                null
+                                            "
+                                            class="mt-1 block text-[10px] text-slate-400"
+                                            >Akurasi aktual ±{{
+                                                x.blood_pressure_location_accuracy
+                                            }} meter</span
+                                        >
+                                        <a
+                                            :href="
+                                                'https://www.google.com/maps?q=' +
+                                                x.blood_pressure_latitude +
+                                                ',' +
+                                                x.blood_pressure_longitude
+                                            "
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="mt-2 inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1.5 text-[10px] font-black text-red-600 transition hover:bg-red-600 hover:text-white"
+                                            >Buka Maps ↗</a
+                                        >
+                                    </div>
                                 </div>
                                 <span v-else class="text-slate-400">—</span>
                             </td>

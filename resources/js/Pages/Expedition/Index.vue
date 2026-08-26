@@ -578,6 +578,7 @@ onBeforeUnmount(clearPreviews);
                             <th>Kendaraan</th>
                             <th>Tensi</th>
                             <th>Bukti Foto</th>
+                            <th>Akurasi GPS</th>
                             <th>Vendor</th>
                             <th>Tujuan</th>
                         </tr>
@@ -637,6 +638,35 @@ onBeforeUnmount(clearPreviews);
                                         v-if="
                                             !row.arrival_photo_path &&
                                             !row.blood_pressure_photo_path
+                                        "
+                                        >-</span
+                                    >
+                                </div>
+                            </td>
+                            <td>
+                                <div class="min-w-36 space-y-1 text-xs">
+                                    <p v-if="row.arrival_location_accuracy !== null">
+                                        Kedatangan:
+                                        <b>±{{ row.arrival_location_accuracy }} m</b>
+                                    </p>
+                                    <p
+                                        v-if="
+                                            row.blood_pressure_location_accuracy !==
+                                            null
+                                        "
+                                    >
+                                        Tensi:
+                                        <b
+                                            >±{{
+                                                row.blood_pressure_location_accuracy
+                                            }} m</b
+                                        >
+                                    </p>
+                                    <span
+                                        v-if="
+                                            row.arrival_location_accuracy === null &&
+                                            row.blood_pressure_location_accuracy ===
+                                                null
                                         "
                                         >-</span
                                     >

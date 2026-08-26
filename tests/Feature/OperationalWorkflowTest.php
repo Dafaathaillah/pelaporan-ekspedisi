@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\SubmissionStatus;
 use App\Enums\SubmissionType;
 use App\Enums\UserRole;
+use App\Http\Requests\StoreExpeditionReportRequest;
 use App\Models\ExpeditionReport;
 use App\Models\PlanningItem;
 use App\Models\User;
@@ -14,12 +15,32 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class OperationalWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_all_expedition_photo_coordinates_reject_accuracy_above_one_hundred_meters(): void
+    {
+        $payload = [
+            'expedition_company' => 'Ekspedisi GPS', 'driver_name' => 'Driver GPS', 'driver_phone' => '0812',
+            'vehicle_plate' => 'DA 100 GPS', 'vehicle_type' => 'Fuso', 'sender_vendor' => 'Vendor GPS', 'destination' => 'Workshop',
+            'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80,
+            'arrival_photo' => UploadedFile::fake()->image('arrival.jpg'),
+            'blood_pressure_photo' => UploadedFile::fake()->image('pressure.jpg'),
+            'arrival_latitude' => -3.3212345, 'arrival_longitude' => 115.6123456, 'arrival_location_accuracy' => 101, 'arrival_photo_captured_at' => now()->toISOString(),
+            'blood_pressure_latitude' => -3.3212345, 'blood_pressure_longitude' => 115.6123456, 'blood_pressure_location_accuracy' => 101, 'blood_pressure_photo_captured_at' => now()->toISOString(),
+        ];
+
+        $validator = Validator::make($payload, (new StoreExpeditionReportRequest)->rules());
+
+        $this->assertTrue($validator->fails());
+        $this->assertArrayHasKey('arrival_location_accuracy', $validator->errors()->toArray());
+        $this->assertArrayHasKey('blood_pressure_location_accuracy', $validator->errors()->toArray());
+    }
 
     public function test_expedition_action_and_all_monitoring_filters_and_sorting_work(): void
     {
