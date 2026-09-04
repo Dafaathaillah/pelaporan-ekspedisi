@@ -143,13 +143,23 @@ export function connect(user) {
                 if (location.pathname === "/vendor/expedition-requests")
                     reload(["items"]);
             })
+            .listen(".PlanningDeleted", () => {
+                reload(["items", "notificationCounts"]);
+            })
             .listen(".VendorSubmissionStatusChanged", (p) => {
                 notify({
-                    title: "Status pengajuan diperbarui",
+                    title:
+                        p.status === "RELEASED" && p.type === "IJIN_LINTAS"
+                            ? "Ijin Lintas telah Released"
+                            : "Status pengajuan diperbarui",
                     message: `${p.number} · ${p.status_label}`,
-                    href: `/vendor/submissions/${p.id}`,
+                    href:
+                        p.status === "RELEASED" && p.type === "IJIN_LINTAS"
+                            ? "/vendor/planning-lintas"
+                            : `/vendor/submissions/${p.id}`,
                 });
-                if (location.pathname === "/vendor") reload(["submissions"]);
+                if (location.pathname === "/vendor")
+                    reload(["submissions", "notificationCounts"]);
                 else if (location.pathname === "/vendor/expedition-requests")
                     reload(["items"]);
                 else reload(["submission"]);

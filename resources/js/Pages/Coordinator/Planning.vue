@@ -7,6 +7,8 @@ const props = defineProps({
     dates: Array,
     range: Object,
     filters: Object,
+    planningBase: { type: String, default: "/coordinator/planning" },
+    pageRole: { type: String, default: "coordinator" },
 });
 const filter = reactive({
     search: "",
@@ -25,14 +27,14 @@ const normalizedDate = (value) => (value ? String(value).slice(0, 10) : null);
 const byDate = (date) =>
     props.items.filter((x) => normalizedDate(x.planned_date) === date);
 const load = () =>
-    router.get("/coordinator/planning", filter, {
+    router.get(props.planningBase, filter, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
     });
 const move = (id, date) =>
     router.patch(
-        `/coordinator/planning/${id}`,
+        `${props.planningBase}/${id}`,
         { planned_date: date },
         { preserveScroll: true },
     );
@@ -46,6 +48,12 @@ const placeSelected = (date) => {
         selected.value = null;
     }
 };
+const toggleLock = (item) =>
+    router.patch(
+        `${props.planningBase}/${item.id}/lock`,
+        { locked: !item.is_locked },
+        { preserveScroll: true },
+    );
 const dateLabel = (value) =>
     new Date(value + "T00:00:00").toLocaleDateString("id-ID", {
         weekday: "short",
@@ -86,9 +94,9 @@ const sendEvidence = (event) => {
 </script>
 <template>
     <AppShell
-        title="Planning Escort"
+        :title="pageRole === 'purchasing_admin' ? 'Planning Lintas' : 'Planning Escort'"
         subtitle="Susun agenda sarana satu bulan ke depan"
-        eyebrow="Koordinator Sarana · Planning"
+        :eyebrow="pageRole === 'purchasing_admin' ? 'Admin Purchasing · Planning' : 'Koordinator Sarana · Planning'"
     >
         <template #hero-title>Planning Escort Sarana Logistik</template
         ><template #hero-copy
@@ -150,15 +158,14 @@ const sendEvidence = (event) => {
                 <article
                     v-for="item in backlog"
                     :key="item.id"
-                    draggable="true"
-                    class="w-64 shrink-0 cursor-grab rounded-2xl border bg-white p-4 shadow-sm active:cursor-grabbing"
-                    :class="
-                        selected === item.id
-                            ? 'border-red-500 ring-4 ring-red-100'
-                            : 'border-slate-200'
-                    "
-                    @dragstart="dragging = item.id"
-                    @click="selected = selected === item.id ? null : item.id"
+                    :draggable="!item.is_locked"
+                    class="w-64 shrink-0 rounded-2xl border bg-white p-4 shadow-sm"
+                    :class="[
+                        item.is_locked ? 'cursor-not-allowed opacity-75' : 'cursor-grab active:cursor-grabbing',
+                        selected === item.id ? 'border-red-500 ring-4 ring-red-100' : 'border-slate-200',
+                    ]"
+                    @dragstart="!item.is_locked && (dragging = item.id)"
+                    @click="!item.is_locked && (selected = selected === item.id ? null : item.id)"
                 >
                     <b class="block truncate">{{
                         item.submission.vendor_name
@@ -213,17 +220,15 @@ const sendEvidence = (event) => {
                             <article
                                 v-for="item in byDate(date)"
                                 :key="item.id"
-                                draggable="true"
-                                class="min-w-0 cursor-grab overflow-hidden rounded-xl border bg-white p-3 shadow-sm active:cursor-grabbing"
-                                :class="
-                                    selected === item.id
-                                        ? 'border-red-500 ring-2 ring-red-100'
-                                        : 'border-red-100'
-                                "
-                                @dragstart="dragging = item.id"
+                                :draggable="!item.is_locked"
+                                class="min-w-0 overflow-hidden rounded-xl border bg-white p-3 shadow-sm"
+                                :class="[
+                                    item.is_locked ? 'cursor-not-allowed border-amber-200 bg-amber-50/40' : 'cursor-grab border-red-100 active:cursor-grabbing',
+                                    selected === item.id ? 'border-red-500 ring-2 ring-red-100' : '',
+                                ]"
+                                @dragstart="!item.is_locked && (dragging = item.id)"
                                 @click.stop="
-                                    selected =
-                                        selected === item.id ? null : item.id
+                                    !item.is_locked && (selected = selected === item.id ? null : item.id)
                                 "
                             >
                                 <div
@@ -239,6 +244,14 @@ const sendEvidence = (event) => {
                                         }}
                                         unit</span
                                     >
+                                </div>
+                                <div class="mt-2 flex items-center justify-between gap-2">
+                                    <span class="text-[10px] font-black" :class="item.is_locked ? 'text-amber-700' : 'text-emerald-700'">
+                                        {{ item.is_locked ? "Terkunci" : "Dapat dipindah" }}
+                                    </span>
+                                    <button type="button" class="text-[10px] font-black text-red-700" @click.stop="toggleLock(item)">
+                                        {{ item.is_locked ? "Buka Kunci" : "Kunci" }}
+                                    </button>
                                 </div>
                                 <p
                                     class="mt-1 line-clamp-3 max-w-full whitespace-normal break-all text-[10px] leading-4 text-slate-500"
@@ -295,6 +308,7 @@ const sendEvidence = (event) => {
                                     class="mt-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 pt-2"
                                 >
                                     <button
+                                        v-if="pageRole !== 'purchasing_admin'"
                                         type="button"
                                         class="max-w-full whitespace-normal break-words text-left text-[10px] font-black leading-4 text-red-600"
                                         @click.stop="uploadEvidence(item)"
@@ -305,7 +319,7 @@ const sendEvidence = (event) => {
                                                 : "Tambah Evidence"
                                         }}</button
                                     ><a
-                                        v-if="item.evidence_path"
+                                        v-if="pageRole !== 'purchasing_admin' && item.evidence_path"
                                         :href="`/coordinator/planning/${item.id}/evidence`"
                                         target="_blank"
                                         class="text-[10px] font-bold text-emerald-600"

@@ -23,7 +23,7 @@ class VendorSubmissionStatusChanged implements ShouldBroadcast
     {
         return ['id' => $this->submission->id, 'number' => $this->submission->submission_number, 'type' => $this->submission->type->value, 'label' => $this->submission->type->label(), 'vendor' => $this->submission->vendor_name, 'applicant' => $this->submission->applicant_name, 'status' => $this->submission->status->value, 'status_label' => match ($this->submission->status->value) {
             'APPROVED' => 'Disetujui', 'REVISION' => 'Perlu Revisi', 'REJECTED' => 'Ditolak', 'RELEASED' => 'Released', 'CLOSED' => 'Closed', default => 'Diajukan'
-        }, 'note' => $this->submission->coordinator_note];
+        }, 'note' => $this->submission->coordinator_note, 'has_release_document' => filled($this->submission->release_document_path)];
     }
 
     public function broadcastAs(): string

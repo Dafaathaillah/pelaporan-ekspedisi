@@ -12,6 +12,7 @@ use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\VendorCompanyController;
 use App\Http\Controllers\VendorController;
+use App\Http\Controllers\VendorPlanningController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login', 301);
@@ -54,6 +55,9 @@ Route::middleware('auth')->group(function () {
         Route::patch('/vendor-submission/{submission}/status', [CoordinatorController::class, 'updateStatus'])->name('purchasing.vendor-submission.status');
         Route::post('/vendor-submission/{submission}/request-resubmission', [CoordinatorController::class, 'requestResubmission'])->name('purchasing.vendor-submission.request-resubmission');
         Route::patch('/vendor-document/{document}/verify', [CoordinatorController::class, 'verifyDocument'])->name('purchasing.vendor-document.verify');
+        Route::get('/planning', [PlanningController::class, 'index'])->name('purchasing.planning');
+        Route::patch('/planning/{planningItem}', [PlanningController::class, 'move'])->name('purchasing.planning.move');
+        Route::patch('/planning/{planningItem}/lock', [PlanningController::class, 'lock'])->name('purchasing.planning.lock');
     });
     Route::get('/expedition-requests/{expeditionRequest}/evidence', [ExpeditionRequestController::class, 'evidence'])->name('expedition-requests.evidence');
     Route::middleware('role:coordinator')->get('/coordinator/reports/{report}/escort-photo', [DriverEscortController::class, 'photo'])->name('coordinator.expedition.escort-photo');
@@ -64,6 +68,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/submissions', [VendorController::class, 'store'])->name('vendor.store');
         Route::get('/submissions/{submission}', [VendorController::class, 'show'])->name('vendor.show');
         Route::get('/monitoring-sarana', [VendorController::class, 'monitoringSarana'])->name('vendor.monitoring-sarana');
+        Route::get('/planning-lintas', [VendorPlanningController::class, 'index'])->name('vendor.planning-lintas');
+        Route::post('/planning-lintas/{submission}', [VendorPlanningController::class, 'store'])->name('vendor.planning-lintas.store');
+        Route::patch('/planning-lintas/items/{planningItem}', [VendorPlanningController::class, 'update'])->name('vendor.planning-lintas.update');
+        Route::delete('/planning-lintas/items/{planningItem}', [VendorPlanningController::class, 'destroy'])->name('vendor.planning-lintas.destroy');
     });
     Route::middleware('role:coordinator')->prefix('coordinator')->group(function () {
         Route::middleware('permission:coordinator.expedition')->group(function () {
@@ -78,6 +86,7 @@ Route::middleware('auth')->group(function () {
         Route::middleware('permission:coordinator.planning')->group(function () {
             Route::get('/planning', [PlanningController::class, 'index'])->name('coordinator.planning');
             Route::patch('/planning/{planningItem}', [PlanningController::class, 'move'])->name('coordinator.planning.move');
+            Route::patch('/planning/{planningItem}/lock', [PlanningController::class, 'lock'])->name('coordinator.planning.lock');
             Route::post('/planning/{planningItem}/evidence', [PlanningController::class, 'evidence'])->name('coordinator.planning.evidence');
             Route::get('/planning/{planningItem}/evidence', [PlanningController::class, 'showEvidence'])->name('coordinator.planning.evidence.show');
         });
@@ -102,6 +111,7 @@ Route::middleware('auth')->group(function () {
     });
     Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
     Route::get('/submissions/{submission}/documents/download-all', [DocumentController::class, 'downloadAll'])->name('documents.download-all');
+    Route::get('/submissions/{submission}/release-document', [DocumentController::class, 'releaseDocument'])->name('submissions.release-document');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

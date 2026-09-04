@@ -40,6 +40,9 @@ class PlanningUpdated implements ShouldBroadcast
             'number' => $submission->submission_number,
             'vendor' => $submission->vendor_name,
             'planned_date' => $this->planningItem->planned_date?->format('Y-m-d'),
+            'is_locked' => $this->planningItem->is_locked,
+            'locked_at' => $this->planningItem->locked_at?->toISOString(),
+            'locked_by' => $this->planningItem->locked_by,
         ];
     }
 }

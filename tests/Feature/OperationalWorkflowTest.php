@@ -210,4 +210,38 @@ class OperationalWorkflowTest extends TestCase
         $this->assertSame('sim-baru.pdf', $resubmission->documents()->where('document_code', 'SIM')->value('original_name'));
         $this->assertNull($submission->fresh()->resubmission_requested_at);
     }
+
+    public function test_ijin_lintas_release_requires_private_pdf_and_notifies_vendor(): void
+    {
+        Storage::fake('local');
+        $vendor = User::factory()->create(['role' => UserRole::VENDOR, 'site' => 'BIB', 'permissions' => ['vendor.submission']]);
+        $otherVendor = User::factory()->create(['role' => UserRole::VENDOR, 'site' => 'BIB', 'permissions' => ['vendor.submission']]);
+        $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR, 'site' => 'BIB', 'permissions' => ['coordinator.vendor']]);
+        $submission = VendorSubmission::create(['submission_number' => 'IJIN-RELEASE-PDF', 'type' => SubmissionType::IJIN_LINTAS, 'service_category' => 'NON_REGULAR', 'planning_frequency' => 'NON_REGULAR', 'vendor_name' => 'Vendor Release', 'applicant_name' => 'PIC', 'phone' => '081', 'status' => SubmissionStatus::APPROVED, 'submitted_at' => now(), 'created_by' => $vendor->id, 'site' => 'BIB']);
+
+        $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', [
+            'status' => 'RELEASED',
+        ])->assertSessionHasErrors('release_document');
+        $this->assertSame(SubmissionStatus::APPROVED, $submission->fresh()->status);
+
+        $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', [
+            'status' => 'RELEASED', 'release_document' => UploadedFile::fake()->image('izin.jpg'),
+        ])->assertSessionHasErrors('release_document');
+        $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', [
+            'status' => 'RELEASED', 'release_document' => UploadedFile::fake()->create('izin.pdf', 6000, 'application/pdf'),
+        ])->assertSessionHasErrors('release_document');
+
+        $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', [
+            'status' => 'RELEASED', 'release_document' => UploadedFile::fake()->create('izin-release.pdf', 100, 'application/pdf'),
+        ])->assertSessionHasNoErrors();
+
+        $released = $submission->fresh();
+        $this->assertSame(SubmissionStatus::RELEASED, $released->status);
+        $this->assertSame('izin-release.pdf', $released->release_document_name);
+        $this->assertNotNull($released->release_document_path);
+        Storage::disk('local')->assertExists($released->release_document_path);
+        $this->actingAs($vendor)->get('/submissions/'.$released->id.'/release-document')->assertOk();
+        $this->actingAs($otherVendor)->get('/submissions/'.$released->id.'/release-document')->assertForbidden();
+        $this->actingAs($vendor)->get('/vendor')->assertInertia(fn (Assert $page) => $page->where('notificationCounts.released_ijin_lintas', 1));
+    }
 }

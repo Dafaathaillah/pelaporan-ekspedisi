@@ -15,7 +15,7 @@ class VendorSubmission extends Model
 
     protected function casts(): array
     {
-        return ['type' => SubmissionType::class, 'status' => SubmissionStatus::class, 'resubmission_subject_ids' => 'array', 'resubmission_document_codes' => 'array', 'submitted_at' => 'datetime', 'reviewed_at' => 'datetime', 'coordinator_opened_at' => 'datetime', 'released_at' => 'datetime', 'closed_at' => 'datetime', 'release_expired_at' => 'datetime', 'resubmission_requested_at' => 'datetime'];
+        return ['type' => SubmissionType::class, 'status' => SubmissionStatus::class, 'resubmission_subject_ids' => 'array', 'resubmission_document_codes' => 'array', 'submitted_at' => 'datetime', 'reviewed_at' => 'datetime', 'coordinator_opened_at' => 'datetime', 'released_at' => 'datetime', 'closed_at' => 'datetime', 'release_expired_at' => 'datetime', 'vendor_release_opened_at' => 'datetime', 'resubmission_requested_at' => 'datetime'];
     }
 
     public function documents()

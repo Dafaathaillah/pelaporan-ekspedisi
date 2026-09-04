@@ -1,5 +1,6 @@
 <script setup>
 import AppShell from "@/Components/AppShell.vue";
+import FileDropInput from "@/Components/FileDropInput.vue";
 import { expeditionVehicleLabel } from "@/Utils/expeditionRequest";
 import { useForm, Link, router } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
@@ -43,9 +44,16 @@ const labels = {
     RELEASED: "Released",
     CLOSED: "Closed",
 };
-const f = useForm({ status: choices.value[0] || "", coordinator_note: "" });
+const f = useForm({
+    status: choices.value[0] || "",
+    coordinator_note: "",
+    release_document: null,
+});
 const send = () =>
-    f.patch(itemUrl.value + "/status");
+    f.transform((data) => ({ ...data, _method: "patch" })).post(
+        itemUrl.value + "/status",
+        { forceFormData: true },
+    );
 const verify = (d, status) =>
     router.patch(
         p.reviewBase === "/purchasing"
@@ -340,7 +348,21 @@ const date = (v) => (v ? new Date(v).toLocaleDateString("id-ID") : "-");
                             class="field"
                             rows="3"
                             placeholder="Catatan"
-                        /><button class="btn mt-3 w-full">
+                        />
+                        <FileDropInput
+                            v-if="f.status === 'RELEASED' && submission.type === 'IJIN_LINTAS'"
+                            class="mt-4"
+                            label="Lampiran Izin Released"
+                            :required="true"
+                            :max-mb="5"
+                            :model-value="f.release_document"
+                            :error="f.errors.release_document"
+                            @update:model-value="f.release_document = $event"
+                        />
+                        <button
+                            class="btn mt-3 w-full"
+                            :disabled="f.processing || (f.status === 'RELEASED' && submission.type === 'IJIN_LINTAS' && !f.release_document)"
+                        >
                             Simpan Status
                         </button></template
                     >

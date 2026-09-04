@@ -7,6 +7,7 @@ use App\Enums\SubmissionType;
 use App\Enums\UserRole;
 use App\Events\ExpeditionRequestCreated;
 use App\Events\ExpeditionRequestUpdated;
+use App\Events\PlanningDeleted;
 use App\Events\PlanningUpdated;
 use App\Events\VendorResubmissionRequested;
 use App\Events\VendorSubmissionStatusChanged;
@@ -16,7 +17,9 @@ use App\Models\User;
 use App\Models\VendorCompany;
 use App\Models\VendorSubmission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class RealtimeWorkflowTest extends TestCase
@@ -65,6 +68,7 @@ class RealtimeWorkflowTest extends TestCase
             ['private-coordinator.BIB', 'private-expedition.BIB', 'private-vendor.'.$vendor->id],
             $this->channelNames((new PlanningUpdated($planning->load('submission')))->broadcastOn()),
         );
+        $this->assertFalse((new PlanningUpdated($planning->fresh('submission')))->broadcastWith()['is_locked']);
         $health = new VendorResubmissionRequested($submission);
         $this->assertEqualsCanonicalizing(
             ['private-coordinator.BIB', 'private-vendor.'.$vendor->id],
@@ -87,8 +91,20 @@ class RealtimeWorkflowTest extends TestCase
         ])->assertOk();
     }
 
+    public function test_deleted_planning_broadcast_uses_primitive_payload(): void
+    {
+        $event = new PlanningDeleted('planning-1', 'submission-1', 'VND-PLAN-1', 'Vendor Plan', 'BIB', 123);
+
+        $this->assertEqualsCanonicalizing(
+            ['private-coordinator.BIB', 'private-expedition.BIB', 'private-vendor.123'],
+            $this->channelNames($event->broadcastOn()),
+        );
+        $this->assertSame('planning-1', $event->broadcastWith()['id']);
+    }
+
     public function test_releasing_ijin_lintas_broadcasts_final_planning_and_status(): void
     {
+        Storage::fake('local');
         Event::fake([PlanningUpdated::class, VendorSubmissionStatusChanged::class]);
         $vendor = User::factory()->create(['role' => UserRole::VENDOR]);
         $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR, 'permissions' => ['coordinator.vendor']]);
@@ -103,6 +119,7 @@ class RealtimeWorkflowTest extends TestCase
 
         $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', [
             'status' => 'RELEASED', 'coordinator_note' => 'Dokumen sesuai.',
+            'release_document' => UploadedFile::fake()->create('izin-release.pdf', 100, 'application/pdf'),
         ])->assertSessionHasNoErrors();
 
         Event::assertDispatched(PlanningUpdated::class);

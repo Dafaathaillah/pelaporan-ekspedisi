@@ -129,16 +129,20 @@ class VendorController extends Controller
         }
         $isUnit = $request->type === 'IJIN_LINTAS';
         if ($isUnit && ! $parent) {
-            $expeditionRequest = ExpeditionRequest::where('id', $request->expedition_request_id)
-                ->where('site', $request->user()->site)
-                ->where('vendor_company_id', $request->user()->vendor_company_id)
-                ->where('status', 'OPEN')->first();
-            if (! $expeditionRequest) {
-                throw ValidationException::withMessages(['expedition_request_id' => 'Pilih request ekspedisi aktif yang ditujukan untuk perusahaan Anda.']);
-            }
             if (! in_array($request->planning_frequency, ['DAILY', 'WEEKLY', 'NON_REGULAR'], true)) {
                 throw ValidationException::withMessages(['planning_frequency' => 'Pilih frekuensi planning Ijin Lintas.']);
             }
+            $isNonRegular = $request->planning_frequency === 'NON_REGULAR';
+            if (! $isNonRegular) {
+                $expeditionRequest = ExpeditionRequest::where('id', $request->expedition_request_id)
+                    ->where('site', $request->user()->site)
+                    ->where('vendor_company_id', $request->user()->vendor_company_id)
+                    ->where('status', 'OPEN')->first();
+                if (! $expeditionRequest) {
+                    throw ValidationException::withMessages(['expedition_request_id' => 'Pilih request ekspedisi aktif yang ditujukan untuk perusahaan Anda.']);
+                }
+            }
+            $request->merge(['expedition_request_id' => $isNonRegular ? null : $request->expedition_request_id]);
             $request->merge(['service_category' => $request->planning_frequency === 'NON_REGULAR' ? 'NON_REGULAR' : 'REGULAR']);
         }
         foreach ($units as $i => $unit) {
@@ -202,7 +206,7 @@ class VendorController extends Controller
             }
             if ($parent) {
                 $parent->update(['resubmission_requested_at' => null, 'resubmission_requested_by' => null, 'resubmission_subject_ids' => null, 'resubmission_document_codes' => null]);
-            } elseif ($request->type === 'IJIN_LINTAS') {
+            } elseif ($request->type === 'IJIN_LINTAS' && $request->filled('expedition_request_id')) {
                 ExpeditionRequest::whereKey($request->expedition_request_id)->update(['status' => 'USED']);
             }
 

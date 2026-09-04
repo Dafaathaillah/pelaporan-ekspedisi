@@ -13,7 +13,7 @@ class PlanningItem extends Model
 
     protected function casts(): array
     {
-        return ['planned_date' => 'date:Y-m-d', 'escort_started_at' => 'datetime', 'escort_closed_at' => 'datetime', 'escort_close_photo_captured_at' => 'datetime'];
+        return ['planned_date' => 'date:Y-m-d', 'is_locked' => 'boolean', 'locked_at' => 'datetime', 'escort_started_at' => 'datetime', 'escort_closed_at' => 'datetime', 'escort_close_photo_captured_at' => 'datetime'];
     }
 
     public function submission()
@@ -24,5 +24,10 @@ class PlanningItem extends Model
     public function driver()
     {
         return $this->belongsTo(User::class, 'driver_id');
+    }
+
+    public function locker()
+    {
+        return $this->belongsTo(User::class, 'locked_by');
     }
 }

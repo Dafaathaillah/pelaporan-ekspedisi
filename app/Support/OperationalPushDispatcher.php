@@ -7,6 +7,7 @@ use App\Events\ExpeditionEscortUpdated;
 use App\Events\ExpeditionReportCreated;
 use App\Events\ExpeditionRequestCreated;
 use App\Events\ExpeditionRequestUpdated;
+use App\Events\PlanningDeleted;
 use App\Events\PlanningUpdated;
 use App\Events\VendorResubmissionRequested;
 use App\Events\VendorSubmissionCreated;
@@ -60,6 +61,7 @@ class OperationalPushDispatcher
             $event instanceof VendorSubmissionStatusChanged => $this->submissionStatus($event),
             $event instanceof VendorResubmissionRequested => $this->resubmissionRequested($event),
             $event instanceof PlanningUpdated => $this->planningUpdated($event),
+            $event instanceof PlanningDeleted => $this->planningDeleted($event),
             $event instanceof ExpeditionReportCreated => $this->reportCreated($event),
             $event instanceof ExpeditionEscortUpdated => $this->escortUpdated($event),
             default => [collect(), '', '', '/', 'unknown'],
@@ -96,7 +98,9 @@ class OperationalPushDispatcher
         $item = $event->submission;
         $users = $this->coordinators($item->site)->push($item->creator);
 
-        return [$users, 'Status Pengajuan Diperbarui', "{$item->submission_number}: {$item->status->value}", '/dashboard', 'submission-'.$item->id];
+        $released = $item->status->value === 'RELEASED' && $item->type->value === 'IJIN_LINTAS';
+
+        return [$users, $released ? 'Ijin Lintas Telah Released' : 'Status Pengajuan Diperbarui', "{$item->submission_number}: {$item->status->value}", $released ? '/vendor/planning-lintas' : '/dashboard', 'submission-'.$item->id];
     }
 
     private function resubmissionRequested(VendorResubmissionRequested $event): array
@@ -115,6 +119,15 @@ class OperationalPushDispatcher
             ->push($submission->creator);
 
         return [$users, 'Planning Escort Diperbarui', "{$submission->vendor_name}: ".($item->planned_date?->format('d/m/Y') ?? 'belum dijadwalkan'), '/dashboard', 'planning-'.$item->id];
+    }
+
+    private function planningDeleted(PlanningDeleted $event): array
+    {
+        $users = $this->coordinators($event->site)
+            ->merge($this->siteUsers($event->site, [UserRole::EXPEDITION]))
+            ->push(User::find($event->vendorUserId));
+
+        return [$users, 'Planning Escort Dihapus', "{$event->vendor}: {$event->number}", '/dashboard', 'planning-'.$event->id];
     }
 
     private function reportCreated(ExpeditionReportCreated $event): array

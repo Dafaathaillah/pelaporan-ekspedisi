@@ -145,6 +145,13 @@ const menus = computed(() => {
                 href: "/vendor/monitoring-sarana",
             },
             {
+                label: "Planning Lintas",
+                short: "Planning",
+                icon: "calendar",
+                href: "/vendor/planning-lintas",
+                badge: notificationCounts.value.released_ijin_lintas,
+            },
+            {
                 label: "Ganti Password",
                 short: "Password",
                 icon: "lock",
@@ -182,6 +189,12 @@ const menus = computed(() => {
                 icon: "bell",
                 href: "/purchasing/vendor-submissions/IJIN_LINTAS",
                 badge: notificationCounts.value.IJIN_LINTAS,
+            },
+            {
+                label: "Planning Lintas",
+                short: "Planning",
+                icon: "calendar",
+                href: "/purchasing/planning",
             },
             {
                 label: "Ganti Password",

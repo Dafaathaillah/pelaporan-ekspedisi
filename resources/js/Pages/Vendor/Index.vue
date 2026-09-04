@@ -57,6 +57,9 @@ const selectedRequest = computed(() =>
         (request) => request.id === form.expedition_request_id,
     ),
 );
+const requiresIncomingRequest = computed(() =>
+    ["DAILY", "WEEKLY"].includes(form.planning_frequency),
+);
 const shownDocs = computed(() =>
     source.value
         ? docs.value.filter((d) =>
@@ -106,6 +109,9 @@ const setUnitFile = (i, code, file) => {
 const setFile = (code, file) => {
     form.documents = { ...form.documents, [code]: file };
     if (!file) delete form.documents[code];
+};
+const changePlanningFrequency = () => {
+    if (!requiresIncomingRequest.value) form.expedition_request_id = "";
 };
 const complete = (x) => {
     source.value = x;
@@ -219,7 +225,7 @@ const validity = (x) =>
                         dokumen valid sebelumnya tetap digunakan.
                     </p>
                     <div
-                        v-if="type === 'IJIN_LINTAS' && !source"
+                        v-if="type === 'IJIN_LINTAS' && !source && requiresIncomingRequest"
                         class="mt-5 rounded-2xl border border-red-100 bg-red-50/40 p-4"
                     >
                         <label class="text-sm font-black text-slate-800"
@@ -291,6 +297,7 @@ const validity = (x) =>
                         >Kategori Planning Ijin Lintas<select
                             v-model="form.planning_frequency"
                             class="field"
+                            @change="changePlanningFrequency"
                         >
                             <option value="">Pilih kategori planning</option>
                             <option value="DAILY">Reguler · Daily</option>
@@ -302,6 +309,12 @@ const validity = (x) =>
                             form.errors.planning_frequency
                         }}</span></label
                     >
+                    <p
+                        v-if="type === 'IJIN_LINTAS' && !source && form.planning_frequency === 'NON_REGULAR'"
+                        class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800"
+                    >
+                        Pengajuan Non-Reguler dapat dikirim langsung tanpa Incoming Request, PR, atau PO.
+                    </p>
                     <div class="mt-4 grid gap-4 md:grid-cols-2">
                         <label
                             >Nama Vendor<input

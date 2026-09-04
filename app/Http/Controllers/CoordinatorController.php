@@ -126,10 +126,19 @@ class CoordinatorController extends Controller
         $this->authorizeSubmissionReview($r, $submission);
         $next = SubmissionStatus::from($r->status);
         abort_unless(($submission->status === SubmissionStatus::SUBMITTED && in_array($next, [SubmissionStatus::APPROVED, SubmissionStatus::REVISION, SubmissionStatus::REJECTED], true)) || ($submission->status === SubmissionStatus::APPROVED && $next === SubmissionStatus::RELEASED) || (in_array($submission->status, [SubmissionStatus::RELEASED, SubmissionStatus::REJECTED], true) && $next === SubmissionStatus::CLOSED), 422);
-        DB::transaction(function () use ($r, $submission, $next) {
-            $releasedAt = $next === SubmissionStatus::RELEASED ? now() : $submission->released_at;
-            $submission->update(['status' => $next, 'coordinator_note' => $r->coordinator_note, 'reviewed_at' => now(), 'reviewed_by' => $r->user()->id, 'coordinator_opened_at' => $submission->coordinator_opened_at ?? now(), 'released_at' => $releasedAt, 'release_expired_at' => $next === SubmissionStatus::RELEASED ? $releasedAt->copy()->addDays(7) : $submission->release_expired_at, 'closed_at' => $next === SubmissionStatus::CLOSED ? now() : $submission->closed_at]);
-        });
+        $releaseFile = $r->file('release_document');
+        $releasePath = $releaseFile?->store('private/released-ijin-lintas/'.$submission->id, 'local');
+        try {
+            DB::transaction(function () use ($r, $submission, $next, $releaseFile, $releasePath) {
+                $releasedAt = $next === SubmissionStatus::RELEASED ? now() : $submission->released_at;
+                $submission->update(['status' => $next, 'coordinator_note' => $r->coordinator_note, 'reviewed_at' => now(), 'reviewed_by' => $r->user()->id, 'coordinator_opened_at' => $submission->coordinator_opened_at ?? now(), 'released_at' => $releasedAt, 'release_expired_at' => $next === SubmissionStatus::RELEASED ? $releasedAt->copy()->addDays(7) : $submission->release_expired_at, 'release_document_path' => $releasePath ?: $submission->release_document_path, 'release_document_name' => $releaseFile?->getClientOriginalName() ?: $submission->release_document_name, 'release_document_size' => $releaseFile?->getSize() ?: $submission->release_document_size, 'vendor_release_opened_at' => $next === SubmissionStatus::RELEASED ? null : $submission->vendor_release_opened_at, 'closed_at' => $next === SubmissionStatus::CLOSED ? now() : $submission->closed_at]);
+            });
+        } catch (\Throwable $exception) {
+            if ($releasePath) {
+                Storage::disk('local')->delete($releasePath);
+            }
+            throw $exception;
+        }
         $freshSubmission = $submission->fresh();
         app(PlanningService::class)->syncRelease($freshSubmission);
         if ($next === SubmissionStatus::RELEASED) {

@@ -44,8 +44,14 @@ class HandleInertiaRequests extends Middleware
                 }
 
                 if ($user->role === UserRole::VENDOR) {
-                    return ['vendor_revisions' => VendorSubmission::where('created_by', $user->id)
-                        ->where('site', $user->site)->whereNotNull('resubmission_requested_at')->count()];
+                    $owned = VendorSubmission::where('created_by', $user->id)->where('site', $user->site);
+
+                    return [
+                        'vendor_revisions' => (clone $owned)->whereNotNull('resubmission_requested_at')->count(),
+                        'released_ijin_lintas' => $request->routeIs('vendor.planning-lintas')
+                            ? 0
+                            : (clone $owned)->where('type', 'IJIN_LINTAS')->where('status', 'RELEASED')->whereNull('vendor_release_opened_at')->count(),
+                    ];
                 }
 
                 if ($user->role === UserRole::PURCHASING_ADMIN) {

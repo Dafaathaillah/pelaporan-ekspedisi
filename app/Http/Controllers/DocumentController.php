@@ -40,6 +40,15 @@ class DocumentController extends Controller
         return response()->download($temporary, $submission->submission_number.'-documents.zip', ['Content-Type' => 'application/zip'])->deleteFileAfterSend(true);
     }
 
+    public function releaseDocument(Request $request, VendorSubmission $submission)
+    {
+        $user = $request->user();
+        abort_unless($submission->site === $user->site && ($submission->created_by === $user->id || $this->canReview($user, $submission)), 403);
+        abort_unless($submission->release_document_path && Storage::disk('local')->exists($submission->release_document_path), 404);
+
+        return Storage::disk('local')->response($submission->release_document_path, $submission->release_document_name, ['Content-Type' => 'application/pdf']);
+    }
+
     private function canReview($user, VendorSubmission $submission): bool
     {
         if (in_array($user->role, [UserRole::DEVELOPER, UserRole::COORDINATOR], true)) {
