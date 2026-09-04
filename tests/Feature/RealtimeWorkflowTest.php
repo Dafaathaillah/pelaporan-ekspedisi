@@ -54,6 +54,7 @@ class RealtimeWorkflowTest extends TestCase
             'released_at' => now(), 'release_expired_at' => now()->addDays(7),
             'created_by' => $vendor->id, 'site' => 'BIB',
             'resubmission_request_reason' => 'Surat Sehat sudah melewati masa berlaku.',
+            'resubmission_document_codes' => ['SURAT_SEHAT'],
         ]);
         $planning = PlanningItem::create([
             'vendor_submission_id' => $submission->id,
@@ -70,6 +71,7 @@ class RealtimeWorkflowTest extends TestCase
             $this->channelNames($health->broadcastOn()),
         );
         $this->assertSame('Surat Sehat sudah melewati masa berlaku.', $health->broadcastWith()['reason']);
+        $this->assertSame(['SURAT_SEHAT'], $health->broadcastWith()['document_codes']);
     }
 
     public function test_private_channel_authorization_accepts_request_only_coordinator_and_purchasing(): void

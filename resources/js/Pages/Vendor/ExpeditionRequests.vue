@@ -46,8 +46,8 @@ const date = (value) =>
 
 <template>
     <AppShell
-        title="Request Ekspedisi"
-        subtitle="Pantau request yang ditujukan khusus untuk perusahaan Anda."
+        title="Incoming Request"
+        subtitle="Pantau request masuk yang ditujukan khusus untuk perusahaan Anda."
         eyebrow="Akun Vendor"
     >
         <section class="panel overflow-hidden p-0">
@@ -57,7 +57,7 @@ const date = (value) =>
                 >
                     <div>
                         <h2 class="panel-title">
-                            Request untuk Perusahaan Saya
+                            Incoming Request untuk Perusahaan Saya
                         </h2>
                         <p class="panel-copy">
                             Data otomatis dibatasi berdasarkan perusahaan pada

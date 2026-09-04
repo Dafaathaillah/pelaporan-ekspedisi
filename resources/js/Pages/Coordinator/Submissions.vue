@@ -10,7 +10,18 @@ const p = defineProps({
     items: Object,
     stats: Object,
     filters: Object,
+    reviewBase: { type: String, default: "/coordinator" },
+    pageRole: { type: String, default: "coordinator" },
 });
+const listUrl = computed(() =>
+    p.reviewBase === "/purchasing"
+        ? "/purchasing/vendor-submissions/IJIN_LINTAS"
+        : "/coordinator/submissions/" + p.type,
+);
+const itemUrl = (id) =>
+    p.reviewBase === "/purchasing"
+        ? "/purchasing/vendor-submission/" + id
+        : "/coordinator/submission/" + id;
 const f = reactive({
     search: "",
     date_from: "",
@@ -38,14 +49,14 @@ const statusLabels = {
 const dialog = ref(null);
 const statusForm = useForm({ status: "", coordinator_note: "" });
 const load = () =>
-    router.get("/coordinator/submissions/" + p.type, f, {
+    router.get(listUrl.value, f, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
     });
 const reset = () =>
     router.get(
-        "/coordinator/submissions/" + p.type,
+        listUrl.value,
         {},
         { preserveScroll: true, replace: true },
     );
@@ -59,7 +70,7 @@ const size = (v) => {
     load();
 };
 const date = (v) => (v ? new Date(v).toLocaleDateString("id-ID") : "-");
-const detail = (id) => "/coordinator/submission/" + id;
+const detail = (id) => itemUrl(id);
 const documents = (id) => "/submissions/" + id + "/documents/download-all";
 const choices = (row) =>
     row.status === "SUBMITTED"
@@ -80,7 +91,7 @@ const closeStatus = () => {
     statusForm.reset();
 };
 const saveStatus = () =>
-    statusForm.patch("/coordinator/submission/" + dialog.value.id + "/status", {
+    statusForm.patch(itemUrl(dialog.value.id) + "/status", {
         preserveScroll: true,
         onSuccess: closeStatus,
     });
@@ -127,16 +138,16 @@ const renewalDocument = computed(
 );
 const requestAgain = (x) =>
     router.post(
-        "/coordinator/submission/" + x.id + "/request-resubmission",
+        itemUrl(x.id) + "/request-resubmission",
         { mode: "REQUEST_HEALTH" },
         { preserveScroll: true },
     );
 </script>
 <template>
     <AppShell
-        title="Monitoring Koordinator Sarana"
+        :title="pageRole === 'purchasing_admin' ? 'Review Ijin Lintas' : 'Monitoring Koordinator Sarana'"
         subtitle="Pelaporan Ekspedisi & Pengajuan Dokumen Vendor"
-        eyebrow="Koordinator Sarana · Monitoring Pengajuan"
+        :eyebrow="pageRole === 'purchasing_admin' ? 'Admin Purchasing · Review Dokumen' : 'Koordinator Sarana · Monitoring Pengajuan'"
         ><template #hero-title>Pengajuan {{ labels[type] }}</template
         ><template #hero-copy
             >Periksa dokumen, ubah status, dan unduh seluruh data yang sudah
@@ -207,7 +218,7 @@ const requestAgain = (x) =>
                     "
                 >
                     Muat Ulang</button
-                ><a
+                ><a v-if="pageRole !== 'purchasing_admin'"
                     :href="
                         '/coordinator/submissions/' +
                         type +

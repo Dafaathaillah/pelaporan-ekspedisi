@@ -39,7 +39,20 @@ class HandleInertiaRequests extends Middleware
             'flash' => ['success' => fn () => $request->session()->get('success')],
             'notificationCounts' => function () use ($request) {
                 $user = $request->user();
-                if (! $user || ! in_array($user->role, [UserRole::DEVELOPER, UserRole::COORDINATOR], true) || ! $user->hasPermission('coordinator.vendor')) {
+                if (! $user) {
+                    return [];
+                }
+
+                if ($user->role === UserRole::VENDOR) {
+                    return ['vendor_revisions' => VendorSubmission::where('created_by', $user->id)
+                        ->where('site', $user->site)->whereNotNull('resubmission_requested_at')->count()];
+                }
+
+                if ($user->role === UserRole::PURCHASING_ADMIN) {
+                    return ['IJIN_LINTAS' => VendorSubmission::where('site', $user->site)->where('type', 'IJIN_LINTAS')->whereNull('coordinator_opened_at')->count()];
+                }
+
+                if (! in_array($user->role, [UserRole::DEVELOPER, UserRole::COORDINATOR], true) || ! $user->hasPermission('coordinator.vendor')) {
                     return [];
                 }
 

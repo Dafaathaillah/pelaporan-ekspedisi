@@ -49,6 +49,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/requests', [ExpeditionRequestController::class, 'index'])->name('purchasing.requests.index');
         Route::post('/requests', [ExpeditionRequestController::class, 'store'])->name('purchasing.requests.store');
         Route::patch('/requests/{expeditionRequest}/procurement', [ExpeditionRequestController::class, 'updateProcurement'])->name('purchasing.requests.procurement');
+        Route::get('/vendor-submissions/IJIN_LINTAS', [CoordinatorController::class, 'submissions'])->defaults('type', 'IJIN_LINTAS')->name('purchasing.vendor-submissions');
+        Route::get('/vendor-submission/{submission}', [CoordinatorController::class, 'showSubmission'])->name('purchasing.vendor-submission.show');
+        Route::patch('/vendor-submission/{submission}/status', [CoordinatorController::class, 'updateStatus'])->name('purchasing.vendor-submission.status');
+        Route::post('/vendor-submission/{submission}/request-resubmission', [CoordinatorController::class, 'requestResubmission'])->name('purchasing.vendor-submission.request-resubmission');
+        Route::patch('/vendor-document/{document}/verify', [CoordinatorController::class, 'verifyDocument'])->name('purchasing.vendor-document.verify');
     });
     Route::get('/expedition-requests/{expeditionRequest}/evidence', [ExpeditionRequestController::class, 'evidence'])->name('expedition-requests.evidence');
     Route::middleware('role:coordinator')->get('/coordinator/reports/{report}/escort-photo', [DriverEscortController::class, 'photo'])->name('coordinator.expedition.escort-photo');

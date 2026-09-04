@@ -15,7 +15,7 @@ class DocumentController extends Controller
     {
         $submission = $document->submission;
         $user = $request->user();
-        abort_unless($submission->site === $user->site && ($submission->created_by === $user->id || (in_array($user->role, [UserRole::DEVELOPER, UserRole::COORDINATOR], true) && $user->hasPermission('coordinator.vendor'))), 403);
+        abort_unless($submission->site === $user->site && ($submission->created_by === $user->id || $this->canReview($user, $submission)), 403);
         abort_unless(Storage::disk('local')->exists($document->file_path), 404);
 
         return Storage::disk('local')->response($document->file_path, $document->original_name, ['Content-Type' => 'application/pdf', 'Content-Disposition' => ($request->boolean('download') ? 'attachment' : 'inline').'; filename='.$document->original_name.'']);
@@ -24,7 +24,7 @@ class DocumentController extends Controller
     public function downloadAll(Request $request, VendorSubmission $submission)
     {
         $user = $request->user();
-        abort_unless($submission->site === $user->site && ($submission->created_by === $user->id || (in_array($user->role, [UserRole::DEVELOPER, UserRole::COORDINATOR], true) && $user->hasPermission('coordinator.vendor'))), 403);
+        abort_unless($submission->site === $user->site && ($submission->created_by === $user->id || $this->canReview($user, $submission)), 403);
         $submission->load('documents');
         abort_if($submission->documents->isEmpty(), 404, 'Tidak ada dokumen untuk diunduh.');
         $temporary = tempnam(sys_get_temp_dir(), 'vendor-documents-');
@@ -38,5 +38,16 @@ class DocumentController extends Controller
         $zip->close();
 
         return response()->download($temporary, $submission->submission_number.'-documents.zip', ['Content-Type' => 'application/zip'])->deleteFileAfterSend(true);
+    }
+
+    private function canReview($user, VendorSubmission $submission): bool
+    {
+        if (in_array($user->role, [UserRole::DEVELOPER, UserRole::COORDINATOR], true)) {
+            return $user->hasPermission('coordinator.vendor');
+        }
+
+        return $user->role === UserRole::PURCHASING_ADMIN
+            && $user->hasPermission('purchasing.requests')
+            && $submission->type->value === 'IJIN_LINTAS';
     }
 }

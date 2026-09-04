@@ -14,6 +14,7 @@ defineProps({ name: { type: String, required: true } });
     <template v-else-if="name==='calendar'"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></template>
     <template v-else-if="name==='upload'"><path d="M4 17v3h16v-3M12 16V4M8 8l4-4 4 4"/><path d="M7 12H5a2 2 0 0 0-2 2v1M17 12h2a2 2 0 0 1 2 2v1"/></template>
     <template v-else-if="name==='lock'"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></template>
+    <template v-else-if="name==='bell'"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></template>
     <template v-else-if="name==='steering'"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M3.5 10h17M12 14v7M6 10l6 4 6-4"/></template>
     <template v-else><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></template>
 </svg>

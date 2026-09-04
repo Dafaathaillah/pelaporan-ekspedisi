@@ -161,7 +161,7 @@ class VendorController extends Controller
             $renewalCode = match ($request->type) {
                 'WASKAT' => 'SURAT_SEHAT_VENDOR','IJIN_LINTAS' => 'SURAT_SEHAT','PERMIT_VENDOR_NON_SIMPER' => 'MCU',default => 'SURAT_TUGAS'
             };
-            $required = $parent ? [$renewalCode] : $reqs->where('required', true)->pluck('code')->all();
+            $required = $parent ? ($parent->resubmission_document_codes ?: [$renewalCode]) : $reqs->where('required', true)->pluck('code')->all();
             foreach ($required as $code) {
                 if (! $files->has($code)) {
                     throw ValidationException::withMessages(["units.$i.documents.$code" => ($reqs[$code]['name'] ?? $code).' wajib diunggah untuk unit ini.']);
@@ -201,7 +201,7 @@ class VendorController extends Controller
                 }
             }
             if ($parent) {
-                $parent->update(['resubmission_requested_at' => null, 'resubmission_requested_by' => null, 'resubmission_subject_ids' => null]);
+                $parent->update(['resubmission_requested_at' => null, 'resubmission_requested_by' => null, 'resubmission_subject_ids' => null, 'resubmission_document_codes' => null]);
             } elseif ($request->type === 'IJIN_LINTAS') {
                 ExpeditionRequest::whereKey($request->expedition_request_id)->update(['status' => 'USED']);
             }
@@ -211,7 +211,7 @@ class VendorController extends Controller
         app(PlanningService::class)->register($submission);
         SafeBroadcast::dispatch(new VendorSubmissionCreated($submission));
 
-        return back()->with('success', $parent ? 'Pembaruan Surat Sehat seluruh unit berhasil dikirim.' : 'Pengajuan multi-unit berhasil dikirim.');
+        return back()->with('success', $parent ? 'Dokumen revisi berhasil dikirim.' : 'Pengajuan multi-unit berhasil dikirim.');
     }
 
     private function requiredCodes($request, $reqs, ?VendorSubmission $parent): array
@@ -233,7 +233,7 @@ class VendorController extends Controller
             return ['SURAT_SEHAT_VENDOR'];
         }
         if ($request->type === 'IJIN_LINTAS') {
-            return ['SURAT_SEHAT'];
+            return $parent->resubmission_document_codes ?: ['SURAT_SEHAT'];
         }
 
         return [];

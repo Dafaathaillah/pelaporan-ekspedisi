@@ -7,6 +7,7 @@ use App\Enums\SubmissionType;
 use App\Enums\UserRole;
 use App\Http\Requests\StoreExpeditionReportRequest;
 use App\Models\ExpeditionReport;
+use App\Models\ExpeditionRequest;
 use App\Models\PlanningItem;
 use App\Models\User;
 use App\Models\VendorCompany;
@@ -147,5 +148,66 @@ class OperationalWorkflowTest extends TestCase
         $this->actingAs($coordinator)->get('/coordinator/submissions/IJIN_LINTAS')->assertInertia(fn (Assert $page) => $page->where('notificationCounts.IJIN_LINTAS', 1));
         $this->actingAs($coordinator)->get('/coordinator/submission/'.$submission->id)->assertOk();
         $this->assertNotNull($submission->fresh()->coordinator_opened_at);
+    }
+
+    public function test_vendor_submits_ijin_lintas_without_uploading_released_ijin_lintas_document(): void
+    {
+        Storage::fake('local');
+        $company = VendorCompany::create(['name' => 'Vendor Incoming', 'abbreviation' => 'VI', 'category' => 'REGULAR', 'is_active' => true]);
+        $vendor = User::factory()->create(['name' => $company->name, 'role' => UserRole::VENDOR, 'vendor_company_id' => $company->id, 'site' => 'BIB', 'permissions' => ['vendor.submission']]);
+        $purchasing = User::factory()->create(['role' => UserRole::PURCHASING_ADMIN, 'site' => 'BIB', 'permissions' => ['purchasing.requests']]);
+        $incoming = ExpeditionRequest::create(['request_number' => 'REQ-INCOMING-1', 'vendor_company_id' => $company->id, 'expedition_type' => 'FUSO', 'route_from' => 'Warehouse', 'route_to' => 'Site', 'status' => 'OPEN', 'created_by' => $purchasing->id, 'site' => 'BIB']);
+        $documents = collect(['FOTO_UNIT_4_SISI', 'KTP', 'SIM', 'STNK', 'KIR', 'SURAT_SEHAT'])
+            ->mapWithKeys(fn ($code) => [$code => UploadedFile::fake()->create(strtolower($code).'.pdf', 20, 'application/pdf')])->all();
+
+        $this->actingAs($vendor)->get('/vendor')->assertInertia(fn (Assert $page) => $page
+            ->where('requirements.IJIN_LINTAS.documents', fn ($requirements) => collect($requirements)->pluck('code')->doesntContain('SURAT_IJIN')));
+        $this->actingAs($vendor)->post('/vendor/submissions', [
+            'type' => 'IJIN_LINTAS', 'expedition_request_id' => $incoming->id, 'planning_frequency' => 'WEEKLY',
+            'vendor_name' => $company->name, 'applicant_name' => 'PIC Vendor', 'phone' => '0812',
+            'units' => [['plate_number' => 'DA 1234 VI', 'documents' => $documents]],
+        ])->assertSessionHasNoErrors();
+
+        $submission = VendorSubmission::firstOrFail();
+        $this->assertCount(6, $submission->documents);
+        $this->assertFalse($submission->documents()->where('document_code', 'SURAT_IJIN')->exists());
+    }
+
+    public function test_purchasing_requests_specific_document_revision_and_vendor_gets_notification(): void
+    {
+        Storage::fake('local');
+        $company = VendorCompany::create(['name' => 'Vendor Revisi', 'abbreviation' => 'VR', 'category' => 'REGULAR', 'is_active' => true]);
+        $vendor = User::factory()->create(['name' => $company->name, 'role' => UserRole::VENDOR, 'vendor_company_id' => $company->id, 'site' => 'BIB', 'permissions' => ['vendor.submission']]);
+        $purchasing = User::factory()->create(['role' => UserRole::PURCHASING_ADMIN, 'site' => 'BIB', 'permissions' => ['purchasing.requests']]);
+        $submission = VendorSubmission::create(['submission_number' => 'IJIN-REVISION-1', 'type' => SubmissionType::IJIN_LINTAS, 'vendor_name' => $company->name, 'applicant_name' => 'PIC', 'phone' => '081', 'status' => SubmissionStatus::REVISION, 'submitted_at' => now(), 'created_by' => $vendor->id, 'site' => 'BIB']);
+        $unit = $submission->units()->create(['subject_type' => 'UNIT', 'plate_number' => 'DA 4321 VR', 'unit_order' => 1]);
+        foreach (['KTP', 'SIM'] as $code) {
+            $path = 'private/vendor-documents/'.$submission->id.'/'.$unit->id.'/'.strtolower($code).'.pdf';
+            Storage::disk('local')->put($path, 'old-'.$code);
+            $unit->documents()->create(['vendor_submission_id' => $submission->id, 'document_code' => $code, 'document_name' => $code, 'file_name' => strtolower($code).'.pdf', 'original_name' => strtolower($code).'.pdf', 'file_path' => $path, 'mime_type' => 'application/pdf', 'file_size' => 7, 'is_required' => true, 'uploaded_at' => now(), 'verification_status' => $code === 'SIM' ? 'INVALID' : 'VALID']);
+        }
+        $this->actingAs($purchasing)->get('/documents/'.$unit->documents()->where('document_code', 'SIM')->value('id'))->assertOk();
+        $reason = 'Dokumen SIM tidak terbaca dan harus diunggah ulang dengan hasil pindai yang jelas.';
+
+        $this->actingAs($purchasing)->get('/purchasing/vendor-submissions/IJIN_LINTAS')->assertOk();
+        $this->actingAs($purchasing)->post('/purchasing/vendor-submission/'.$submission->id.'/request-resubmission', [
+            'mode' => 'REQUEST_DOCUMENTS', 'subject_ids' => [$unit->id], 'document_codes' => ['SIM'], 'reason' => $reason,
+        ])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('vendor_submissions', ['id' => $submission->id, 'resubmission_request_reason' => $reason]);
+        $this->assertSame(['SIM'], $submission->fresh()->resubmission_document_codes);
+
+        $this->actingAs($vendor)->get('/vendor')->assertInertia(fn (Assert $page) => $page
+            ->where('notificationCounts.vendor_revisions', 1)
+            ->where('submissions.data.0.resubmission_document_codes.0', 'SIM'));
+
+        $payload = ['type' => 'IJIN_LINTAS', 'parent_submission_id' => $submission->id, 'vendor_name' => $company->name, 'applicant_name' => 'PIC', 'phone' => '081', 'units' => [['source_unit_id' => $unit->id, 'plate_number' => 'DA 4321 VR', 'documents' => []]]];
+        $this->actingAs($vendor)->post('/vendor/submissions', $payload)->assertSessionHasErrors('units.0.documents.SIM');
+        $payload['units'][0]['documents']['SIM'] = UploadedFile::fake()->create('sim-baru.pdf', 20, 'application/pdf');
+        $this->actingAs($vendor)->post('/vendor/submissions', $payload)->assertSessionHasNoErrors();
+
+        $resubmission = VendorSubmission::where('parent_submission_id', $submission->id)->firstOrFail();
+        $this->assertCount(2, $resubmission->documents);
+        $this->assertSame('sim-baru.pdf', $resubmission->documents()->where('document_code', 'SIM')->value('original_name'));
+        $this->assertNull($submission->fresh()->resubmission_requested_at);
     }
 }

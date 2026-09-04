@@ -3,6 +3,7 @@ import AppShell from "@/Components/AppShell.vue";
 import FileDropInput from "@/Components/FileDropInput.vue";
 import DataTableFooter from "@/Components/DataTableFooter.vue";
 import SearchableSelect from "@/Components/SearchableSelect.vue";
+import NavIcon from "@/Components/NavIcon.vue";
 import { expeditionVehicleLabel } from "@/Utils/expeditionRequest";
 import { useForm, Link, router } from "@inertiajs/vue3";
 import { ref, computed, reactive } from "vue";
@@ -17,15 +18,13 @@ const type = ref("VISITOR");
 const source = ref(null);
 const multi = computed(() => true);
 const isUnit = computed(() => type.value === "IJIN_LINTAS");
-const renewalCode = computed(
-    () =>
-        ({
-            WASKAT: "SURAT_SEHAT_VENDOR",
-            IJIN_LINTAS: "SURAT_SEHAT",
-            PERMIT_VENDOR_NON_SIMPER: "MCU",
-            VISITOR: "SURAT_TUGAS",
-        })[type.value],
-);
+const renewalCode = (submissionType) =>
+    ({
+        WASKAT: "SURAT_SEHAT_VENDOR",
+        IJIN_LINTAS: "SURAT_SEHAT",
+        PERMIT_VENDOR_NON_SIMPER: "MCU",
+        VISITOR: "SURAT_TUGAS",
+    })[submissionType];
 const blankUnit = () => ({
     plate_number: "",
     person_name: "",
@@ -60,9 +59,24 @@ const selectedRequest = computed(() =>
 );
 const shownDocs = computed(() =>
     source.value
-        ? docs.value.filter((d) => d.code === renewalCode.value)
+        ? docs.value.filter((d) =>
+              (
+                  source.value.resubmission_document_codes || [
+                      renewalCode(source.value.type),
+                  ]
+              ).includes(d.code),
+          )
         : docs.value,
 );
+const requestedDocumentNames = (submission) => {
+    const codes = submission.resubmission_document_codes || [
+        renewalCode(submission.type),
+    ];
+    const requirements = p.requirements[submission.type]?.documents || [];
+    return codes
+        .map((code) => requirements.find((item) => item.code === code)?.name || code)
+        .join(", ");
+};
 const table = reactive({ search: "", per_page: 10, ...p.tableFilters });
 const pending = computed(() =>
     p.submissions.data.filter(
@@ -149,7 +163,9 @@ const validity = (x) =>
             v-if="pending.length"
             class="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-5"
         >
-            <h2 class="font-black">Permintaan Surat Sehat dari Koordinator</h2>
+            <h2 class="flex items-center gap-2 font-black">
+                <NavIcon name="bell" /> Permintaan Revisi Dokumen
+            </h2>
             <button
                 v-for="x in pending"
                 :key="x.id"
@@ -158,13 +174,13 @@ const validity = (x) =>
             >
                 <b>{{ x.submission_number }}</b
                 ><span class="block text-sm font-bold text-red-600"
-                    >Lengkapi Surat Sehat
+                    >Lengkapi {{ requestedDocumentNames(x) }}
                     {{ x.units_count || x.units?.length }} unit →</span
                 >
                 <span
                     class="mt-3 block rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-slate-700"
                 >
-                    <b class="block text-amber-800">Alasan dari Koordinator</b>
+                    <b class="block text-amber-800">Alasan revisi</b>
                     {{ x.resubmission_request_reason }}
                 </span>
             </button>
@@ -194,13 +210,13 @@ const validity = (x) =>
                     <h2 class="text-xl font-black">
                         {{
                             source
-                                ? "Pembaruan Surat Sehat"
+                                ? "Pembaruan Dokumen Revisi"
                                 : "Pengajuan " + requirements[type].label
                         }}
                     </h2>
                     <p v-if="source" class="text-sm text-slate-500">
-                        Nomor plat dan seluruh dokumen sebelumnya tetap
-                        digunakan.
+                        Hanya dokumen yang diminta yang perlu diunggah ulang;
+                        dokumen valid sebelumnya tetap digunakan.
                     </p>
                     <div
                         v-if="type === 'IJIN_LINTAS' && !source"

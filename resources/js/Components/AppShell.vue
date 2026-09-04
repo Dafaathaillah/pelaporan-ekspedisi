@@ -125,8 +125,8 @@ const menus = computed(() => {
     if (user.value.role === "vendor")
         return [
             {
-                label: "Request Ekspedisi",
-                short: "Request",
+                label: "Incoming Request",
+                short: "Incoming",
                 icon: "route",
                 href: "/vendor/expedition-requests",
             },
@@ -136,6 +136,7 @@ const menus = computed(() => {
                 icon: "upload",
                 href: "/vendor",
                 exact: true,
+                badge: notificationCounts.value.vendor_revisions,
             },
             {
                 label: "Monitoring Sarana",
@@ -174,6 +175,13 @@ const menus = computed(() => {
                 icon: "route",
                 href: "/purchasing/requests",
                 exact: true,
+            },
+            {
+                label: "Review Ijin Lintas",
+                short: "Review",
+                icon: "bell",
+                href: "/purchasing/vendor-submissions/IJIN_LINTAS",
+                badge: notificationCounts.value.IJIN_LINTAS,
             },
             {
                 label: "Ganti Password",

@@ -3,7 +3,21 @@ import AppShell from "@/Components/AppShell.vue";
 import { expeditionVehicleLabel } from "@/Utils/expeditionRequest";
 import { useForm, Link, router } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
-const p = defineProps({ submission: Object });
+const p = defineProps({
+    submission: Object,
+    reviewBase: { type: String, default: "/coordinator" },
+    pageRole: { type: String, default: "coordinator" },
+});
+const itemUrl = computed(() =>
+    p.reviewBase === "/purchasing"
+        ? "/purchasing/vendor-submission/" + p.submission.id
+        : "/coordinator/submission/" + p.submission.id,
+);
+const listUrl = computed(() =>
+    p.reviewBase === "/purchasing"
+        ? "/purchasing/vendor-submissions/IJIN_LINTAS"
+        : "/coordinator/submissions/" + p.submission.type,
+);
 const used = (p.submission.resubmissions || []).flatMap(
     (x) => x.resubmission_subject_ids || [],
 );
@@ -12,6 +26,7 @@ const selected = ref(
 );
 const healthReason = ref("");
 const healthReasonError = ref("");
+const selectedDocumentCodes = ref([]);
 const choices = computed(() =>
     p.submission.status === "SUBMITTED"
         ? ["APPROVED", "REVISION", "REJECTED"]
@@ -30,10 +45,12 @@ const labels = {
 };
 const f = useForm({ status: choices.value[0] || "", coordinator_note: "" });
 const send = () =>
-    f.patch("/coordinator/submission/" + p.submission.id + "/status");
+    f.patch(itemUrl.value + "/status");
 const verify = (d, status) =>
     router.patch(
-        "/coordinator/document/" + d.id + "/verify",
+        p.reviewBase === "/purchasing"
+            ? "/purchasing/vendor-document/" + d.id + "/verify"
+            : "/coordinator/document/" + d.id + "/verify",
         { status },
         { preserveScroll: true },
     );
@@ -45,12 +62,18 @@ const request = (mode) => {
         return;
     }
     router.post(
-        "/coordinator/submission/" + p.submission.id + "/request-resubmission",
+        itemUrl.value + "/request-resubmission",
         {
             mode,
             subject_ids: selected.value,
             reason:
-                mode === "REQUEST_HEALTH" ? healthReason.value.trim() : null,
+                ["REQUEST_HEALTH", "REQUEST_DOCUMENTS"].includes(mode)
+                    ? healthReason.value.trim()
+                    : null,
+            document_codes:
+                mode === "REQUEST_DOCUMENTS"
+                    ? selectedDocumentCodes.value
+                    : undefined,
         },
         {
             preserveScroll: true,
@@ -69,6 +92,13 @@ const selectedDocs = computed(() =>
         .filter((u) => selected.value.includes(u.id))
         .flatMap((u) => u.documents),
 );
+const revisableDocs = computed(() => {
+    const unique = new Map();
+    selectedDocs.value
+        .filter((document) => document.verification_status === "INVALID")
+        .forEach((document) => unique.set(document.document_code, document));
+    return [...unique.values()];
+});
 const allValid = computed(
     () =>
         selectedDocs.value.length &&
@@ -80,10 +110,10 @@ const date = (v) => (v ? new Date(v).toLocaleDateString("id-ID") : "-");
     <AppShell
         title="Review Pengajuan"
         :subtitle="submission.submission_number"
-        eyebrow="Koordinator Sarana"
+        :eyebrow="pageRole === 'purchasing_admin' ? 'Admin Purchasing' : 'Koordinator Sarana'"
         ><div class="mb-4 flex justify-between">
             <Link
-                :href="'/coordinator/submissions/' + submission.type"
+                :href="listUrl"
                 class="btn-ghost"
                 >← Kembali</Link
             ><a
@@ -315,6 +345,51 @@ const date = (v) => (v ? new Date(v).toLocaleDateString("id-ID") : "-");
                         </button></template
                     >
                 </form>
+                <section
+                    v-if="submission.status === 'REVISION' && !submission.resubmission_requested_at"
+                    class="panel"
+                >
+                    <h3 class="font-black">MINTA REVISI DOKUMEN</h3>
+                    <p class="mt-2 text-xs leading-5 text-slate-500">
+                        Pilih unit dan dokumen berstatus Tidak Sesuai. Vendor hanya
+                        akan mengunggah ulang dokumen yang dipilih.
+                    </p>
+                    <div v-if="revisableDocs.length" class="mt-4 space-y-2">
+                        <label
+                            v-for="document in revisableDocs"
+                            :key="document.document_code"
+                            class="flex items-center gap-3 rounded-xl border border-red-100 bg-red-50/50 p-3 text-sm font-bold"
+                        >
+                            <input
+                                v-model="selectedDocumentCodes"
+                                type="checkbox"
+                                :value="document.document_code"
+                                class="rounded border-slate-300 text-red-600"
+                            />
+                            {{ document.document_name }}
+                        </label>
+                    </div>
+                    <p v-else class="mt-3 text-xs font-semibold text-amber-700">
+                        Tandai minimal satu dokumen sebagai Tidak Sesuai terlebih dahulu.
+                    </p>
+                    <label class="mt-4 block text-xs font-bold text-slate-700">
+                        Alasan revisi <span class="text-red-600">*</span>
+                    </label>
+                    <textarea
+                        v-model="healthReason"
+                        class="field mt-2 min-h-28"
+                        maxlength="1500"
+                        placeholder="Jelaskan dokumen yang perlu diperbaiki agar vendor memahami revisinya."
+                    />
+                    <button
+                        type="button"
+                        :disabled="!selected.length || !selectedDocumentCodes.length || healthReason.trim().length < 10"
+                        class="btn mt-3 w-full"
+                        @click="request('REQUEST_DOCUMENTS')"
+                    >
+                        Kirim Notifikasi Revisi
+                    </button>
+                </section>
                 <section
                     v-if="
                         expired &&

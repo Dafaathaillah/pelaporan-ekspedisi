@@ -103,7 +103,7 @@ class OperationalPushDispatcher
     {
         $item = $event->submission;
 
-        return [collect([$item->creator]), 'Surat Sehat Baru Diperlukan', $item->resubmission_request_reason ?: "Perbarui dokumen {$item->submission_number}.", '/vendor/submissions/'.$item->id, 'health-letter-'.$item->id];
+        return [collect([$item->creator]), 'Revisi Dokumen Diperlukan', $item->resubmission_request_reason ?: "Perbarui dokumen {$item->submission_number}.", '/vendor', 'document-revision-'.$item->id];
     }
 
     private function planningUpdated(PlanningUpdated $event): array

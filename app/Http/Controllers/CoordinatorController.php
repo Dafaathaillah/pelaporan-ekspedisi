@@ -80,6 +80,7 @@ class CoordinatorController extends Controller
 
     public function submissions(Request $r, SubmissionType $type): Response
     {
+        $this->authorizeReviewType($r, $type);
         $base = VendorSubmission::where('site', $r->user()->site)->where('type', $type);
         $q = (clone $base)->with('expeditionRequest:id,request_number,expedition_type,route_from,route_to')->withCount(['documents', 'resubmissions', 'units'])->when($r->search, fn ($x, $v) => $x->where(fn ($y) => $y->where('vendor_name', 'like', '%'.$v.'%')->orWhere('applicant_name', 'like', '%'.$v.'%')->orWhere('submission_number', 'like', '%'.$v.'%')->orWhere('phone', 'like', '%'.$v.'%')->orWhereHas('expeditionRequest', fn ($request) => $request->where('request_number', 'like', '%'.$v.'%'))))->when($r->status, fn ($x, $v) => $x->where('status', $v))->when($r->date_from, fn ($x, $v) => $x->whereDate('submitted_at', '>=', $v))->when($r->date_to, fn ($x, $v) => $x->whereDate('submitted_at', '<=', $v));
         $stats = ['total' => (clone $base)->count(), 'submitted' => (clone $base)->where('status', 'SUBMITTED')->count(), 'approved' => (clone $base)->where('status', 'APPROVED')->count(), 'revision' => (clone $base)->where('status', 'REVISION')->count()];
@@ -88,7 +89,7 @@ class CoordinatorController extends Controller
         $items = $q->orderBy($sort, $this->sortDirection($r))->paginate($this->perPage($r))->withQueryString();
         $items->getCollection()->load('expeditionRequest');
 
-        return Inertia::render('Coordinator/Submissions', ['type' => $type->value, 'items' => $items, 'stats' => $stats, 'filters' => $r->only(['search', 'status', 'date_from', 'date_to', 'sort', 'direction', 'per_page'])]);
+        return Inertia::render('Coordinator/Submissions', ['type' => $type->value, 'items' => $items, 'stats' => $stats, 'filters' => $r->only(['search', 'status', 'date_from', 'date_to', 'sort', 'direction', 'per_page']), 'reviewBase' => $this->reviewBase($r), 'pageRole' => $r->user()->role->value]);
     }
 
     public function exportSubmissions(Request $r, SubmissionType $type)
@@ -112,17 +113,17 @@ class CoordinatorController extends Controller
 
     public function showSubmission(VendorSubmission $submission): Response
     {
-        abort_unless($submission->site === request()->user()->site, 403);
+        $this->authorizeSubmissionReview(request(), $submission);
         if (! $submission->coordinator_opened_at) {
             $submission->update(['coordinator_opened_at' => now()]);
         }
 
-        return Inertia::render('Coordinator/Show', ['submission' => $submission->load('documents', 'units.documents', 'creator', 'resubmissions:id,parent_submission_id,resubmission_subject_ids', 'expeditionRequest.vendorCompany', 'expeditionRequest.creator:id,name')]);
+        return Inertia::render('Coordinator/Show', ['submission' => $submission->load('documents', 'units.documents', 'creator', 'resubmissions:id,parent_submission_id,resubmission_subject_ids', 'expeditionRequest.vendorCompany', 'expeditionRequest.creator:id,name'), 'reviewBase' => $this->reviewBase(request()), 'pageRole' => request()->user()->role->value]);
     }
 
     public function updateStatus(UpdateSubmissionStatusRequest $r, VendorSubmission $submission)
     {
-        abort_unless($submission->site === $r->user()->site, 403);
+        $this->authorizeSubmissionReview($r, $submission);
         $next = SubmissionStatus::from($r->status);
         abort_unless(($submission->status === SubmissionStatus::SUBMITTED && in_array($next, [SubmissionStatus::APPROVED, SubmissionStatus::REVISION, SubmissionStatus::REJECTED], true)) || ($submission->status === SubmissionStatus::APPROVED && $next === SubmissionStatus::RELEASED) || (in_array($submission->status, [SubmissionStatus::RELEASED, SubmissionStatus::REJECTED], true) && $next === SubmissionStatus::CLOSED), 422);
         DB::transaction(function () use ($r, $submission, $next) {
@@ -143,20 +144,23 @@ class CoordinatorController extends Controller
     public function requestResubmission(Request $request, VendorSubmission $submission)
     {
         $validated = $request->validate([
-            'mode' => 'required|in:USE_EXISTING,REQUEST_HEALTH',
+            'mode' => 'required|in:USE_EXISTING,REQUEST_HEALTH,REQUEST_DOCUMENTS',
             'subject_ids' => 'required|array|min:1',
             'subject_ids.*' => 'uuid',
-            'reason' => 'required_if:mode,REQUEST_HEALTH|nullable|string|min:10|max:1500',
+            'document_codes' => 'required_if:mode,REQUEST_DOCUMENTS|array|min:1',
+            'document_codes.*' => 'string|max:100',
+            'reason' => 'required_if:mode,REQUEST_HEALTH,REQUEST_DOCUMENTS|nullable|string|min:10|max:1500',
         ], [
-            'reason.required_if' => 'Alasan permintaan Surat Sehat baru wajib diisi.',
+            'reason.required_if' => 'Alasan permintaan revisi dokumen wajib diisi.',
             'reason.min' => 'Alasan permintaan minimal 10 karakter agar dapat dipahami vendor.',
         ]);
         $mode = $validated['mode'];
         $subjectIds = $validated['subject_ids'];
-        abort_unless($submission->site === $request->user()->site, 403);
+        $this->authorizeSubmissionReview($request, $submission);
         abort_unless(in_array($submission->type, SubmissionType::cases(), true), 422);
         abort_unless($submission->units()->whereIn('id', $subjectIds)->count() === count(array_unique($subjectIds)), 422, 'Pilihan orang/unit tidak valid.');
-        abort_unless($submission->release_expired_at && $submission->release_expired_at->isPast(), 422, 'Pengajuan masih berlaku dan belum dapat diajukan ulang.');
+        $isDocumentRevision = $mode === 'REQUEST_DOCUMENTS';
+        abort_unless($isDocumentRevision ? $submission->status === SubmissionStatus::REVISION : ($submission->release_expired_at && $submission->release_expired_at->isPast()), 422, $isDocumentRevision ? 'Status pengajuan harus Perlu Revisi.' : 'Pengajuan masih berlaku dan belum dapat diajukan ulang.');
         abort_if($submission->resubmission_requested_at, 422, 'Masih ada permintaan dokumen yang belum diselesaikan vendor.');
         $used = $submission->resubmissions()->get()->pluck('resubmission_subject_ids')->flatten()->filter()->all();
         abort_if(array_intersect($subjectIds, $used), 422, 'Salah satu orang/unit terpilih sudah pernah diajukan ulang.');
@@ -174,17 +178,21 @@ class CoordinatorController extends Controller
 
             return back()->with('success', 'Dokumen dinyatakan sesuai dan pengajuan ulang langsung dibuat.');
         }
-        $submission->update(['resubmission_requested_at' => now(), 'resubmission_requested_by' => $request->user()->id, 'resubmission_subject_ids' => $subjectIds, 'resubmission_request_reason' => trim($validated['reason'])]);
+        $documentCodes = $isDocumentRevision ? array_values(array_unique($validated['document_codes'])) : [match ($submission->type) {
+            SubmissionType::WASKAT => 'SURAT_SEHAT_VENDOR', SubmissionType::IJIN_LINTAS => 'SURAT_SEHAT', SubmissionType::PERMIT_VENDOR_NON_SIMPER => 'MCU', default => 'SURAT_TUGAS',
+        }];
+        abort_if($isDocumentRevision && $submission->units()->whereIn('id', $subjectIds)->whereHas('documents', fn ($query) => $query->whereIn('document_code', $documentCodes))->doesntExist(), 422, 'Dokumen revisi tidak ditemukan pada unit terpilih.');
+        $submission->update(['resubmission_requested_at' => now(), 'resubmission_requested_by' => $request->user()->id, 'resubmission_subject_ids' => $subjectIds, 'resubmission_document_codes' => $documentCodes, 'resubmission_request_reason' => trim($validated['reason'])]);
         SafeBroadcast::dispatch(new VendorResubmissionRequested($submission->fresh()));
 
-        return back()->with('success', 'Permintaan pengajuan ulang dikirim. Vendor hanya perlu memperbarui Surat Sehat.');
+        return back()->with('success', $isDocumentRevision ? 'Permintaan revisi dokumen dikirim ke vendor.' : 'Permintaan pengajuan ulang dikirim. Vendor hanya perlu memperbarui dokumen yang diminta.');
     }
 
     public function verifyDocument(Request $request, VendorDocument $document)
     {
         $data = $request->validate(['status' => 'required|in:VALID,INVALID', 'note' => 'nullable|string|max:1000']);
         $submission = $document->submission;
-        abort_unless($submission->site === $request->user()->site, 403);
+        $this->authorizeSubmissionReview($request, $submission);
         $document->update(['verification_status' => $data['status'], 'verification_note' => $data['note'] ?? null, 'verified_by' => $request->user()->id, 'verified_at' => now()]);
 
         return back()->with('success', $data['status'] === 'VALID' ? 'Dokumen dinyatakan sesuai.' : 'Dokumen ditandai tidak sesuai.');
@@ -194,7 +202,7 @@ class CoordinatorController extends Controller
     {
         $source->load('units.documents');
         $now = now();
-        $child = $source->replicate(['submission_number', 'status', 'submitted_at', 'reviewed_at', 'reviewed_by', 'coordinator_opened_at', 'released_at', 'release_expired_at', 'closed_at', 'resubmission_requested_at', 'resubmission_requested_by', 'resubmission_subject_ids', 'resubmission_request_reason']);
+        $child = $source->replicate(['submission_number', 'status', 'submitted_at', 'reviewed_at', 'reviewed_by', 'coordinator_opened_at', 'released_at', 'release_expired_at', 'closed_at', 'resubmission_requested_at', 'resubmission_requested_by', 'resubmission_subject_ids', 'resubmission_document_codes', 'resubmission_request_reason']);
         $child->parent_submission_id = $source->id;
         $child->resubmission_subject_ids = $subjectIds;
         $child->submission_sequence = $source->submission_sequence + 1;
@@ -212,6 +220,26 @@ class CoordinatorController extends Controller
         }
 
         return $child;
+    }
+
+    private function authorizeReviewType(Request $request, SubmissionType $type): void
+    {
+        if ($request->user()->role->value === 'purchasing_admin') {
+            abort_unless($type === SubmissionType::IJIN_LINTAS, 403);
+        }
+    }
+
+    private function authorizeSubmissionReview(Request $request, VendorSubmission $submission): void
+    {
+        abort_unless($submission->site === $request->user()->site, 403);
+        if ($request->user()->role->value === 'purchasing_admin') {
+            abort_unless($submission->type === SubmissionType::IJIN_LINTAS, 403);
+        }
+    }
+
+    private function reviewBase(Request $request): string
+    {
+        return $request->user()->role->value === 'purchasing_admin' ? '/purchasing' : '/coordinator';
     }
 
     private function perPage(Request $request): int

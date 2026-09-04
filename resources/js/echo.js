@@ -156,11 +156,11 @@ export function connect(user) {
             })
             .listen(".VendorResubmissionRequested", (p) => {
                 notify({
-                    title: "Perbarui Surat Sehat",
-                    message: `${p.number} · ${p.reason || "Koordinator meminta dokumen terbaru"}`,
+                    title: "Revisi dokumen diperlukan",
+                    message: `${p.number} · ${p.reason || "Tim reviewer meminta dokumen terbaru"}`,
                     href: "/vendor",
                 });
-                reload(["submissions"]);
+                reload(["submissions", "notificationCounts"]);
             })
             .listen(".ExpeditionRequestUpdated", (p) => {
                 notify({
