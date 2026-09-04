@@ -153,19 +153,37 @@
     }
     .data-table {
         @apply min-w-[1200px] w-full text-left text-[13px];
+        --table-cell-inline-space: 1.5rem;
+        --table-cell-block-space: 1.25rem;
+        border-collapse: separate;
+        border-spacing: 0;
+        line-height: 1.6;
     }
     .data-table thead {
         @apply bg-slate-50 text-[11px] uppercase text-slate-600;
         letter-spacing: 0.045em;
     }
+    .data-table th,
+    .data-table td {
+        padding-inline: var(--table-cell-inline-space);
+        padding-block: var(--table-cell-block-space);
+    }
     .data-table th {
-        @apply px-4 py-3 font-semibold;
+        @apply whitespace-nowrap border-b border-slate-200 font-semibold;
+        vertical-align: middle;
     }
     .data-table td {
-        @apply border-t border-slate-100 px-4 py-4 align-top leading-5;
+        @apply border-b border-slate-100 align-top;
+        line-height: 1.6;
+    }
+    .data-table tbody tr {
+        @apply transition-colors duration-150 hover:bg-slate-50/70;
+    }
+    .data-table tbody tr:last-child td {
+        border-bottom-width: 0;
     }
     .data-table small {
-        @apply mt-1 block text-[11px] font-normal leading-4 text-slate-400;
+        @apply mt-1.5 block text-[11px] font-normal leading-[1.55] text-slate-500;
     }
     .time-badge {
         @apply rounded-lg bg-red-50 px-2 py-2 font-semibold text-red-700;
@@ -240,42 +258,47 @@
         @apply w-full rounded-lg border py-2 pl-3 pr-9 text-[13px] font-medium text-slate-700;
     }
     .submission-table {
-        min-width: 1600px;
+        min-width: 1900px;
         table-layout: fixed;
     }
     .submission-table th:nth-child(1) {
-        width: 50px;
+        width: 64px;
     }
     .submission-table th:nth-child(2) {
-        width: 105px;
+        width: 120px;
     }
     .submission-table th:nth-child(3) {
-        width: 155px;
-    }
-    .submission-table th:nth-child(4) {
-        width: 240px;
-    }
-    .submission-table th:nth-child(5),
-    .submission-table th:nth-child(6) {
-        width: 150px;
-    }
-    .submission-table th:nth-child(7) {
-        width: 125px;
-    }
-    .submission-table th:nth-child(8) {
-        width: 95px;
-    }
-    .submission-table th:nth-child(9) {
         width: 180px;
     }
-    .submission-table th:nth-child(10) {
+    .submission-table th:nth-child(4) {
         width: 260px;
     }
+    .submission-table th:nth-child(5) {
+        width: 220px;
+    }
+    .submission-table th:nth-child(6) {
+        width: 180px;
+    }
+    .submission-table th:nth-child(7) {
+        width: 145px;
+    }
+    .submission-table th:nth-child(8) {
+        width: 120px;
+    }
+    .submission-table th:nth-child(9) {
+        width: 135px;
+    }
+    .submission-table th:nth-child(10) {
+        width: 240px;
+    }
     .submission-table th:nth-child(11) {
-        width: 80px;
+        width: 150px;
     }
     .submission-table th:nth-child(12) {
         width: 105px;
+    }
+    .submission-table th:nth-child(13) {
+        width: 125px;
     }
     .table-wrap-cell {
         white-space: normal;
