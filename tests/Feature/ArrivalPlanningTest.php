@@ -15,9 +15,36 @@ class ArrivalPlanningTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_new_unit_submission_requires_driver_details(): void
+    {
+        $vendor = User::factory()->create(['role' => UserRole::VENDOR]);
+        $this->actingAs($vendor)->post('/vendor/submissions', ['type' => 'IJIN_LINTAS', 'vendor_name' => $vendor->name, 'applicant_name' => 'PIC', 'phone' => '081', 'units' => [['plate_number' => 'DA 12 AB']]])->assertSessionHasErrors(['units.0.driver_name', 'units.0.driver_phone', 'units.0.vehicle_type']);
+    }
+
     private function permit(User $vendor): VendorSubmission
     {
         return VendorSubmission::create(['submission_number' => 'VND-'.$vendor->id, 'type' => 'IJIN_LINTAS', 'vendor_name' => $vendor->name, 'applicant_name' => 'PIC', 'phone' => '081', 'status' => 'RELEASED', 'submitted_at' => now(), 'released_at' => now(), 'release_expired_at' => now()->addWeek(), 'created_by' => $vendor->id, 'site' => 'BIB']);
+    }
+
+    public function test_vendor_can_complete_legacy_unit_details_but_not_another_vendors_unit(): void
+    {
+        $vendor = User::factory()->create(['role' => UserRole::VENDOR]);
+        $permit = $this->permit($vendor);
+        $unit = $permit->units()->create(['subject_type' => 'UNIT', 'plate_number' => 'DA 88 AB']);
+        $details = ['driver_name' => 'Budi', 'driver_phone' => '08123', 'vehicle_type' => 'Fuso'];
+        $this->actingAs($vendor)->patch('/vendor/units/'.$unit->id.'/details', $details)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('Budi', $unit->fresh()->driver_name);
+        $other = User::factory()->create(['role' => UserRole::VENDOR]);
+        $this->actingAs($other)->patch('/vendor/units/'.$unit->id.'/details', $details)->assertForbidden();
+    }
+
+    public function test_reviewer_can_complete_release_details_on_legacy_released_permit(): void
+    {
+        $permit = $this->permit(User::factory()->create(['role' => UserRole::VENDOR]));
+        $reviewer = User::factory()->create(['role' => UserRole::COORDINATOR]);
+        $this->actingAs($reviewer)->patch('/coordinator/submission/'.$permit->id.'/release-details', ['destination' => 'Workshop', 'release_expired_at' => today()->addDays(4)->toDateString()])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('Workshop', $permit->fresh()->destination);
+        $this->assertSame(today()->addDays(4)->toDateString(), $permit->fresh()->release_expired_at->toDateString());
     }
 
     public function test_vendor_can_only_select_own_permits_and_reschedule_with_reason(): void

@@ -165,11 +165,13 @@ class OperationalWorkflowTest extends TestCase
         $this->actingAs($vendor)->post('/vendor/submissions', [
             'type' => 'IJIN_LINTAS', 'expedition_request_id' => $incoming->id, 'planning_frequency' => 'WEEKLY',
             'vendor_name' => $company->name, 'applicant_name' => 'PIC Vendor', 'phone' => '0812',
-            'units' => [['plate_number' => 'DA 1234 VI', 'documents' => $documents]],
+            'units' => [['driver_name' => 'Budi', 'driver_phone' => '08123', 'vehicle_type' => 'Fuso', 'plate_number' => 'DA 1234 VI', 'documents' => $documents]],
         ])->assertSessionHasNoErrors();
 
         $submission = VendorSubmission::firstOrFail();
         $this->assertCount(6, $submission->documents);
+        $this->assertSame('Budi', $submission->units->first()->driver_name);
+        $this->assertSame('Fuso', $submission->units->first()->vehicle_type);
         $this->assertFalse($submission->documents()->where('document_code', 'SURAT_IJIN')->exists());
     }
 
@@ -200,7 +202,7 @@ class OperationalWorkflowTest extends TestCase
             ->where('notificationCounts.vendor_revisions', 1)
             ->where('submissions.data.0.resubmission_document_codes.0', 'SIM'));
 
-        $payload = ['type' => 'IJIN_LINTAS', 'parent_submission_id' => $submission->id, 'vendor_name' => $company->name, 'applicant_name' => 'PIC', 'phone' => '081', 'units' => [['source_unit_id' => $unit->id, 'plate_number' => 'DA 4321 VR', 'documents' => []]]];
+        $payload = ['type' => 'IJIN_LINTAS', 'parent_submission_id' => $submission->id, 'vendor_name' => $company->name, 'applicant_name' => 'PIC', 'phone' => '081', 'units' => [['source_unit_id' => $unit->id, 'driver_name' => 'Budi', 'driver_phone' => '08123', 'vehicle_type' => 'Fuso', 'plate_number' => 'DA 4321 VR', 'documents' => []]]];
         $this->actingAs($vendor)->post('/vendor/submissions', $payload)->assertSessionHasErrors('units.0.documents.SIM');
         $payload['units'][0]['documents']['SIM'] = UploadedFile::fake()->create('sim-baru.pdf', 20, 'application/pdf');
         $this->actingAs($vendor)->post('/vendor/submissions', $payload)->assertSessionHasNoErrors();

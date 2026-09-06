@@ -55,7 +55,7 @@ const dateLabel = (value) =>
                             · Berlaku sampai {{ dateLabel(submission.release_expired_at) }}
                         </p>
                         <p class="mt-2 text-xs font-semibold text-slate-600">
-                            Unit: {{ submission.units.map((unit) => unit.plate_number).join(", ") || "-" }}
+                            <a :href="`/vendor/submissions/${submission.id}`" class="mr-2 underline">Detail Driver &amp; Unit</a>Unit: {{ submission.units.map((unit) => unit.plate_number).join(", ") || "-" }}
                         </p>
                     </div>
                     <a

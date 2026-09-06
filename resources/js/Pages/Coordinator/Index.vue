@@ -1049,6 +1049,7 @@ const healthStatusClass = (status) =>
                 </div>
 
                 <div class="mt-4 grid gap-2 sm:grid-cols-2">
+                    <a v-if="selectedEscort.p5m_photo_path" :href="`/driver/escorts/${selectedEscort.id}/p5m-photo`" target="_blank" class="mt-3 inline-block text-sm font-semibold text-blue-700">Lihat Foto P5M</a>
                     <a
                         v-if="selectedEscort.escort_close_photo_path"
                         :href="`/coordinator/reports/${selectedEscort.id}/escort-photo`"

@@ -151,7 +151,7 @@ class ExpeditionRequestWorkflowTest extends TestCase
         $this->actingAs($vendor)->post('/vendor/submissions', [
             'type' => 'IJIN_LINTAS', 'planning_frequency' => 'NON_REGULAR', 'expedition_request_id' => $foreignRequest->id,
             'vendor_name' => $company->name, 'applicant_name' => 'PIC Direct', 'phone' => '0812',
-            'units' => [['plate_number' => 'DA 1111 VD', 'documents' => $documents]],
+            'units' => [['driver_name' => 'Budi', 'driver_phone' => '08123', 'vehicle_type' => 'Fuso', 'plate_number' => 'DA 1111 VD', 'documents' => $documents]],
         ])->assertSessionHasNoErrors();
 
         $submission = VendorSubmission::firstOrFail();
@@ -162,7 +162,7 @@ class ExpeditionRequestWorkflowTest extends TestCase
         $this->actingAs($vendor)->post('/vendor/submissions', [
             'type' => 'IJIN_LINTAS', 'planning_frequency' => 'WEEKLY',
             'vendor_name' => $company->name, 'applicant_name' => 'PIC Reguler', 'phone' => '0813',
-            'units' => [['plate_number' => 'DA 2222 VD', 'documents' => []]],
+            'units' => [['driver_name' => 'Budi', 'driver_phone' => '08123', 'vehicle_type' => 'Fuso', 'plate_number' => 'DA 2222 VD', 'documents' => []]],
         ])->assertSessionHasErrors('expedition_request_id');
     }
 

@@ -19,11 +19,11 @@ class ClearOperationalData extends Command
      * @var list<string>
      */
     private const OPERATIONAL_TABLES = [
+        'expedition_reports',
         'planning_items',
         'vendor_documents',
         'vendor_submission_units',
         'vendor_submissions',
-        'expedition_reports',
         'expedition_requests',
     ];
 

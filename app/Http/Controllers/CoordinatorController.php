@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -149,6 +150,26 @@ class CoordinatorController extends Controller
         SafeBroadcast::dispatch(new VendorSubmissionStatusChanged($freshSubmission));
 
         return back()->with('success', 'Status pengajuan berhasil diperbarui.');
+    }
+
+    public function updateReleaseDetails(Request $request, VendorSubmission $submission)
+    {
+        $this->authorizeSubmissionReview($request, $submission);
+        abort_unless($submission->status === SubmissionStatus::RELEASED, 422);
+        $data = $request->validate([
+            'destination' => ['required', 'string', 'max:150'],
+            'release_expired_at' => ['required', 'date', 'after_or_equal:today'],
+        ]);
+        $expiry = Carbon::parse($data['release_expired_at'])->endOfDay();
+        if ($submission->planningItems()->whereDate('planned_date', '>', $expiry)->exists()) {
+            throw ValidationException::withMessages(['release_expired_at' => 'Tanggal expired tidak boleh lebih awal dari planning yang sudah terjadwal.']);
+        }
+        $submission->update(['destination' => $data['destination'], 'release_expired_at' => $expiry]);
+        foreach ($submission->planningItems as $item) {
+            SafeBroadcast::dispatch(new PlanningUpdated($item->load('submission')));
+        }
+
+        return back()->with('success', 'Tujuan dan masa berlaku izin tersimpan.');
     }
 
     public function requestResubmission(Request $request, VendorSubmission $submission)

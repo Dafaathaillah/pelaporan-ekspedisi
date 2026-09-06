@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Enums\SubmissionStatus;
+use App\Events\PlanningUpdated;
 use App\Events\VendorSubmissionCreated;
 use App\Http\Requests\StoreVendorSubmissionRequest;
 use App\Models\ExpeditionReport;
 use App\Models\ExpeditionRequest;
 use App\Models\VendorSubmission;
+use App\Models\VendorSubmissionUnit;
 use App\Services\PlanningService;
 use App\Services\VendorDocumentRequirementService;
 use App\Support\SafeBroadcast;
@@ -47,6 +49,25 @@ class VendorController extends Controller
         abort_unless($submission->created_by === $u->id && $submission->site === $u->site, 403);
 
         return Inertia::render('Vendor/Show', ['submission' => $submission->load('documents', 'units.documents', 'expeditionRequest.vendorCompany')]);
+    }
+
+    public function updateUnitDetails(Request $request, VendorSubmissionUnit $unit): RedirectResponse
+    {
+        $submission = $unit->submission;
+        abort_unless($submission->created_by === $request->user()->id && $submission->site === $request->user()->site, 403);
+        abort_unless($submission->type->value === 'IJIN_LINTAS', 422);
+        abort_if(in_array($submission->status->value, ['CLOSED', 'REJECTED'], true), 422, 'Izin sudah ditutup.');
+        $data = $request->validate([
+            'driver_name' => ['required', 'string', 'max:150'],
+            'driver_phone' => ['required', 'string', 'max:30'],
+            'vehicle_type' => ['required', 'in:Fuso,Colt Diesel,Trailer,Dump Truck,Pickup,Light Vehicle,Lainnya'],
+        ]);
+        $unit->update($data);
+        foreach ($submission->planningItems as $item) {
+            SafeBroadcast::dispatch(new PlanningUpdated($item->load('submission')));
+        }
+
+        return back()->with('success', 'Detail driver dan kendaraan tersimpan.');
     }
 
     public function monitoringSarana(Request $request): Response

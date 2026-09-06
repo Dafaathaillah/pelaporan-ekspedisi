@@ -51,6 +51,8 @@ const f = useForm({
     destination: p.submission.destination || p.submission.expedition_request?.route_to || "",
     release_expired_at: p.submission.release_expired_at?.slice(0, 10) || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
 });
+const releaseDetails = useForm({ destination: p.submission.destination || p.submission.expedition_request?.route_to || "", release_expired_at: p.submission.release_expired_at?.slice(0, 10) || "" });
+const saveReleaseDetails = () => releaseDetails.patch(itemUrl.value + "/release-details", { preserveScroll: true });
 const send = () =>
     f.transform((data) => ({ ...data, _method: "patch" })).post(
         itemUrl.value + "/status",
@@ -269,7 +271,7 @@ const date = (v) => (v ? new Date(v).toLocaleDateString("id-ID") : "-");
                             >Sudah diajukan ulang</small
                         ></label
                     >
-                    <p v-if="unit.subject_type === 'UNIT'" class="mt-2 text-sm text-slate-600">Driver: {{ unit.driver_name || '-' }} ? {{ unit.driver_phone || '-' }} ? {{ unit.vehicle_type || 'Tipe belum diisi' }}</p><div class="mt-3 grid gap-3 md:grid-cols-2">
+                    <p v-if="unit.subject_type === 'UNIT'" class="mt-2 text-sm text-slate-600">Driver: {{ unit.driver_name || '-' }} &middot; {{ unit.driver_phone || '-' }} &middot; {{ unit.vehicle_type || 'Tipe belum diisi' }}</p><div class="mt-3 grid gap-3 md:grid-cols-2">
                         <div
                             v-for="d in unit.documents"
                             :key="d.id"
@@ -335,6 +337,13 @@ const date = (v) => (v ? new Date(v).toLocaleDateString("id-ID") : "-");
                 </div>
             </section>
             <aside class="space-y-5">
+                <form v-if="submission.status === 'RELEASED'" class="panel space-y-3" @submit.prevent="saveReleaseDetails">
+                    <h3 class="font-bold">Detail Izin Released</h3>
+                    <label class="block text-sm font-semibold">Tujuan<input v-model="releaseDetails.destination" class="field" required maxlength="150" /><p class="err">{{ releaseDetails.errors.destination }}</p></label>
+                    <label class="block text-sm font-semibold">Tanggal Expired<input v-model="releaseDetails.release_expired_at" type="date" class="field" required /><p class="err">{{ releaseDetails.errors.release_expired_at }}</p></label>
+                    <p class="text-sm text-slate-600">Tipe kendaraan: {{ [...new Set(submission.units.map(u => u.vehicle_type).filter(Boolean))].join(', ') || '-' }}</p>
+                    <button class="btn" :disabled="releaseDetails.processing">Simpan Detail Izin</button>
+                </form>
                 <form class="panel" @submit.prevent="send">
                     <h3 class="font-black">STATUS PENGAJUAN</h3>
                     <template v-if="choices.length"

@@ -196,7 +196,7 @@ onBeforeUnmount(clearPreviews);
     <AppShell
         title="Pelaporan Kedatangan"
         subtitle="Isi data setelah kendaraan tiba di Underpass."
-        eyebrow="Akun Ekspedisi"
+        :eyebrow="reportBase === '/vendor/arrivals' ? 'Akun Vendor' : 'Akun Ekspedisi'"
     >
         <form
             class="panel p-5 sm:p-6"
@@ -228,11 +228,11 @@ onBeforeUnmount(clearPreviews);
                 </div>
             </div>
             <div class="mb-5 grid gap-4 md:grid-cols-3">
-                <label class="text-sm font-semibold">Izin / Vendor<select v-model="permitId" class="field" required @change="resetSelection"><option value="">Pilih izin Released</option><option v-for="p in permits" :key="p.id" :value="p.id">{{ p.vendor_name }} ? {{ p.submission_number }}</option></select></label>
+                <label class="text-sm font-semibold">Izin / Vendor<select v-model="permitId" class="field" required @change="resetSelection"><option value="">Pilih izin Released</option><option v-for="p in permits" :key="p.id" :value="p.id">{{ p.vendor_name }} &middot; {{ p.submission_number }}</option></select></label>
                 <label class="text-sm font-semibold">Tanggal Planning<select v-model="form.planning_item_id" class="field" required @change="form.vendor_submission_unit_id = ''; selectUnit()"><option value="">Pilih planning</option><option v-for="p in selectedPermit?.planning_items || []" :key="p.id" :value="p.id">{{ p.planned_date }}</option></select><p class="err">{{ form.errors.planning_item_id }}</p></label>
-                <label class="text-sm font-semibold">Unit / Driver<select v-model="form.vendor_submission_unit_id" class="field" required :disabled="!form.planning_item_id" @change="selectUnit"><option value="">Pilih unit yang belum datang</option><option v-for="u in availableUnits" :key="u.id" :value="u.id">{{ u.plate_number }} ? {{ u.driver_name || 'Driver belum diisi' }}</option></select><p class="err">{{ form.errors.vendor_submission_unit_id }}</p></label>
+                <label class="text-sm font-semibold">Unit / Driver<select v-model="form.vendor_submission_unit_id" class="field" required :disabled="!form.planning_item_id" @change="selectUnit"><option value="">Pilih unit yang belum datang</option><option v-for="u in availableUnits" :key="u.id" :value="u.id">{{ u.plate_number }} &middot; {{ u.driver_name || 'Driver belum diisi' }}</option></select><p class="err">{{ form.errors.vendor_submission_unit_id }}</p></label>
                 <p v-if="!permits.length" class="text-sm text-slate-500 md:col-span-3">Belum ada izin Released yang masih berlaku.</p>
-                <p v-if="form.vendor_submission_unit_id && (!form.driver_name || !form.driver_phone || !form.vehicle_type || !form.destination)" class="text-sm text-amber-700 md:col-span-3">Data izin belum lengkap. Lengkapi driver, nomor HP, tipe kendaraan, dan tujuan pada izin sebelum melaporkan kedatangan.</p>
+                <p v-if="form.vendor_submission_unit_id && (!form.driver_name || !form.driver_phone || !form.vehicle_type || !form.destination)" class="text-sm text-amber-700 md:col-span-3">Data izin belum lengkap. Lengkapi driver, nomor HP, dan tipe kendaraan pada detail izin; tujuan diisi oleh reviewer. <a v-if="reportBase === '/vendor/arrivals' && selectedPermit" :href="`/vendor/submissions/${selectedPermit.id}`" class="font-semibold underline">Lengkapi detail unit</a></p>
             </div>
             <div class="grid gap-5 md:grid-cols-2">
                 <label class="text-sm font-semibold text-slate-700"
@@ -250,7 +250,7 @@ onBeforeUnmount(clearPreviews);
                     ><input
                         v-model="form.sender_vendor" readonly
                         class="field"
-                        placeholder="Ketik nama vendor atau pengirim"
+                        placeholder="Otomatis dari izin terpilih"
                         autocomplete="organization"
                     />
                     <p class="err">{{ form.errors.sender_vendor }}</p></label

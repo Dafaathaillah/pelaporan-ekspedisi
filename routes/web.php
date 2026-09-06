@@ -54,6 +54,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/vendor-submissions/IJIN_LINTAS', [CoordinatorController::class, 'submissions'])->defaults('type', 'IJIN_LINTAS')->name('purchasing.vendor-submissions');
         Route::get('/vendor-submission/{submission}', [CoordinatorController::class, 'showSubmission'])->name('purchasing.vendor-submission.show');
         Route::patch('/vendor-submission/{submission}/status', [CoordinatorController::class, 'updateStatus'])->name('purchasing.vendor-submission.status');
+        Route::patch('/vendor-submission/{submission}/release-details', [CoordinatorController::class, 'updateReleaseDetails']);
         Route::post('/vendor-submission/{submission}/request-resubmission', [CoordinatorController::class, 'requestResubmission'])->name('purchasing.vendor-submission.request-resubmission');
         Route::patch('/vendor-document/{document}/verify', [CoordinatorController::class, 'verifyDocument'])->name('purchasing.vendor-document.verify');
         Route::get('/arrival-monitoring', [ExpeditionController::class, 'monitoring']);
@@ -69,6 +70,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/expedition-requests', [VendorController::class, 'expeditionRequests'])->name('vendor.expedition-requests');
         Route::post('/submissions', [VendorController::class, 'store'])->name('vendor.store');
         Route::get('/submissions/{submission}', [VendorController::class, 'show'])->name('vendor.show');
+        Route::patch('/units/{unit}/details', [VendorController::class, 'updateUnitDetails']);
         Route::get('/monitoring-sarana', [VendorController::class, 'monitoringSarana'])->name('vendor.monitoring-sarana');
         Route::get('/arrivals', [ExpeditionController::class, 'index']);
         Route::post('/arrivals', [ExpeditionController::class, 'store']);
@@ -104,6 +106,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/submissions/{type}/export', [CoordinatorController::class, 'exportSubmissions'])->name('coordinator.submissions.export');
             Route::get('/submission/{submission}', [CoordinatorController::class, 'showSubmission'])->name('coordinator.show');
             Route::patch('/submission/{submission}/status', [CoordinatorController::class, 'updateStatus'])->name('coordinator.status');
+            Route::patch('/submission/{submission}/release-details', [CoordinatorController::class, 'updateReleaseDetails']);
             Route::post('/submission/{submission}/request-resubmission', [CoordinatorController::class, 'requestResubmission'])->name('coordinator.request-resubmission');
             Route::patch('/document/{document}/verify', [CoordinatorController::class, 'verifyDocument'])->name('coordinator.document.verify');
         });
