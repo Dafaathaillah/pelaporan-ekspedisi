@@ -8,9 +8,11 @@ use App\Events\PlanningDeleted;
 use App\Events\PlanningUpdated;
 use App\Models\PlanningItem;
 use App\Models\VendorSubmission;
+use App\Services\ArrivalPlanningService;
 use App\Support\SafeBroadcast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -59,6 +61,7 @@ class VendorPlanningController extends Controller
     {
         $this->authorizeActiveReleased($request, $planningItem->submission);
         abort_if($planningItem->is_locked, 422, 'Planning telah dikunci oleh reviewer.');
+        abort_if($planningItem->reports()->exists(), 422, 'Planning sudah memiliki laporan kedatangan dan tidak dapat dihapus.');
         $submission = $planningItem->submission;
         $event = new PlanningDeleted($planningItem->id, $submission->id, $submission->submission_number, $submission->vendor_name, $submission->site, $submission->created_by);
         $planningItem->delete();
@@ -76,6 +79,27 @@ class VendorPlanningController extends Controller
         if (! $submission->release_expired_at || $submission->release_expired_at->isPast()) {
             throw ValidationException::withMessages(['planned_date' => 'Masa berlaku Ijin Lintas telah berakhir.']);
         }
+    }
+
+    public function reschedule(Request $request, PlanningItem $planningItem): RedirectResponse
+    {
+        return DB::transaction(function () use ($request, $planningItem) {
+            $planningItem = PlanningItem::lockForUpdate()->findOrFail($planningItem->id);
+            $this->authorizeActiveReleased($request, $planningItem->submission);
+            abort_if($planningItem->is_locked, 422, 'Planning terkunci. Hubungi reviewer untuk membuka kunci.');
+            $data = $this->validateDate($request, $planningItem->submission, $planningItem);
+            $reason = $request->validate(['reschedule_reason' => ['required', 'string', 'max:2000']]);
+            if (! $planningItem->planned_date || $planningItem->planned_date->toDateString() === $data['planned_date']) {
+                throw ValidationException::withMessages(['planned_date' => 'Pilih tanggal baru yang berbeda.']);
+            }
+            $planningItem->load('submission.units', 'reports');
+            $progress = app(ArrivalPlanningService::class)->progress($planningItem);
+            abort_if($progress['total'] > 0 && $progress['completed'] === $progress['total'], 422, 'Semua unit sudah datang.');
+            $planningItem->update([...$data, ...$reason, 'previous_planned_date' => $planningItem->planned_date, 'rescheduled_at' => now(), 'updated_by' => $request->user()->id]);
+            SafeBroadcast::dispatch(new PlanningUpdated($planningItem->fresh('submission')));
+
+            return back()->with('success', 'Sisa kedatangan berhasil dijadwalkan ulang. Alasan ditampilkan di kartu planning.');
+        });
     }
 
     private function validateDate(Request $request, VendorSubmission $submission, ?PlanningItem $planningItem = null): array

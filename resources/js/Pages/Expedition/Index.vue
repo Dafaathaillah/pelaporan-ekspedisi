@@ -10,6 +10,8 @@ const props = defineProps({
     vehicleTypes: Array,
     expeditionCompany: String,
     reports: Object,
+    permits: { type: Array, default: () => [] },
+    reportBase: { type: String, default: "/expedition/reports" },
 });
 const arrivalInput = ref(null),
     pressureInput = ref(null),
@@ -19,6 +21,7 @@ const locating = ref({ arrival: false, pressure: false });
 const locationError = ref({ arrival: "", pressure: "" });
 const form = useForm({
     expedition_company: props.expeditionCompany,
+    planning_item_id: "", vendor_submission_unit_id: "",
     driver_name: "",
     driver_phone: "",
     vehicle_plate: "",
@@ -40,6 +43,15 @@ const form = useForm({
     blood_pressure_location_name: "",
     blood_pressure_photo_captured_at: "",
 });
+const permitId = ref("");
+const selectedPermit = computed(() => props.permits.find(p => p.id === permitId.value));
+const selectedPlanning = computed(() => selectedPermit.value?.planning_items.find(p => p.id === form.planning_item_id));
+const availableUnits = computed(() => (selectedPermit.value?.units || []).filter(u => !(selectedPlanning.value?.reports || []).some(r => r.vendor_submission_unit_id === u.id)));
+const selectUnit = () => {
+    const unit = availableUnits.value.find(u => u.id === form.vendor_submission_unit_id);
+    Object.assign(form, { driver_name: unit?.driver_name || "", driver_phone: unit?.driver_phone || "", vehicle_plate: unit?.plate_number || "", vehicle_type: unit?.vehicle_type || "", sender_vendor: selectedPermit.value?.vendor_name || "", destination: selectedPermit.value?.destination || "" });
+};
+const resetSelection = () => { form.planning_item_id = ""; form.vendor_submission_unit_id = ""; selectUnit(); };
 const fields = [
     ["driver_name", "Nama Driver"],
     ["driver_phone", "Nomor HP"],
@@ -117,7 +129,7 @@ const captureLocation = async (kind) => {
         form[prefix + "_location_accuracy"] = Math.round(accuracy);
         form[prefix + "_photo_captured_at"] = new Date().toISOString();
         try {
-            const { data } = await axios.get("/expedition/reverse-geocode", {
+            const { data } = await axios.get(props.reportBase === "/vendor/arrivals" ? "/vendor/arrivals/reverse-geocode" : "/expedition/reverse-geocode", {
                 params: { latitude, longitude },
             });
             form[prefix + "_location_name"] =
@@ -160,11 +172,12 @@ const clearPreviews = () => {
 const send = () => {
     if (!healthAssessment.value || healthAssessment.value.status === "INVALID")
         return;
-    form.post("/expedition/reports", {
+    form.post(props.reportBase, {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
             form.reset();
+            permitId.value = "";
             form.expedition_company = props.expeditionCompany;
             clearPreviews();
         },
@@ -175,7 +188,7 @@ const date = (value) =>
         dateStyle: "medium",
         timeStyle: "short",
     });
-const photoUrl = (row, kind) => `/expedition/reports/${row.id}/photos/${kind}`;
+const photoUrl = (row, kind) => `${props.reportBase}/${row.id}/photos/${kind}`;
 onBeforeUnmount(clearPreviews);
 </script>
 
@@ -214,6 +227,13 @@ onBeforeUnmount(clearPreviews);
                     </p>
                 </div>
             </div>
+            <div class="mb-5 grid gap-4 md:grid-cols-3">
+                <label class="text-sm font-semibold">Izin / Vendor<select v-model="permitId" class="field" required @change="resetSelection"><option value="">Pilih izin Released</option><option v-for="p in permits" :key="p.id" :value="p.id">{{ p.vendor_name }} ? {{ p.submission_number }}</option></select></label>
+                <label class="text-sm font-semibold">Tanggal Planning<select v-model="form.planning_item_id" class="field" required @change="form.vendor_submission_unit_id = ''; selectUnit()"><option value="">Pilih planning</option><option v-for="p in selectedPermit?.planning_items || []" :key="p.id" :value="p.id">{{ p.planned_date }}</option></select><p class="err">{{ form.errors.planning_item_id }}</p></label>
+                <label class="text-sm font-semibold">Unit / Driver<select v-model="form.vendor_submission_unit_id" class="field" required :disabled="!form.planning_item_id" @change="selectUnit"><option value="">Pilih unit yang belum datang</option><option v-for="u in availableUnits" :key="u.id" :value="u.id">{{ u.plate_number }} ? {{ u.driver_name || 'Driver belum diisi' }}</option></select><p class="err">{{ form.errors.vendor_submission_unit_id }}</p></label>
+                <p v-if="!permits.length" class="text-sm text-slate-500 md:col-span-3">Belum ada izin Released yang masih berlaku.</p>
+                <p v-if="form.vendor_submission_unit_id && (!form.driver_name || !form.driver_phone || !form.vehicle_type || !form.destination)" class="text-sm text-amber-700 md:col-span-3">Data izin belum lengkap. Lengkapi driver, nomor HP, tipe kendaraan, dan tujuan pada izin sebelum melaporkan kedatangan.</p>
+            </div>
             <div class="grid gap-5 md:grid-cols-2">
                 <label class="text-sm font-semibold text-slate-700"
                     >Perusahaan Ekspedisi <span class="text-red-600">*</span
@@ -228,7 +248,7 @@ onBeforeUnmount(clearPreviews);
                 <label class="text-sm font-semibold text-slate-700"
                     >Vendor/Pengirim <span class="text-red-600">*</span
                     ><input
-                        v-model="form.sender_vendor"
+                        v-model="form.sender_vendor" readonly
                         class="field"
                         placeholder="Ketik nama vendor atau pengirim"
                         autocomplete="organization"
@@ -240,13 +260,13 @@ onBeforeUnmount(clearPreviews);
                     :key="field[0]"
                     class="text-sm font-semibold text-slate-700"
                     >{{ field[1] }} <span class="text-red-600">*</span
-                    ><input v-model="form[field[0]]" class="field" />
+                    ><input v-model="form[field[0]]" readonly class="field bg-slate-50" />
                     <p class="err">{{ form.errors[field[0]] }}</p></label
                 >
                 <label class="text-sm font-semibold text-slate-700"
                     >Jenis Kendaraan <span class="text-red-600">*</span
                     ><select
-                        v-model="form.vehicle_type"
+                        v-model="form.vehicle_type" disabled
                         class="field select-control"
                     >
                         <option value="">Pilih kendaraan</option>

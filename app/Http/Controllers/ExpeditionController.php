@@ -6,14 +6,18 @@ use App\Enums\UserRole;
 use App\Events\ExpeditionReportCreated;
 use App\Http\Requests\StoreExpeditionReportRequest;
 use App\Models\ExpeditionReport;
+use App\Models\PlanningItem;
 use App\Models\User;
+use App\Services\ArrivalPlanningService;
 use App\Support\BloodPressureAssessment;
 use App\Support\SafeBroadcast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,21 +29,43 @@ class ExpeditionController extends Controller
         $reports = ExpeditionReport::where('created_by', $request->user()->id)->where('site', $request->user()->site)
             ->latest('arrived_at')->paginate($perPage)->withQueryString();
 
-        return Inertia::render('Expedition/Index', ['vehicleTypes' => ['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya'], 'expeditionCompany' => $request->user()->name, 'reports' => $reports]);
+        $permits = app(ArrivalPlanningService::class)->permits($request->user())->where('status', 'RELEASED')->where('release_expired_at', '>=', now())->with(['units', 'planningItems' => fn ($q) => $q->whereNotNull('planned_date')->with('reports:id,planning_item_id,vendor_submission_unit_id')])->latest('released_at')->get();
+
+        return Inertia::render('Expedition/Index', ['vehicleTypes' => ['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya'], 'expeditionCompany' => $request->user()->name, 'reports' => $reports, 'permits' => $permits, 'reportBase' => $request->user()->role->value === 'vendor' ? '/vendor/arrivals' : '/expedition/reports']);
     }
 
     public function store(StoreExpeditionReportRequest $request): RedirectResponse
     {
-        $now = now();
-        $vendorUser = User::where('site', $request->user()->site)->where('role', UserRole::VENDOR)->where('name', $request->sender_vendor)->first();
-        $number = 'EXP-'.$now->format('Ymd-His').'-'.str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
-        $arrivalPath = $request->file('arrival_photo')->store('private/expedition-reports/'.$number, 'local');
-        $pressurePath = $request->file('blood_pressure_photo')->store('private/expedition-reports/'.$number, 'local');
-        $assessment = BloodPressureAssessment::assess((int) $request->blood_pressure_systolic, (int) $request->blood_pressure_diastolic);
-        $report = ExpeditionReport::create([...$request->safe()->except(['arrival_photo', 'blood_pressure_photo']), 'health_status' => $assessment['status'], 'health_status_label' => $assessment['label'], 'health_status_reason' => $assessment['reason'], 'expedition_company' => $request->user()->name, 'arrival_photo_path' => $arrivalPath, 'blood_pressure_photo_path' => $pressurePath, 'vendor_user_id' => $vendorUser?->id, 'report_number' => $number, 'arrived_at' => $now, 'created_by' => $request->user()->id, 'site' => $request->user()->site]);
-        SafeBroadcast::dispatch(new ExpeditionReportCreated($report));
+        return DB::transaction(function () use ($request) {
+            $planning = $request->planning_item_id ? PlanningItem::lockForUpdate()->findOrFail($request->planning_item_id) : null;
+            if ($planning && $planning->reports()->where('vendor_submission_unit_id', $request->vendor_submission_unit_id)->exists()) {
+                throw ValidationException::withMessages(['vendor_submission_unit_id' => 'Unit ini sudah dilaporkan datang pada planning tersebut.']);
+            }
+            $now = now();
+            $vendorUser = User::where('site', $request->user()->site)->where('role', UserRole::VENDOR)->where('name', $request->sender_vendor)->first();
+            if ($planning) {
+                $vendorUser = $planning->submission->creator;
+            }
+            $number = 'EXP-'.$now->format('Ymd-His').'-'.str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
+            $arrivalPath = $request->file('arrival_photo')->store('private/expedition-reports/'.$number, 'local');
+            $pressurePath = $request->file('blood_pressure_photo')->store('private/expedition-reports/'.$number, 'local');
+            $assessment = BloodPressureAssessment::assess((int) $request->blood_pressure_systolic, (int) $request->blood_pressure_diastolic);
+            $report = ExpeditionReport::create([...$request->safe()->except(['arrival_photo', 'blood_pressure_photo']), 'health_status' => $assessment['status'], 'health_status_label' => $assessment['label'], 'health_status_reason' => $assessment['reason'], 'expedition_company' => $request->user()->name, 'arrival_photo_path' => $arrivalPath, 'blood_pressure_photo_path' => $pressurePath, 'vendor_user_id' => $vendorUser?->id, 'report_number' => $number, 'arrived_at' => $now, 'created_by' => $request->user()->id, 'site' => $request->user()->site]);
+            SafeBroadcast::dispatch(new ExpeditionReportCreated($report));
 
-        return back()->with('success', 'Laporan kedatangan berhasil dikirim.');
+            return back()->with('success', 'Laporan kedatangan berhasil dikirim.');
+        });
+    }
+
+    public function monitoring(Request $request): Response
+    {
+        $service = app(ArrivalPlanningService::class);
+        $items = PlanningItem::with(['submission.units', 'reports:id,planning_item_id,vendor_submission_unit_id,vehicle_plate,driver_name,vehicle_type,arrived_at'])
+            ->whereIn('vendor_submission_id', $service->permits($request->user())->select('id'))
+            ->whereNotNull('planned_date')->orderByDesc('planned_date')->get()
+            ->map(fn ($item) => [...$item->toArray(), ...$service->progress($item)]);
+
+        return Inertia::render('Expedition/ArrivalMonitoring', ['items' => $items, 'isVendor' => $request->user()->role->value === 'vendor']);
     }
 
     public function photo(Request $request, ExpeditionReport $report, string $kind)

@@ -48,6 +48,8 @@ const f = useForm({
     status: choices.value[0] || "",
     coordinator_note: "",
     release_document: null,
+    destination: p.submission.destination || p.submission.expedition_request?.route_to || "",
+    release_expired_at: p.submission.release_expired_at?.slice(0, 10) || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
 });
 const send = () =>
     f.transform((data) => ({ ...data, _method: "patch" })).post(
@@ -267,7 +269,7 @@ const date = (v) => (v ? new Date(v).toLocaleDateString("id-ID") : "-");
                             >Sudah diajukan ulang</small
                         ></label
                     >
-                    <div class="mt-3 grid gap-3 md:grid-cols-2">
+                    <p v-if="unit.subject_type === 'UNIT'" class="mt-2 text-sm text-slate-600">Driver: {{ unit.driver_name || '-' }} ? {{ unit.driver_phone || '-' }} ? {{ unit.vehicle_type || 'Tipe belum diisi' }}</p><div class="mt-3 grid gap-3 md:grid-cols-2">
                         <div
                             v-for="d in unit.documents"
                             :key="d.id"
@@ -349,6 +351,11 @@ const date = (v) => (v ? new Date(v).toLocaleDateString("id-ID") : "-");
                             rows="3"
                             placeholder="Catatan"
                         />
+                        <div v-if="f.status === 'RELEASED'" class="mt-4 space-y-3">
+                            <label class="block text-sm font-semibold">Tujuan<input v-model="f.destination" class="field" required maxlength="150" /><p class="err">{{ f.errors.destination }}</p></label>
+                            <label class="block text-sm font-semibold">Tanggal Expired Izin<input v-model="f.release_expired_at" type="date" class="field" required /><p class="err">{{ f.errors.release_expired_at }}</p></label>
+                            <p class="text-sm text-slate-600">Tipe kendaraan: {{ [...new Set(submission.units.map(u => u.vehicle_type).filter(Boolean))].join(', ') || 'Data tipe kendaraan belum tersedia pada izin ini' }}</p>
+                        </div>
                         <FileDropInput
                             v-if="f.status === 'RELEASED' && submission.type === 'IJIN_LINTAS'"
                             class="mt-4"

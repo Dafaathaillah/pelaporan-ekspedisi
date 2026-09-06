@@ -26,7 +26,7 @@ const renewalCode = (submissionType) =>
         VISITOR: "SURAT_TUGAS",
     })[submissionType];
 const blankUnit = () => ({
-    plate_number: "",
+    plate_number: "", driver_name: "", driver_phone: "", vehicle_type: "",
     person_name: "",
     source_unit_id: null,
     documents: {},
@@ -132,7 +132,7 @@ const complete = (x) => {
         .filter((u) => allowed.includes(u.id))
         .map((u) => ({
             source_unit_id: u.id,
-            plate_number: u.plate_number || "",
+            plate_number: u.plate_number || "", driver_name: u.driver_name || "", driver_phone: u.driver_phone || "", vehicle_type: u.vehicle_type || "",
             person_name: u.person_name || "",
             documents: {},
         }));
@@ -376,6 +376,11 @@ const validity = (x) =>
                                     form.errors["units." + i + ".plate_number"]
                                 }}
                             </p>
+                            <div v-if="isUnit" class="mt-4 grid gap-4 sm:grid-cols-3">
+                                <label class="text-sm font-semibold">Nama Driver<input v-model="unit.driver_name" class="field" required maxlength="150" /><p class="err">{{ form.errors[`units.${i}.driver_name`] }}</p></label>
+                                <label class="text-sm font-semibold">Nomor HP Driver<input v-model="unit.driver_phone" class="field" required maxlength="30" /><p class="err">{{ form.errors[`units.${i}.driver_phone`] }}</p></label>
+                                <label class="text-sm font-semibold">Tipe Kendaraan<select v-model="unit.vehicle_type" class="field" required><option value="">Pilih tipe</option><option v-for="type in ['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya']" :key="type">{{ type }}</option></select><p class="err">{{ form.errors[`units.${i}.vehicle_type`] }}</p></label>
+                            </div>
                             <div class="mt-4 grid gap-4 xl:grid-cols-2">
                                 <FileDropInput
                                     v-for="d in shownDocs"

@@ -1,0 +1,77 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\UserRole;
+use App\Models\User;
+use App\Models\VendorSubmission;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
+
+class ArrivalPlanningTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function permit(User $vendor): VendorSubmission
+    {
+        return VendorSubmission::create(['submission_number' => 'VND-'.$vendor->id, 'type' => 'IJIN_LINTAS', 'vendor_name' => $vendor->name, 'applicant_name' => 'PIC', 'phone' => '081', 'status' => 'RELEASED', 'submitted_at' => now(), 'released_at' => now(), 'release_expired_at' => now()->addWeek(), 'created_by' => $vendor->id, 'site' => 'BIB']);
+    }
+
+    public function test_vendor_can_only_select_own_permits_and_reschedule_with_reason(): void
+    {
+        $vendor = User::factory()->create(['role' => UserRole::VENDOR]);
+        $own = $this->permit($vendor);
+        $other = $this->permit(User::factory()->create(['role' => UserRole::VENDOR]));
+        $item = $own->planningItems()->create(['planned_date' => today()]);
+        $otherItem = $other->planningItems()->create(['planned_date' => today()]);
+        $this->actingAs($vendor)->get('/vendor/arrivals')->assertOk()->assertInertia(fn (Assert $page) => $page->has('permits', 1)->where('permits.0.id', $own->id));
+        $this->patch('/vendor/planning-lintas/items/'.$item->id.'/reschedule', ['planned_date' => today()->addDay()->toDateString()])->assertSessionHasErrors('reschedule_reason');
+        $this->patch('/vendor/planning-lintas/items/'.$otherItem->id.'/reschedule', ['planned_date' => today()->addDay()->toDateString(), 'reschedule_reason' => 'Ban rusak'])->assertForbidden();
+        $this->patch('/vendor/planning-lintas/items/'.$item->id.'/reschedule', ['planned_date' => today()->addDay()->toDateString(), 'reschedule_reason' => 'Ban rusak'])->assertSessionHasNoErrors();
+        $this->assertSame('Ban rusak', $item->fresh()->reschedule_reason);
+        $this->assertSame(today()->toDateString(), substr($item->fresh()->previous_planned_date, 0, 10));
+    }
+
+    public function test_arrival_uses_permit_identity_and_counts_each_unit_once(): void
+    {
+        Storage::fake('local');
+        $vendor = User::factory()->create(['role' => UserRole::VENDOR]);
+        $permit = $this->permit($vendor);
+        $permit->update(['destination' => 'Workshop']);
+        $unit = $permit->units()->create(['subject_type' => 'UNIT', 'plate_number' => 'DA 123 XX', 'driver_name' => 'Budi', 'driver_phone' => '08123', 'vehicle_type' => 'Fuso']);
+        $permit->units()->create(['subject_type' => 'UNIT', 'plate_number' => 'DA 456 XX']);
+        $item = $permit->planningItems()->create(['planned_date' => today()]);
+        $payload = ['planning_item_id' => $item->id, 'vendor_submission_unit_id' => $unit->id, 'driver_name' => 'Forged', 'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80, 'arrival_photo' => UploadedFile::fake()->image('arrival.jpg'), 'blood_pressure_photo' => UploadedFile::fake()->image('pressure.jpg')];
+        foreach (['arrival', 'blood_pressure'] as $prefix) {
+            $payload += [$prefix.'_latitude' => -3.5, $prefix.'_longitude' => 115.6, $prefix.'_location_accuracy' => 5, $prefix.'_photo_captured_at' => now()->toISOString()];
+        }
+        $this->actingAs($vendor)->post('/vendor/arrivals', $payload)->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertDatabaseHas('expedition_reports', ['planning_item_id' => $item->id, 'driver_name' => 'Budi', 'vehicle_plate' => 'DA 123 XX', 'vendor_user_id' => $vendor->id]);
+        $this->post('/vendor/arrivals', $payload)->assertSessionHasErrors('vendor_submission_unit_id');
+        $this->get('/vendor/arrival-monitoring')->assertOk()->assertInertia(fn (Assert $page) => $page->where('items.0.completed', 1)->where('items.0.total', 2)->has('items.0.pending_units', 1));
+        $this->patch('/vendor/planning-lintas/items/'.$item->id.'/reschedule', ['planned_date' => today()->addDay()->toDateString(), 'reschedule_reason' => 'Sisa unit menunggu sparepart'])->assertSessionHasNoErrors();
+        $this->get('/vendor/arrival-monitoring')->assertInertia(fn (Assert $page) => $page->where('items.0.completed', 1)->where('items.0.reschedule_reason', 'Sisa unit menunggu sparepart'));
+        $otherVendor = User::factory()->create(['role' => UserRole::VENDOR]);
+        $this->actingAs($otherVendor)->post('/vendor/arrivals', $payload)->assertForbidden();
+        $permit->update(['release_expired_at' => now()->subDay()]);
+        $this->actingAs($vendor)->post('/vendor/arrivals', $payload)->assertSessionHasErrors('vendor_submission_unit_id');
+    }
+
+    public function test_reviewers_can_set_release_destination_and_expiry(): void
+    {
+        Storage::fake('local');
+        foreach (['coordinator', 'purchasing_admin'] as $role) {
+            $vendor = User::factory()->create(['role' => UserRole::VENDOR]);
+            $permit = $this->permit($vendor);
+            $permit->update(['status' => 'APPROVED']);
+            $reviewer = User::factory()->create(['role' => $role]);
+            $url = $role === 'coordinator' ? '/coordinator/submission/' : '/purchasing/vendor-submission/';
+            $this->actingAs($reviewer)->patch($url.$permit->id.'/status', ['status' => 'RELEASED', 'destination' => 'Workshop BIB', 'release_expired_at' => today()->addDays(3)->toDateString(), 'release_document' => UploadedFile::fake()->create('release.pdf', 10, 'application/pdf')])->assertSessionHasNoErrors();
+            $this->assertSame('Workshop BIB', $permit->fresh()->destination);
+            $this->assertSame(today()->addDays(3)->toDateString(), $permit->fresh()->release_expired_at->toDateString());
+        }
+    }
+}

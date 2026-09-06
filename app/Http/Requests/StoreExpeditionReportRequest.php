@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Models\PlanningItem;
+use App\Services\ArrivalPlanningService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\ValidationException;
 
 class StoreExpeditionReportRequest extends FormRequest
 {
@@ -22,11 +25,29 @@ class StoreExpeditionReportRequest extends FormRequest
             $rules[$prefix.'_photo_captured_at'] = ['required', 'date'];
         }
 
+        $rules['planning_item_id'] = ['nullable', 'uuid', 'exists:planning_items,id'];
+        $rules['vendor_submission_unit_id'] = ['nullable', 'uuid', 'exists:vendor_submission_units,id'];
+        if ($this->user()?->role->value === 'vendor' || $this->filled('planning_item_id') || $this->filled('vendor_submission_unit_id')) {
+            $rules['planning_item_id'][0] = 'required';
+            $rules['vendor_submission_unit_id'][0] = 'required';
+        }
+
         return $rules;
     }
 
     protected function prepareForValidation(): void
     {
+        if ($this->filled('planning_item_id') && $this->filled('vendor_submission_unit_id')) {
+            $planning = PlanningItem::with('submission.units')->find($this->planning_item_id);
+            $permit = $planning?->submission;
+            $allowed = $permit && app(ArrivalPlanningService::class)->permits($this->user())->whereKey($permit->id)->exists();
+            abort_unless($allowed, 403);
+            $unit = $permit->units->firstWhere('id', $this->vendor_submission_unit_id);
+            if (! $unit || $permit->status->value !== 'RELEASED' || ! $permit->release_expired_at || $permit->release_expired_at->isPast() || ! $planning->planned_date) {
+                throw ValidationException::withMessages(['vendor_submission_unit_id' => 'Pilih unit dengan izin Released yang masih berlaku dan memiliki planning.']);
+            }
+            $this->merge(['expedition_company' => $this->user()->name, 'driver_name' => $unit->driver_name, 'driver_phone' => $unit->driver_phone, 'vehicle_plate' => $unit->plate_number, 'vehicle_type' => $unit->vehicle_type, 'sender_vendor' => $permit->vendor_name, 'destination' => $permit->destination]);
+        }
         $this->merge(['vehicle_plate' => strtoupper(trim((string) $this->vehicle_plate))]);
     }
 

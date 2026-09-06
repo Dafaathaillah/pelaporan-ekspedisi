@@ -21,6 +21,11 @@ class PlanningItem extends Model
         return $this->belongsTo(VendorSubmission::class, 'vendor_submission_id');
     }
 
+    public function reports()
+    {
+        return $this->hasMany(ExpeditionReport::class);
+    }
+
     public function driver()
     {
         return $this->belongsTo(User::class, 'driver_id');

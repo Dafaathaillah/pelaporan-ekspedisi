@@ -30,7 +30,7 @@ class VendorController extends Controller
         $sort = in_array($request->sort, $allowedSort, true) ? $request->sort : 'submitted_at';
         $direction = $request->direction === 'asc' ? 'asc' : 'desc';
         $perPage = in_array((int) $request->per_page, [10, 25, 50, 100], true) ? (int) $request->per_page : 10;
-        $items = VendorSubmission::with('units:id,vendor_submission_id,plate_number,unit_order', 'expeditionRequest:id,request_number')->withCount(['documents', 'resubmissions', 'units'])->where('created_by', $u->id)->where('site', $u->site)
+        $items = VendorSubmission::with('units:id,vendor_submission_id,plate_number,unit_order,driver_name,driver_phone,vehicle_type', 'expeditionRequest:id,request_number')->withCount(['documents', 'resubmissions', 'units'])->where('created_by', $u->id)->where('site', $u->site)
             ->when($request->search, fn ($q, $v) => $q->where(fn ($x) => $x->where('submission_number', 'like', '%'.$v.'%')->orWhere('vendor_name', 'like', '%'.$v.'%')->orWhere('applicant_name', 'like', '%'.$v.'%')))
             ->when($request->history_type, fn ($q, $v) => $q->where('type', $v))->when($request->status, fn ($q, $v) => $q->where('status', $v))
             ->orderBy($sort, $direction)->paginate($perPage)->withQueryString();
@@ -186,7 +186,7 @@ class VendorController extends Controller
             foreach ($units as $i => $payload) {
                 $old = $parent?->units->firstWhere('id', $payload['source_unit_id'] ?? null);
                 $isUnit = $request->type === 'IJIN_LINTAS';
-                $unit = $s->units()->create(['subject_type' => $isUnit ? 'UNIT' : 'PERSON', 'person_name' => $isUnit ? null : $payload['person_name'], 'plate_number' => $isUnit ? strtoupper($payload['plate_number']) : null, 'unit_order' => $i + 1]);
+                $unit = $s->units()->create(['subject_type' => $isUnit ? 'UNIT' : 'PERSON', 'person_name' => $isUnit ? null : $payload['person_name'], 'plate_number' => $isUnit ? strtoupper($payload['plate_number']) : null, 'unit_order' => $i + 1, 'driver_name' => $isUnit ? ($payload['driver_name'] ?? $old?->driver_name) : null, 'driver_phone' => $isUnit ? ($payload['driver_phone'] ?? $old?->driver_phone) : null, 'vehicle_type' => $isUnit ? ($payload['vehicle_type'] ?? $old?->vehicle_type) : null]);
                 $newFiles = collect($request->file("units.$i.documents", []))->filter();
                 if ($old) {
                     foreach ($old->documents as $d) {

@@ -36,6 +36,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/reports', [ExpeditionController::class, 'store'])->name('expedition.store');
         Route::get('/reverse-geocode', [ExpeditionController::class, 'reverseGeocode'])->name('expedition.reverse-geocode');
         Route::get('/reports/{report}/photos/{kind}', [ExpeditionController::class, 'photo'])->name('expedition.photo');
+        Route::get('/arrival-monitoring', [ExpeditionController::class, 'monitoring']);
         Route::get('/planning', [ExpeditionPlanningController::class, 'index'])->name('expedition.planning.index');
         Route::patch('/planning/{submission}', [ExpeditionPlanningController::class, 'update'])->name('expedition.planning.update');
     });
@@ -55,6 +56,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('/vendor-submission/{submission}/status', [CoordinatorController::class, 'updateStatus'])->name('purchasing.vendor-submission.status');
         Route::post('/vendor-submission/{submission}/request-resubmission', [CoordinatorController::class, 'requestResubmission'])->name('purchasing.vendor-submission.request-resubmission');
         Route::patch('/vendor-document/{document}/verify', [CoordinatorController::class, 'verifyDocument'])->name('purchasing.vendor-document.verify');
+        Route::get('/arrival-monitoring', [ExpeditionController::class, 'monitoring']);
         Route::get('/planning', [PlanningController::class, 'index'])->name('purchasing.planning');
         Route::patch('/planning/{planningItem}', [PlanningController::class, 'move'])->name('purchasing.planning.move');
         Route::patch('/planning/{planningItem}/lock', [PlanningController::class, 'lock'])->name('purchasing.planning.lock');
@@ -68,6 +70,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/submissions', [VendorController::class, 'store'])->name('vendor.store');
         Route::get('/submissions/{submission}', [VendorController::class, 'show'])->name('vendor.show');
         Route::get('/monitoring-sarana', [VendorController::class, 'monitoringSarana'])->name('vendor.monitoring-sarana');
+        Route::get('/arrivals', [ExpeditionController::class, 'index']);
+        Route::post('/arrivals', [ExpeditionController::class, 'store']);
+        Route::get('/arrivals/reverse-geocode', [ExpeditionController::class, 'reverseGeocode']);
+        Route::get('/arrivals/{report}/photos/{kind}', [ExpeditionController::class, 'photo']);
+        Route::get('/arrival-monitoring', [ExpeditionController::class, 'monitoring']);
+        Route::patch('/planning-lintas/items/{planningItem}/reschedule', [VendorPlanningController::class, 'reschedule']);
         Route::get('/planning-lintas', [VendorPlanningController::class, 'index'])->name('vendor.planning-lintas');
         Route::post('/planning-lintas/{submission}', [VendorPlanningController::class, 'store'])->name('vendor.planning-lintas.store');
         Route::patch('/planning-lintas/items/{planningItem}', [VendorPlanningController::class, 'update'])->name('vendor.planning-lintas.update');
@@ -84,6 +92,7 @@ Route::middleware('auth')->group(function () {
             Route::patch('/expedition-requests/{expeditionRequest}/procurement', [ExpeditionRequestController::class, 'updateProcurement'])->name('coordinator.expedition-requests.procurement');
         });
         Route::middleware('permission:coordinator.planning')->group(function () {
+            Route::get('/arrival-monitoring', [ExpeditionController::class, 'monitoring']);
             Route::get('/planning', [PlanningController::class, 'index'])->name('coordinator.planning');
             Route::patch('/planning/{planningItem}', [PlanningController::class, 'move'])->name('coordinator.planning.move');
             Route::patch('/planning/{planningItem}/lock', [PlanningController::class, 'lock'])->name('coordinator.planning.lock');
@@ -110,6 +119,7 @@ Route::middleware('auth')->group(function () {
         });
     });
     Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
+    Route::get('/driver/escorts/{report}/p5m-photo', [DriverEscortController::class, 'p5mPhoto'])->name('driver.escorts.p5m-photo');
     Route::get('/submissions/{submission}/documents/download-all', [DocumentController::class, 'downloadAll'])->name('documents.download-all');
     Route::get('/submissions/{submission}/release-document', [DocumentController::class, 'releaseDocument'])->name('submissions.release-document');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

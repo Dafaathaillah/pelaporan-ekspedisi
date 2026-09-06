@@ -95,6 +95,9 @@ const menus = computed(() => {
                 badge: notificationCounts.value.IJIN_LINTAS,
             },
             {
+                label: "Monitoring Kedatangan", short: "Kedatangan", icon: "truck", href: "/coordinator/arrival-monitoring", permission: "coordinator.planning",
+            },
+            {
                 label: "Planning Escort",
                 short: "Planning",
                 icon: "calendar",
@@ -137,6 +140,11 @@ const menus = computed(() => {
                 href: "/vendor",
                 exact: true,
                 badge: notificationCounts.value.vendor_revisions,
+            },
+            {
+                label: "Laporan Kedatangan Driver", short: "Kedatangan", icon: "truck", href: "/vendor/arrivals",
+            },
+            { label: "Monitoring Kedatangan / Reschedule", short: "Reschedule", icon: "calendar", href: "/vendor/arrival-monitoring",
             },
             {
                 label: "Monitoring Sarana",
@@ -191,10 +199,9 @@ const menus = computed(() => {
                 badge: notificationCounts.value.IJIN_LINTAS,
             },
             {
-                label: "Planning Lintas",
-                short: "Planning",
-                icon: "calendar",
-                href: "/purchasing/planning",
+                label: "Monitoring Kedatangan", short: "Kedatangan", icon: "truck", href: "/purchasing/arrival-monitoring",
+            },
+            { label: "Planning Lintas", short: "Planning", icon: "calendar", href: "/purchasing/planning",
             },
             {
                 label: "Ganti Password",
@@ -210,6 +217,9 @@ const menus = computed(() => {
             icon: "truck",
             href: "/expedition",
             exact: true,
+        },
+        {
+            label: "Monitoring Kedatangan", short: "Kedatangan", icon: "truck", href: "/expedition/arrival-monitoring",
         },
         {
             label: "Planning Izin Lintas",

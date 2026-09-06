@@ -23,6 +23,7 @@ class StoreVendorSubmissionRequest extends FormRequest
             'parent_submission_id' => ['nullable', 'uuid', 'exists:vendor_submissions,id'], 'documents' => ['nullable', 'array'],
             'documents.*' => ['nullable', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:3072'],
             'units' => ['nullable', 'array', 'max:20'], 'units.*.plate_number' => ['nullable', 'string', 'max:20'], 'units.*.person_name' => ['nullable', 'string', 'max:150'], 'units.*.source_unit_id' => ['nullable', 'uuid'],
+            'units.*.driver_name' => ['nullable', 'string', 'max:150'], 'units.*.driver_phone' => ['nullable', 'string', 'max:30'], 'units.*.vehicle_type' => ['nullable', Rule::in(['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya'])],
             'units.*.documents' => ['nullable', 'array'], 'units.*.documents.*' => ['nullable', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:3072'],
         ];
     }

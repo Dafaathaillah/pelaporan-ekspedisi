@@ -54,6 +54,7 @@ const toggleLock = (item) =>
         { locked: !item.is_locked },
         { preserveScroll: true },
     );
+const submittedTime = (value) => value ? new Date(value).toLocaleString("id-ID", { timeZone: "Asia/Makassar", dateStyle: "medium", timeStyle: "short" }) + " WITA" : "Belum diajukan";
 const dateLabel = (value) =>
     new Date(value + "T00:00:00").toLocaleDateString("id-ID", {
         weekday: "short",
@@ -167,7 +168,7 @@ const sendEvidence = (event) => {
                     @dragstart="!item.is_locked && (dragging = item.id)"
                     @click="!item.is_locked && (selected = selected === item.id ? null : item.id)"
                 >
-                    <b class="block truncate">{{
+                    <p class="mb-2 text-xs text-slate-500">Diajukan {{ submittedTime(item.submission.submitted_at) }}</p><b class="block truncate">{{
                         item.submission.vendor_name
                     }}</b
                     ><span class="mt-1 block text-xs text-slate-500"
@@ -245,7 +246,7 @@ const sendEvidence = (event) => {
                                         unit</span
                                     >
                                 </div>
-                                <div class="mt-2 flex items-center justify-between gap-2">
+                                <p class="mt-2 text-[10px] text-slate-500">Diajukan {{ submittedTime(item.submission.submitted_at) }}</p><p v-if="item.reschedule_reason" class="mt-2 break-words text-xs text-amber-800">Alasan reschedule: {{ item.reschedule_reason }}</p><div class="mt-2 flex items-center justify-between gap-2">
                                     <span class="text-[10px] font-black" :class="item.is_locked ? 'text-amber-700' : 'text-emerald-700'">
                                         {{ item.is_locked ? "Terkunci" : "Dapat dipindah" }}
                                     </span>

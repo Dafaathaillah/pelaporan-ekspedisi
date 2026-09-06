@@ -1,5 +1,5 @@
 <script setup>
-import ActionConfirm from "@/Components/ActionConfirm.vue";
+import FileDropInput from "@/Components/FileDropInput.vue";
 import AppShell from "@/Components/AppShell.vue";
 import Modal from "@/Components/Modal.vue";
 import { router, useForm, usePage } from "@inertiajs/vue3";
@@ -41,15 +41,13 @@ const dateTime = (v) =>
         minute: "2-digit",
         hour12: false,
     }) + " WITA";
+const claimForm = useForm({ p5m_photo: null });
 const claim = () => {
-    const x = selectedClaim.value;
-    selectedClaim.value = null;
-    if (x)
-        router.patch(
-            `/driver/escorts/${x.id}/claim`,
-            {},
-            { preserveScroll: true },
-        );
+    if (!selectedClaim.value) return;
+    claimForm.transform(data => ({ ...data, _method: "patch" })).post(`/driver/escorts/${selectedClaim.value.id}/claim`, {
+        forceFormData: true, preserveScroll: true,
+        onSuccess: () => { selectedClaim.value = null; claimForm.reset(); },
+    });
 };
 const openClose = (x) => {
     closing.value = x;
@@ -196,6 +194,7 @@ const submitClose = () =>
                             <dd class="font-semibold">{{ x.destination }}</dd>
                         </div>
                     </dl>
+                    <a v-if="x.p5m_photo_path && (x.escort_driver_id === user.id || x.escort_closed_by === user.id)" :href="`/driver/escorts/${x.id}/p5m-photo`" target="_blank" class="mt-3 block text-sm font-semibold text-blue-700">Lihat Foto P5M</a>
                     <button class="btn mt-5 w-full" @click="openClose(x)">
                         Tutup Escort sebagai Lambung {{ user.hull_number }}
                     </button>
@@ -264,7 +263,8 @@ const submitClose = () =>
                             <dd class="font-semibold">{{ x.vehicle_type }}</dd>
                         </div>
                     </dl>
-                    <button class="btn mt-5 w-full" @click="selectedClaim = x">
+                    <a v-if="x.p5m_photo_path && (x.escort_driver_id === user.id || x.escort_closed_by === user.id)" :href="`/driver/escorts/${x.id}/p5m-photo`" target="_blank" class="mt-3 block text-sm font-semibold text-blue-700">Lihat Foto P5M</a>
+                    <button class="btn mt-5 w-full" @click="claimForm.reset(); claimForm.clearErrors(); selectedClaim = x">
                         Pilih & Mulai Escort
                     </button>
                 </article>
@@ -276,14 +276,16 @@ const submitClose = () =>
                 </p>
             </div>
         </section>
-        <ActionConfirm
-            :show="Boolean(selectedClaim)"
-            title="Mulai escort kendaraan ini?"
-            :message="`${selectedClaim?.expedition_company || ''} · ${selectedClaim?.vehicle_plate || ''} akan dikunci untuk Lambung ${user.hull_number}.`"
-            confirm-text="Ya, Mulai Escort"
-            @close="selectedClaim = null"
-            @confirm="claim"
-        />
+        <Modal :show="Boolean(selectedClaim)" max-width="md" @close="selectedClaim = null">
+            <form class="p-6" @submit.prevent="claim">
+                <h2 class="text-xl font-bold">Mulai Escort {{ selectedClaim?.vehicle_plate }}</h2>
+                <FileDropInput class="mt-4" label="Foto P5M (opsional)" accept-types="image/jpeg,image/png,image/webp" file-label="JPG, PNG, atau WebP" :max-mb="8" :model-value="claimForm.p5m_photo" :error="claimForm.errors.p5m_photo" @update:model-value="claimForm.p5m_photo = $event" />
+                <div class="mt-5 flex justify-end gap-3">
+                    <button type="button" class="btn-ghost" @click="selectedClaim = null">Batal</button>
+                    <button class="btn" :disabled="claimForm.processing">Mulai Escort</button>
+                </div>
+            </form>
+        </Modal>
         <Modal :show="Boolean(closing)" max-width="2xl" @close="closing = null"
             ><form class="p-6 sm:p-8" @submit.prevent="submitClose">
                 <p
@@ -304,7 +306,7 @@ const submitClose = () =>
                     class="mt-4 grid gap-2 rounded-xl bg-slate-50 p-3 text-xs sm:grid-cols-2"
                 >
                     <p>
-                        <span class="block text-slate-500">Dimulai oleh</span>
+                        <a v-if="closing?.p5m_photo_path && (closing.escort_driver_id === user.id || closing.escort_closed_by === user.id)" :href="`/driver/escorts/${closing.id}/p5m-photo`" target="_blank" class="block text-blue-700">Lihat Foto P5M</a><span class="block text-slate-500">Dimulai oleh</span>
                         <b
                             >{{ closing?.escort_driver?.name }} · Lambung
                             {{ closing?.escort_driver?.hull_number }}</b

@@ -44,7 +44,7 @@ const dateLabel = (value) =>
         subtitle="Atur tanggal operasional setelah Ijin Lintas Released."
         eyebrow="Akun Vendor · Planning"
     >
-        <div class="space-y-5">
+        <a href="/vendor/arrival-monitoring" class="btn-ghost mb-5 inline-flex">Monitoring Kedatangan / Reschedule</a><div class="space-y-5">
             <article v-for="submission in items" :key="submission.id" class="panel">
                 <header class="flex flex-col gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-start sm:justify-between">
                     <div class="min-w-0">
@@ -102,7 +102,7 @@ const dateLabel = (value) =>
                             @input="editDates[item.id] = $event.target.value"
                         />
                         <div>
-                            <span
+                            <p v-if="item.reschedule_reason" class="mb-2 break-words text-sm text-amber-800">Alasan reschedule: {{ item.reschedule_reason }}</p><span
                                 class="status-badge"
                                 :class="item.is_locked ? 'status-revision' : 'status-approved'"
                             >{{ item.is_locked ? "Terkunci" : "Dapat Diubah" }}</span>

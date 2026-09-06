@@ -6,12 +6,30 @@ use App\Enums\UserRole;
 use App\Models\ExpeditionReport;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class DriverEscortWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_driver_can_attach_optional_p5m_when_starting_escort(): void
+    {
+        Storage::fake('local');
+        $driver = User::factory()->create(['role' => UserRole::DRIVER, 'permissions' => ['driver.escort']]);
+        $report = $this->report(User::factory()->create(['role' => UserRole::EXPEDITION]));
+        $this->actingAs($driver)->post('/driver/escorts/'.$report->id.'/claim', [
+            '_method' => 'PATCH',
+            'p5m_photo' => UploadedFile::fake()->image('p5m.jpg'),
+        ])->assertSessionHasNoErrors();
+        $this->assertNotNull($report->fresh()->p5m_photo_path);
+        Storage::disk('local')->assertExists($report->fresh()->p5m_photo_path);
+        $this->get('/driver/escorts/'.$report->id.'/p5m-photo')->assertOk();
+        $other = User::factory()->create(['role' => UserRole::DRIVER, 'permissions' => ['driver.escort']]);
+        $this->actingAs($other)->get('/driver/escorts/'.$report->id.'/p5m-photo')->assertNotFound();
+    }
 
     private function report(User $expedition): ExpeditionReport
     {

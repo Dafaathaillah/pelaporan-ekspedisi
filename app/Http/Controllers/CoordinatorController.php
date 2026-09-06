@@ -15,6 +15,7 @@ use App\Models\VendorSubmission;
 use App\Services\PlanningService;
 use App\Support\SafeBroadcast;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -131,7 +132,7 @@ class CoordinatorController extends Controller
         try {
             DB::transaction(function () use ($r, $submission, $next, $releaseFile, $releasePath) {
                 $releasedAt = $next === SubmissionStatus::RELEASED ? now() : $submission->released_at;
-                $submission->update(['status' => $next, 'coordinator_note' => $r->coordinator_note, 'reviewed_at' => now(), 'reviewed_by' => $r->user()->id, 'coordinator_opened_at' => $submission->coordinator_opened_at ?? now(), 'released_at' => $releasedAt, 'release_expired_at' => $next === SubmissionStatus::RELEASED ? $releasedAt->copy()->addDays(7) : $submission->release_expired_at, 'release_document_path' => $releasePath ?: $submission->release_document_path, 'release_document_name' => $releaseFile?->getClientOriginalName() ?: $submission->release_document_name, 'release_document_size' => $releaseFile?->getSize() ?: $submission->release_document_size, 'vendor_release_opened_at' => $next === SubmissionStatus::RELEASED ? null : $submission->vendor_release_opened_at, 'closed_at' => $next === SubmissionStatus::CLOSED ? now() : $submission->closed_at]);
+                $submission->update(['status' => $next, 'coordinator_note' => $r->coordinator_note, 'reviewed_at' => now(), 'reviewed_by' => $r->user()->id, 'coordinator_opened_at' => $submission->coordinator_opened_at ?? now(), 'released_at' => $releasedAt, 'destination' => $next === SubmissionStatus::RELEASED ? ($r->destination ?? $submission->destination ?? $submission->expeditionRequest?->route_to) : $submission->destination, 'release_expired_at' => $next === SubmissionStatus::RELEASED ? ($r->filled('release_expired_at') ? Carbon::parse($r->release_expired_at)->endOfDay() : $releasedAt->copy()->addDays(7)) : $submission->release_expired_at, 'release_document_path' => $releasePath ?: $submission->release_document_path, 'release_document_name' => $releaseFile?->getClientOriginalName() ?: $submission->release_document_name, 'release_document_size' => $releaseFile?->getSize() ?: $submission->release_document_size, 'vendor_release_opened_at' => $next === SubmissionStatus::RELEASED ? null : $submission->vendor_release_opened_at, 'closed_at' => $next === SubmissionStatus::CLOSED ? now() : $submission->closed_at]);
             });
         } catch (\Throwable $exception) {
             if ($releasePath) {

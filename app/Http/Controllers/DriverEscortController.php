@@ -30,11 +30,20 @@ class DriverEscortController extends Controller
 
     public function claim(Request $request, ExpeditionReport $report)
     {
+        $request->validate(['p5m_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192']]);
         DB::transaction(function () use ($request, $report) {
             $item = ExpeditionReport::lockForUpdate()->findOrFail($report->id);
             abort_unless($item->site === $request->user()->site, 403);
             abort_if($item->escort_status !== 'WAITING' || $item->escort_driver_id, 422, 'Unit ekspedisi sudah diambil driver escort lain.');
-            $item->update(['escort_status' => 'PROCESS', 'escort_driver_id' => $request->user()->id, 'escort_started_at' => now()]);
+            $path = $request->file('p5m_photo')?->store('private/expedition-reports/'.$item->report_number, 'local');
+            try {
+                $item->update(['escort_status' => 'PROCESS', 'escort_driver_id' => $request->user()->id, 'escort_started_at' => now(), 'p5m_photo_path' => $path]);
+            } catch (\Throwable $error) {
+                if ($path) {
+                    Storage::disk('local')->delete($path);
+                }
+                throw $error;
+            }
         });
         SafeBroadcast::dispatch(new ExpeditionEscortUpdated($report->fresh()));
 
@@ -75,6 +84,17 @@ class DriverEscortController extends Controller
         abort_unless($allowed && $report->escort_close_photo_path && Storage::disk('local')->exists($report->escort_close_photo_path), 404);
 
         return Storage::disk('local')->response($report->escort_close_photo_path);
+    }
+
+    public function p5mPhoto(Request $request, ExpeditionReport $report)
+    {
+        $allowed = $report->site === $request->user()->site && (
+            in_array($request->user()->id, [$report->escort_driver_id, $report->escort_closed_by], true)
+            || in_array($request->user()->role->value, ['developer', 'coordinator'], true)
+        );
+        abort_unless($allowed && $report->p5m_photo_path && Storage::disk('local')->exists($report->p5m_photo_path), 404);
+
+        return Storage::disk('local')->response($report->p5m_photo_path);
     }
 
     public function reverseGeocode(Request $request)
