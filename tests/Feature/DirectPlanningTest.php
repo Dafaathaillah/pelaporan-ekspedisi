@@ -55,6 +55,17 @@ class DirectPlanningTest extends TestCase
         $this->actingAs($vendorUser)->post('/coordinator/direct-plannings', $this->payload($planning->vendor_company_id))->assertForbidden();
     }
 
+    public function test_cross_site_update_is_forbidden_before_payload_validation(): void
+    {
+        $planning = $this->createPlanning($this->coordinator('BIB'));
+        $otherSite = $this->coordinator('KJB');
+
+        $this->actingAs($otherSite)->put('/coordinator/direct-plannings/'.$planning->id, [
+            'vendor_company_id' => 999999,
+            'units' => [],
+        ])->assertForbidden();
+    }
+
     public function test_edit_synchronizes_units_atomically(): void
     {
         $user = $this->coordinator();
@@ -73,6 +84,47 @@ class DirectPlanningTest extends TestCase
         $this->assertSame('Revisi planning', $planning->notes);
         $this->assertSame(['DA 9999 ZZ', 'DA 7777 CC'], $planning->units->pluck('vehicle_plate')->all());
         $this->assertDatabaseMissing('direct_planning_units', ['vehicle_plate' => 'DA 5678 BB']);
+    }
+
+    public function test_edit_can_swap_existing_plate_numbers_without_a_transient_unique_violation(): void
+    {
+        $user = $this->coordinator();
+        $planning = $this->createPlanning($user);
+        $payload = $this->payload($planning->vendor_company_id);
+        $payload['units'][0]['id'] = $planning->units[0]->id;
+        $payload['units'][0]['vehicle_plate'] = 'DA 5678 BB';
+        $payload['units'][1]['id'] = $planning->units[1]->id;
+        $payload['units'][1]['vehicle_plate'] = 'DA 1234 AA';
+
+        $this->actingAs($user)->put('/coordinator/direct-plannings/'.$planning->id, $payload)->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame(['DA 5678 BB', 'DA 1234 AA'], $planning->fresh()->units->pluck('vehicle_plate')->all());
+    }
+
+    public function test_edit_rejects_duplicate_or_foreign_unit_ids_as_field_errors(): void
+    {
+        $user = $this->coordinator();
+        $planning = $this->createPlanning($user);
+        $other = $this->createPlanning($user);
+        $payload = $this->payload($planning->vendor_company_id);
+        $payload['units'][0]['id'] = $planning->units[0]->id;
+        $payload['units'][1]['id'] = $planning->units[0]->id;
+
+        $this->actingAs($user)->put('/coordinator/direct-plannings/'.$planning->id, $payload)->assertSessionHasErrors('units.1.id');
+
+        $payload['units'][1]['id'] = $other->units[0]->id;
+        $this->put('/coordinator/direct-plannings/'.$planning->id, $payload)->assertSessionHasErrors('units.1.id');
+    }
+
+    public function test_malformed_units_payload_returns_validation_errors_instead_of_server_error(): void
+    {
+        $user = $this->coordinator();
+        $vendor = $this->vendor();
+
+        $this->actingAs($user)->post('/coordinator/direct-plannings', ['vendor_company_id' => $vendor->id, 'units' => 'invalid'])
+            ->assertRedirect()->assertSessionHasErrors('units');
+        $this->post('/coordinator/direct-plannings', ['vendor_company_id' => $vendor->id, 'units' => ['invalid']])
+            ->assertRedirect()->assertSessionHasErrors('units.0.vehicle_plate');
     }
 
     public function test_lock_blocks_edit_and_delete_until_unlocked_then_delete_is_soft(): void

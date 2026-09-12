@@ -27,16 +27,16 @@ class DirectPlanningController extends Controller
 
     public function update(SaveDirectPlanningRequest $request, DirectPlanning $directPlanning)
     {
-        $this->authorizeSite($request, $directPlanning);
-        abort_if($directPlanning->is_locked, 422, 'Planning langsung terkunci. Buka kunci sebelum mengubah data.');
-
         DB::transaction(function () use ($request, $directPlanning) {
-            $directPlanning->update([
+            $planning = DirectPlanning::lockForUpdate()->findOrFail($directPlanning->id);
+            $this->authorizeSite($request, $planning);
+            abort_if($planning->is_locked, 422, 'Planning langsung terkunci. Buka kunci sebelum mengubah data.');
+            $planning->update([
                 'vendor_company_id' => $request->validated('vendor_company_id'),
                 'notes' => $request->validated('notes'),
                 'updated_by' => $request->user()->id,
             ]);
-            $this->syncUnits($directPlanning, $request->validated('units'), true);
+            $this->syncUnits($planning, $request->validated('units'), true);
         });
 
         return back()->with('success', 'Planning langsung berhasil diperbarui.');
@@ -44,23 +44,29 @@ class DirectPlanningController extends Controller
 
     public function lock(Request $request, DirectPlanning $directPlanning)
     {
-        $this->authorizeSite($request, $directPlanning);
         $data = $request->validate(['locked' => ['required', 'boolean']]);
-        $directPlanning->update([
-            'is_locked' => $data['locked'],
-            'locked_at' => $data['locked'] ? now() : null,
-            'locked_by' => $data['locked'] ? $request->user()->id : null,
-            'updated_by' => $request->user()->id,
-        ]);
+        DB::transaction(function () use ($request, $directPlanning, $data) {
+            $planning = DirectPlanning::lockForUpdate()->findOrFail($directPlanning->id);
+            $this->authorizeSite($request, $planning);
+            $planning->update([
+                'is_locked' => $data['locked'],
+                'locked_at' => $data['locked'] ? now() : null,
+                'locked_by' => $data['locked'] ? $request->user()->id : null,
+                'updated_by' => $request->user()->id,
+            ]);
+        });
 
         return back()->with('success', $data['locked'] ? 'Planning langsung berhasil dikunci.' : 'Kunci planning langsung berhasil dibuka.');
     }
 
     public function destroy(Request $request, DirectPlanning $directPlanning)
     {
-        $this->authorizeSite($request, $directPlanning);
-        abort_if($directPlanning->is_locked, 422, 'Planning langsung terkunci. Buka kunci sebelum menghapus data.');
-        DB::transaction(fn () => $directPlanning->delete());
+        DB::transaction(function () use ($request, $directPlanning) {
+            $planning = DirectPlanning::lockForUpdate()->findOrFail($directPlanning->id);
+            $this->authorizeSite($request, $planning);
+            abort_if($planning->is_locked, 422, 'Planning langsung terkunci. Buka kunci sebelum menghapus data.');
+            $planning->delete();
+        });
 
         return back()->with('success', 'Planning langsung berhasil dihapus.');
     }
@@ -72,19 +78,22 @@ class DirectPlanningController extends Controller
 
     private function syncUnits(DirectPlanning $planning, array $units, bool $updating = false): void
     {
-        $retained = [];
+        if ($updating) {
+            $retainedIds = collect($units)->pluck('id')->filter()->all();
+            $planning->units()->whereNotIn('id', $retainedIds)->delete();
+            $planning->units()->whereIn('id', $retainedIds)->get()->each(
+                fn ($unit, $index) => $unit->update(['vehicle_plate' => '~TMP-'.$index.'-'.substr($unit->id, 0, 18)]),
+            );
+        }
+
         foreach (array_values($units) as $position => $unit) {
             $attributes = collect($unit)->except('id')->all() + ['position' => $position];
             if ($updating && isset($unit['id'])) {
                 $model = $planning->units()->whereKey($unit['id'])->firstOrFail();
                 $model->update($attributes);
-                $retained[] = $model->id;
             } else {
-                $retained[] = $planning->units()->create($attributes)->id;
+                $planning->units()->create($attributes);
             }
-        }
-        if ($updating) {
-            $planning->units()->whereNotIn('id', $retained)->delete();
         }
     }
 }
