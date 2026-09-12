@@ -30,7 +30,7 @@ class ExpeditionController extends Controller
         $reports = ExpeditionReport::where('created_by', $request->user()->id)->where('site', $request->user()->site)
             ->latest('arrived_at')->paginate($perPage)->withQueryString();
 
-        $permits = app(ArrivalPlanningService::class)->permits($request->user())->where('status', 'RELEASED')->where('release_expired_at', '>=', now())->with(['units', 'planningItems' => fn ($q) => $q->whereNotNull('planned_date')->with('reports:id,planning_item_id,vendor_submission_unit_id')])->latest('released_at')->get();
+        $permits = app(ArrivalPlanningService::class)->permits($request->user())->where('status', 'RELEASED')->where('release_expired_at', '>=', now())->with(['units', 'planningItems' => fn ($q) => $q->whereNotNull('planned_date')->with('reports:id,planning_item_id,vendor_submission_unit_id,arrived_at')])->latest('released_at')->get();
 
         return Inertia::render('Expedition/Index', ['vehicleTypes' => ['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya'], 'expeditionCompany' => $request->user()->name, 'reports' => $reports, 'permits' => $permits, 'reportBase' => $request->user()->role->value === 'vendor' ? '/vendor/arrivals' : '/expedition/reports']);
     }

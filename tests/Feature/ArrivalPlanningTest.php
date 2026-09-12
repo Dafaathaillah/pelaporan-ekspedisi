@@ -87,6 +87,32 @@ class ArrivalPlanningTest extends TestCase
         $this->actingAs($vendor)->post('/vendor/arrivals', $payload)->assertSessionHasErrors('vendor_submission_unit_id');
     }
 
+    public function test_arrival_resolves_the_units_planning_without_client_planning_selection(): void
+    {
+        Storage::fake('local');
+        $vendor = User::factory()->create(['role' => UserRole::VENDOR]);
+        $permit = $this->permit($vendor);
+        $permit->update(['destination' => 'Underpass BIB']);
+        $first = $permit->units()->create(['subject_type' => 'UNIT', 'plate_number' => 'DA 1 AB', 'driver_name' => 'Driver Satu', 'driver_phone' => '0811', 'vehicle_type' => 'Fuso']);
+        $second = $permit->units()->create(['subject_type' => 'UNIT', 'plate_number' => 'DA 2 AB', 'driver_name' => 'Driver Dua', 'driver_phone' => '0822', 'vehicle_type' => 'Trailer']);
+        $firstPlanning = $permit->planningItems()->create(['vendor_submission_unit_id' => $first->id, 'planned_date' => today()]);
+        $permit->planningItems()->create(['vendor_submission_unit_id' => $second->id, 'planned_date' => today()->addDay()]);
+
+        $payload = ['vendor_submission_unit_id' => $first->id, 'driver_name' => 'Data palsu', 'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80, 'arrival_photo' => UploadedFile::fake()->image('arrival.jpg'), 'blood_pressure_photo' => UploadedFile::fake()->image('pressure.jpg')];
+        foreach (['arrival', 'blood_pressure'] as $prefix) {
+            $payload += [$prefix.'_latitude' => -3.5, $prefix.'_longitude' => 115.6, $prefix.'_location_accuracy' => 5, $prefix.'_photo_captured_at' => now()->toISOString()];
+        }
+
+        $this->actingAs($vendor)->post('/vendor/arrivals', $payload)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('expedition_reports', ['planning_item_id' => $firstPlanning->id, 'vendor_submission_unit_id' => $first->id, 'driver_name' => 'Driver Satu', 'vehicle_plate' => 'DA 1 AB']);
+        $this->post('/vendor/arrivals', $payload)->assertSessionHasErrors('vendor_submission_unit_id');
+        $this->get('/vendor/arrivals')->assertInertia(fn (Assert $page) => $page
+            ->has('permits.0.units', 2)
+            ->where('permits.0.planning_items.0.vendor_submission_unit_id', $first->id)
+            ->where('permits.0.planning_items.0.reports.0.vendor_submission_unit_id', $first->id)
+            ->has('permits.0.planning_items.0.reports.0.arrived_at'));
+    }
+
     public function test_reviewers_can_set_release_destination_and_expiry(): void
     {
         Storage::fake('local');

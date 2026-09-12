@@ -37,6 +37,22 @@ class StoreExpeditionReportRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        if (! $this->filled('planning_item_id') && $this->filled('vendor_submission_unit_id')) {
+            $permit = app(ArrivalPlanningService::class)->permits($this->user())
+                ->where('status', 'RELEASED')
+                ->where('release_expired_at', '>=', now())
+                ->whereHas('units', fn ($query) => $query->whereKey($this->vendor_submission_unit_id))
+                ->with(['units', 'planningItems' => fn ($query) => $query
+                    ->where('vendor_submission_unit_id', $this->vendor_submission_unit_id)
+                    ->whereNotNull('planned_date')])
+                ->first();
+            $planning = $permit?->planningItems->first();
+            if (! $planning) {
+                throw ValidationException::withMessages(['vendor_submission_unit_id' => 'Unit belum memiliki kartu planning yang terjadwal.']);
+            }
+            $this->merge(['planning_item_id' => $planning->id]);
+        }
+
         if ($this->filled('planning_item_id') && $this->filled('vendor_submission_unit_id')) {
             $planning = PlanningItem::with('submission.units')->find($this->planning_item_id);
             $permit = $planning?->submission;
