@@ -15,8 +15,10 @@ const props = defineProps({
 });
 const arrivalInput = ref(null),
     pressureInput = ref(null),
+    p2hInput = ref(null),
     arrivalPreview = ref(""),
-    pressurePreview = ref("");
+    pressurePreview = ref(""),
+    p2hPreview = ref("");
 const locating = ref({ arrival: false, pressure: false });
 const locationError = ref({ arrival: "", pressure: "" });
 const form = useForm({
@@ -32,6 +34,7 @@ const form = useForm({
     blood_pressure_diastolic: "",
     arrival_photo: null,
     blood_pressure_photo: null,
+    p2h_photo: null,
     arrival_latitude: "",
     arrival_longitude: "",
     arrival_location_accuracy: "",
@@ -116,7 +119,7 @@ const healthClass = (status) =>
         INVALID: "border-red-300 bg-red-50 text-red-800",
     })[status] || "border-slate-200 bg-slate-50 text-slate-700";
 const pickPhoto = (kind) =>
-    (kind === "arrival" ? arrivalInput.value : pressureInput.value)?.click();
+    ({ arrival: arrivalInput.value, pressure: pressureInput.value, p2h: p2hInput.value })[kind]?.click();
 const captureLocation = async (kind) => {
     locating.value[kind] = true;
     locationError.value[kind] = "";
@@ -153,19 +156,20 @@ const captureLocation = async (kind) => {
 const setPhoto = async (event, kind) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const preview = kind === "arrival" ? arrivalPreview : pressurePreview;
+    const preview = { arrival: arrivalPreview, pressure: pressurePreview, p2h: p2hPreview }[kind];
     if (preview.value) URL.revokeObjectURL(preview.value);
     preview.value = URL.createObjectURL(file);
-    form[kind === "arrival" ? "arrival_photo" : "blood_pressure_photo"] = file;
-    await captureLocation(kind);
+    form[{ arrival: "arrival_photo", pressure: "blood_pressure_photo", p2h: "p2h_photo" }[kind]] = file;
+    if (kind !== "p2h") await captureLocation(kind);
 };
 const clearPreviews = () => {
-    [arrivalPreview, pressurePreview].forEach((preview) => {
+    [arrivalPreview, pressurePreview, p2hPreview].forEach((preview) => {
         if (preview.value) URL.revokeObjectURL(preview.value);
         preview.value = "";
     });
     if (arrivalInput.value) arrivalInput.value.value = "";
     if (pressureInput.value) pressureInput.value.value = "";
+    if (p2hInput.value) p2hInput.value.value = "";
     locating.value = { arrival: false, pressure: false };
     locationError.value = { arrival: "", pressure: "" };
 };
@@ -370,7 +374,7 @@ onBeforeUnmount(clearPreviews);
                 </p>
             </div>
 
-            <div class="mt-6 grid gap-5 md:grid-cols-2">
+            <div class="mt-6 grid gap-5" :class="reportBase === '/expedition/reports' ? 'md:grid-cols-3' : 'md:grid-cols-2'">
                 <div>
                     <p class="mb-2 text-sm font-semibold text-slate-700">
                         Foto Kedatangan <span class="text-red-600">*</span>
@@ -553,6 +557,15 @@ onBeforeUnmount(clearPreviews);
                         }}
                     </p>
                 </div>
+                <div v-if="reportBase === '/expedition/reports'">
+                    <p class="mb-2 text-sm font-semibold text-slate-700">Foto P2H Unit <span class="text-red-600">*</span></p>
+                    <input ref="p2hInput" type="file" accept="image/*" capture="environment" class="hidden" @change="setPhoto($event, 'p2h')" />
+                    <button type="button" class="group relative flex min-h-52 w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition hover:border-red-300 hover:bg-red-50/40" @click="pickPhoto('p2h')">
+                        <img v-if="p2hPreview" :src="p2hPreview" class="absolute inset-0 h-full w-full object-cover" alt="Preview foto P2H unit" /><span v-if="p2hPreview" class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></span>
+                        <span class="relative m-auto flex flex-col items-center px-5 text-center" :class="p2hPreview ? 'self-end pb-4 text-white' : 'text-slate-600'"><span class="grid h-12 w-12 place-items-center rounded-2xl bg-white text-red-600 shadow-sm"><svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h3l2-2h6l2 2h3v12H4z"/><circle cx="12" cy="13" r="3"/></svg></span><b class="mt-3">{{ p2hPreview ? 'Ambil Ulang Foto' : 'Buka Kamera P2H Unit' }}</b><small class="mt-1">Pastikan hasil pemeriksaan unit terlihat jelas</small></span>
+                    </button>
+                    <p class="err">{{ form.errors.p2h_photo }}</p>
+                </div>
             </div>
             <p class="mt-5 text-center text-[11px] text-slate-400">
                 Nama daerah menggunakan data © OpenStreetMap contributors.
@@ -654,6 +667,7 @@ onBeforeUnmount(clearPreviews);
                                         target="_blank"
                                         class="text-xs font-bold text-red-600 hover:underline"
                                         >Tensi</a
+                                    ><a v-if="row.p2h_photo_path" :href="photoUrl(row, 'p2h')" target="_blank" class="text-xs font-bold text-red-600 hover:underline">P2H</a
                                     ><span
                                         v-if="
                                             !row.arrival_photo_path &&

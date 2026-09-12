@@ -608,10 +608,12 @@ const healthStatusClass = (status) =>
                                         target="_blank"
                                         class="font-bold text-red-600"
                                         >Tensi</a
+                                    ><a v-if="x.p2h_photo_path" :href="`/coordinator/reports/${x.id}/photos/p2h`" target="_blank" class="font-bold text-red-600">P2H</a
                                     ><span
                                         v-if="
                                             !x.arrival_photo_path &&
-                                            !x.blood_pressure_photo_path
+                                            !x.blood_pressure_photo_path &&
+                                            !x.p2h_photo_path
                                         "
                                         >-</span
                                     >

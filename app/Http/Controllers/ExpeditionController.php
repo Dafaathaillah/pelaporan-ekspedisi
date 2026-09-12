@@ -49,8 +49,9 @@ class ExpeditionController extends Controller
             $number = 'EXP-'.$now->format('Ymd-His').'-'.str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
             $arrivalPath = $request->file('arrival_photo')->store('private/expedition-reports/'.$number, 'local');
             $pressurePath = $request->file('blood_pressure_photo')->store('private/expedition-reports/'.$number, 'local');
+            $p2hPath = $request->file('p2h_photo')?->store('private/expedition-reports/'.$number, 'local');
             $assessment = BloodPressureAssessment::assess((int) $request->blood_pressure_systolic, (int) $request->blood_pressure_diastolic);
-            $report = ExpeditionReport::create([...$request->safe()->except(['arrival_photo', 'blood_pressure_photo']), 'health_status' => $assessment['status'], 'health_status_label' => $assessment['label'], 'health_status_reason' => $assessment['reason'], 'expedition_company' => $request->user()->name, 'arrival_photo_path' => $arrivalPath, 'blood_pressure_photo_path' => $pressurePath, 'vendor_user_id' => $vendorUser?->id, 'report_number' => $number, 'arrived_at' => $now, 'created_by' => $request->user()->id, 'site' => $request->user()->site]);
+            $report = ExpeditionReport::create([...$request->safe()->except(['arrival_photo', 'blood_pressure_photo', 'p2h_photo']), 'health_status' => $assessment['status'], 'health_status_label' => $assessment['label'], 'health_status_reason' => $assessment['reason'], 'expedition_company' => $request->user()->name, 'arrival_photo_path' => $arrivalPath, 'blood_pressure_photo_path' => $pressurePath, 'p2h_photo_path' => $p2hPath, 'vendor_user_id' => $vendorUser?->id, 'report_number' => $number, 'arrived_at' => $now, 'created_by' => $request->user()->id, 'site' => $request->user()->site]);
             SafeBroadcast::dispatch(new ExpeditionReportCreated($report));
 
             return back()->with('success', 'Laporan kedatangan berhasil dikirim.');
@@ -72,8 +73,12 @@ class ExpeditionController extends Controller
     {
         abort_unless($report->site === $request->user()->site, 403);
         abort_unless($request->user()->id === $report->created_by || in_array($request->user()->role, [UserRole::DEVELOPER, UserRole::COORDINATOR], true), 403);
-        abort_unless(in_array($kind, ['arrival', 'blood-pressure'], true), 404);
-        $path = $kind === 'arrival' ? $report->arrival_photo_path : $report->blood_pressure_photo_path;
+        abort_unless(in_array($kind, ['arrival', 'blood-pressure', 'p2h'], true), 404);
+        $path = match ($kind) {
+            'arrival' => $report->arrival_photo_path,
+            'blood-pressure' => $report->blood_pressure_photo_path,
+            'p2h' => $report->p2h_photo_path,
+        };
         abort_unless($path && Storage::disk('local')->exists($path), 404);
 
         return Storage::disk('local')->response($path);

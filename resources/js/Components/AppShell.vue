@@ -206,15 +206,6 @@ const menus = computed(() => {
             href: "/expedition",
             exact: true,
         },
-        {
-            label: "Monitoring Kedatangan", short: "Kedatangan", icon: "truck", href: "/expedition/arrival-monitoring",
-        },
-        {
-            label: "Planning Izin Lintas",
-            short: "Planning",
-            icon: "calendar",
-            href: "/expedition/planning",
-        },
     ];
 });
 const active = (item) =>

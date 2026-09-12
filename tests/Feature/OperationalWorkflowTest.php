@@ -47,7 +47,7 @@ class OperationalWorkflowTest extends TestCase
     {
         Storage::fake('local');
         $expedition = User::factory()->create(['name' => 'Zulu Logistik', 'role' => UserRole::EXPEDITION, 'permissions' => ['expedition.report']]);
-        $this->actingAs($expedition)->post('/expedition/reports', [
+        $payload = [
             'expedition_company' => 'Zulu Logistik', 'driver_name' => 'Budi Filter', 'driver_phone' => '08123456789',
             'vehicle_plate' => 'da 1234 xx', 'vehicle_type' => 'Fuso', 'sender_vendor' => 'Vendor Alpha', 'destination' => 'Workshop',
             'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80,
@@ -55,11 +55,18 @@ class OperationalWorkflowTest extends TestCase
             'blood_pressure_photo' => UploadedFile::fake()->image('tensi.jpg'),
             'arrival_latitude' => -3.3212345, 'arrival_longitude' => 115.6123456, 'arrival_location_accuracy' => 87, 'arrival_location_name' => 'Site BIB, Kalimantan Selatan', 'arrival_photo_captured_at' => now()->toISOString(),
             'blood_pressure_latitude' => -3.3212345, 'blood_pressure_longitude' => 115.6123456, 'blood_pressure_location_accuracy' => 99, 'blood_pressure_location_name' => 'Site BIB, Kalimantan Selatan', 'blood_pressure_photo_captured_at' => now()->toISOString(),
-        ])->assertSessionHasNoErrors();
+        ];
+        $this->actingAs($expedition)->post('/expedition/reports', $payload)->assertSessionHasErrors('p2h_photo');
+        $payload['p2h_photo'] = UploadedFile::fake()->image('p2h-unit.jpg');
+        $this->post('/expedition/reports', $payload)->assertSessionHasNoErrors();
         $this->assertDatabaseHas('expedition_reports', ['vehicle_plate' => 'DA 1234 XX', 'arrival_location_accuracy' => 87, 'blood_pressure_location_accuracy' => 99, 'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80, 'health_status' => 'FIT_WITH_NOTE', 'health_status_label' => 'Fit dengan Catatan Medis']);
 
         ExpeditionReport::create(['report_number' => 'EXP-ALPHA', 'expedition_company' => 'Alpha Logistik', 'driver_name' => 'Andi', 'driver_phone' => '0800', 'vehicle_plate' => 'DA 1 AA', 'vehicle_type' => 'Pickup', 'sender_vendor' => 'Vendor Beta', 'destination' => 'Office', 'arrived_at' => now()->subDay(), 'created_by' => $expedition->id, 'site' => 'BIB']);
         $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR, 'permissions' => ['coordinator.expedition']]);
+        $report = ExpeditionReport::where('vehicle_plate', 'DA 1234 XX')->firstOrFail();
+        $this->actingAs($coordinator)->get('/coordinator/reports/'.$report->id.'/photos/p2h')->assertOk();
+        $otherSite = User::factory()->create(['role' => UserRole::COORDINATOR, 'site' => 'OTHER', 'permissions' => ['coordinator.expedition']]);
+        $this->actingAs($otherSite)->get('/coordinator/reports/'.$report->id.'/photos/p2h')->assertForbidden();
 
         $this->actingAs($coordinator)->get('/coordinator?search=Budi&company=Zulu%20Logistik&vehicle_type=Fuso&vendor=Vendor%20Alpha&destination=Workshop&date_from='.now()->toDateString().'&date_to='.now()->toDateString().'&sort=expedition_company&direction=asc&per_page=10')
             ->assertOk()->assertInertia(fn (Assert $page) => $page->component('Coordinator/Index')->has('reports.data', 1)->where('reports.data.0.driver_name', 'Budi Filter')->where('filters.direction', 'asc'));
