@@ -119,6 +119,7 @@ class RealtimeWorkflowTest extends TestCase
 
         $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', [
             'status' => 'RELEASED', 'coordinator_note' => 'Dokumen sesuai.',
+            'release_expired_at' => today()->addMonth()->toDateString(),
             'release_document' => UploadedFile::fake()->create('izin-release.pdf', 100, 'application/pdf'),
         ])->assertSessionHasNoErrors();
 

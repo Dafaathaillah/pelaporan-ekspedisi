@@ -227,19 +227,27 @@ class OperationalWorkflowTest extends TestCase
         $this->assertSame(SubmissionStatus::APPROVED, $submission->fresh()->status);
 
         $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', [
+            'status' => 'RELEASED', 'release_document' => UploadedFile::fake()->create('izin-release.pdf', 100, 'application/pdf'),
+        ])->assertSessionHasErrors('release_expired_at');
+        $this->assertSame(SubmissionStatus::APPROVED, $submission->fresh()->status);
+
+        $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', [
             'status' => 'RELEASED', 'release_document' => UploadedFile::fake()->image('izin.jpg'),
         ])->assertSessionHasErrors('release_document');
         $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', [
             'status' => 'RELEASED', 'release_document' => UploadedFile::fake()->create('izin.pdf', 6000, 'application/pdf'),
         ])->assertSessionHasErrors('release_document');
 
+        $expiredAt = today()->addDays(30)->toDateString();
         $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', [
-            'status' => 'RELEASED', 'release_document' => UploadedFile::fake()->create('izin-release.pdf', 100, 'application/pdf'),
+            'status' => 'RELEASED', 'release_expired_at' => $expiredAt,
+            'release_document' => UploadedFile::fake()->create('izin-release.pdf', 100, 'application/pdf'),
         ])->assertSessionHasNoErrors();
 
         $released = $submission->fresh();
         $this->assertSame(SubmissionStatus::RELEASED, $released->status);
         $this->assertSame('izin-release.pdf', $released->release_document_name);
+        $this->assertSame($expiredAt, $released->release_expired_at->toDateString());
         $this->assertNotNull($released->release_document_path);
         Storage::disk('local')->assertExists($released->release_document_path);
         $this->actingAs($vendor)->get('/submissions/'.$released->id.'/release-document')->assertOk();

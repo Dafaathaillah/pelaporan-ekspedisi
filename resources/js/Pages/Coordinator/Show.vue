@@ -49,7 +49,11 @@ const f = useForm({
     coordinator_note: "",
     release_document: null,
     destination: p.submission.destination || p.submission.expedition_request?.route_to || "",
-    release_expired_at: p.submission.release_expired_at?.slice(0, 10) || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+    release_expired_at:
+        p.submission.release_expired_at?.slice(0, 10) ||
+        (p.submission.type === "IJIN_LINTAS"
+            ? ""
+            : new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)),
 });
 const releaseDetails = useForm({ destination: p.submission.destination || p.submission.expedition_request?.route_to || "", release_expired_at: p.submission.release_expired_at?.slice(0, 10) || "" });
 const saveReleaseDetails = () => releaseDetails.patch(itemUrl.value + "/release-details", { preserveScroll: true });
