@@ -9,6 +9,7 @@ use App\Models\ExpeditionReport;
 use App\Models\PlanningItem;
 use App\Models\User;
 use App\Services\ArrivalPlanningService;
+use App\Services\PrivatePhotoResizer;
 use App\Support\BloodPressureAssessment;
 use App\Support\SafeBroadcast;
 use Illuminate\Http\RedirectResponse;
@@ -34,9 +35,9 @@ class ExpeditionController extends Controller
         return Inertia::render('Expedition/Index', ['vehicleTypes' => ['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya'], 'expeditionCompany' => $request->user()->name, 'reports' => $reports, 'permits' => $permits, 'reportBase' => $request->user()->role->value === 'vendor' ? '/vendor/arrivals' : '/expedition/reports']);
     }
 
-    public function store(StoreExpeditionReportRequest $request): RedirectResponse
+    public function store(StoreExpeditionReportRequest $request, PrivatePhotoResizer $photoResizer): RedirectResponse
     {
-        return DB::transaction(function () use ($request) {
+        return DB::transaction(function () use ($request, $photoResizer) {
             $planning = $request->planning_item_id ? PlanningItem::lockForUpdate()->findOrFail($request->planning_item_id) : null;
             if ($planning && $planning->reports()->where('vendor_submission_unit_id', $request->vendor_submission_unit_id)->exists()) {
                 throw ValidationException::withMessages(['vendor_submission_unit_id' => 'Unit ini sudah dilaporkan datang pada planning tersebut.']);
@@ -47,11 +48,17 @@ class ExpeditionController extends Controller
                 $vendorUser = $planning->submission->creator;
             }
             $number = 'EXP-'.$now->format('Ymd-His').'-'.str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
-            $arrivalPath = $request->file('arrival_photo')->store('private/expedition-reports/'.$number, 'local');
-            $pressurePath = $request->file('blood_pressure_photo')->store('private/expedition-reports/'.$number, 'local');
-            $p2hPath = $request->file('p2h_photo')?->store('private/expedition-reports/'.$number, 'local');
-            $assessment = BloodPressureAssessment::assess((int) $request->blood_pressure_systolic, (int) $request->blood_pressure_diastolic);
-            $report = ExpeditionReport::create([...$request->safe()->except(['arrival_photo', 'blood_pressure_photo', 'p2h_photo']), 'health_status' => $assessment['status'], 'health_status_label' => $assessment['label'], 'health_status_reason' => $assessment['reason'], 'expedition_company' => $request->user()->name, 'arrival_photo_path' => $arrivalPath, 'blood_pressure_photo_path' => $pressurePath, 'p2h_photo_path' => $p2hPath, 'vendor_user_id' => $vendorUser?->id, 'report_number' => $number, 'arrived_at' => $now, 'created_by' => $request->user()->id, 'site' => $request->user()->site]);
+            $directory = 'private/expedition-reports/'.$number;
+            try {
+                $arrivalPath = $photoResizer->store($request->file('arrival_photo'), $directory, 'arrival');
+                $pressurePath = $photoResizer->store($request->file('blood_pressure_photo'), $directory, 'blood_pressure');
+                $p2hPath = $request->file('p2h_photo') ? $photoResizer->store($request->file('p2h_photo'), $directory, 'p2h') : null;
+                $assessment = BloodPressureAssessment::assess((int) $request->blood_pressure_systolic, (int) $request->blood_pressure_diastolic);
+                $report = ExpeditionReport::create([...$request->safe()->except(['arrival_photo', 'blood_pressure_photo', 'p2h_photo']), 'health_status' => $assessment['status'], 'health_status_label' => $assessment['label'], 'health_status_reason' => $assessment['reason'], 'expedition_company' => $request->user()->name, 'arrival_photo_path' => $arrivalPath, 'blood_pressure_photo_path' => $pressurePath, 'p2h_photo_path' => $p2hPath, 'vendor_user_id' => $vendorUser?->id, 'report_number' => $number, 'arrived_at' => $now, 'created_by' => $request->user()->id, 'site' => $request->user()->site]);
+            } catch (\Throwable $error) {
+                Storage::disk('local')->deleteDirectory($directory);
+                throw $error;
+            }
             SafeBroadcast::dispatch(new ExpeditionReportCreated($report));
 
             return back()->with('success', 'Laporan kedatangan berhasil dikirim.');
