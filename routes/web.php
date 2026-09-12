@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CoordinatorController;
+use App\Http\Controllers\DirectPlanningController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DriverEscortController;
 use App\Http\Controllers\ExpeditionController;
@@ -63,6 +64,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/planning', [PlanningController::class, 'index'])->name('purchasing.planning');
         Route::patch('/planning/{planningItem}', [PlanningController::class, 'move'])->name('purchasing.planning.move');
         Route::patch('/planning/{planningItem}/lock', [PlanningController::class, 'lock'])->name('purchasing.planning.lock');
+        Route::post('/direct-plannings', [DirectPlanningController::class, 'store']);
+        Route::put('/direct-plannings/{directPlanning}', [DirectPlanningController::class, 'update']);
+        Route::patch('/direct-plannings/{directPlanning}/lock', [DirectPlanningController::class, 'lock']);
+        Route::delete('/direct-plannings/{directPlanning}', [DirectPlanningController::class, 'destroy']);
     });
     Route::get('/expedition-requests/{expeditionRequest}/evidence', [ExpeditionRequestController::class, 'evidence'])->name('expedition-requests.evidence');
     Route::middleware('role:coordinator')->get('/coordinator/reports/{report}/escort-photo', [DriverEscortController::class, 'photo'])->name('coordinator.expedition.escort-photo');
@@ -102,6 +107,10 @@ Route::middleware('auth')->group(function () {
             Route::patch('/planning/{planningItem}/lock', [PlanningController::class, 'lock'])->name('coordinator.planning.lock');
             Route::post('/planning/{planningItem}/evidence', [PlanningController::class, 'evidence'])->name('coordinator.planning.evidence');
             Route::get('/planning/{planningItem}/evidence', [PlanningController::class, 'showEvidence'])->name('coordinator.planning.evidence.show');
+            Route::post('/direct-plannings', [DirectPlanningController::class, 'store']);
+            Route::put('/direct-plannings/{directPlanning}', [DirectPlanningController::class, 'update']);
+            Route::patch('/direct-plannings/{directPlanning}/lock', [DirectPlanningController::class, 'lock']);
+            Route::delete('/direct-plannings/{directPlanning}', [DirectPlanningController::class, 'destroy']);
         });
         Route::middleware('permission:coordinator.vendor')->group(function () {
             Route::get('/submissions/{type}', [CoordinatorController::class, 'submissions'])->name('coordinator.submissions');

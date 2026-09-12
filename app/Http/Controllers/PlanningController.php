@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Events\PlanningUpdated;
+use App\Models\DirectPlanning;
 use App\Models\PlanningItem;
+use App\Models\VendorCompany;
 use App\Support\SafeBroadcast;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -27,7 +29,42 @@ class PlanningController extends Controller
             ->join('vendor_submissions', 'vendor_submissions.id', '=', 'planning_items.vendor_submission_id')
             ->select('planning_items.*')->orderBy('vendor_submissions.'.$sort, $direction)->orderBy('planning_items.position')->get();
 
-        return Inertia::render('Coordinator/Planning', ['items' => $items, 'dates' => collect(range(0, $start->diffInDays($end)))->map(fn ($day) => $start->copy()->addDays($day)->toDateString()), 'range' => ['start' => $start->toDateString(), 'end' => $end->toDateString()], 'filters' => $request->only(['search', 'type', 'status', 'sort', 'direction']), 'planningBase' => $request->user()->role->value === 'purchasing_admin' ? '/purchasing/planning' : '/coordinator/planning', 'pageRole' => $request->user()->role->value]);
+        $directPlannings = DirectPlanning::with(['vendorCompany:id,name,abbreviation', 'locker:id,name', 'units'])
+            ->where('site', $request->user()->site)
+            ->whereHas('units', fn ($query) => $query->whereBetween('planned_date', [$start, $end]))
+            ->latest()->get();
+        $directItems = $directPlannings->flatMap(fn ($planning) => $planning->units
+            ->filter(fn ($unit) => $unit->planned_date->betweenIncluded($start, $end))
+            ->map(fn ($unit) => [
+                'id' => $unit->id,
+                'source' => 'direct',
+                'direct_planning_id' => $planning->id,
+                'planned_date' => $unit->planned_date->toDateString(),
+                'vehicle_plate' => $unit->vehicle_plate,
+                'vehicle_type' => $unit->vehicle_type,
+                'route_from' => $unit->route_from,
+                'route_to' => $unit->route_to,
+                'vendor_name' => $planning->vendorCompany->name,
+                'notes' => $planning->notes,
+                'is_locked' => $planning->is_locked,
+                'locked_by' => $planning->locker,
+            ]))->values();
+
+        $isPurchasing = $request->user()->role->value === 'purchasing_admin';
+
+        return Inertia::render('Coordinator/Planning', [
+            'items' => $items,
+            'directItems' => $directItems,
+            'directPlannings' => $directPlannings,
+            'vendors' => VendorCompany::where('is_active', true)->orderBy('name')->get(['id', 'name', 'abbreviation']),
+            'vehicleTypes' => ['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya'],
+            'dates' => collect(range(0, $start->diffInDays($end)))->map(fn ($day) => $start->copy()->addDays($day)->toDateString()),
+            'range' => ['start' => $start->toDateString(), 'end' => $end->toDateString()],
+            'filters' => $request->only(['search', 'type', 'status', 'sort', 'direction']),
+            'planningBase' => $isPurchasing ? '/purchasing/planning' : '/coordinator/planning',
+            'directPlanningBase' => $isPurchasing ? '/purchasing/direct-plannings' : '/coordinator/direct-plannings',
+            'pageRole' => $request->user()->role->value,
+        ]);
     }
 
     public function move(Request $request, PlanningItem $planningItem)

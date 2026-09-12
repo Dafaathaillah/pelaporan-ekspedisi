@@ -1,5 +1,7 @@
 <script setup>
 import AppShell from "@/Components/AppShell.vue";
+import ActionConfirm from "@/Components/ActionConfirm.vue";
+import DirectPlanningModal from "@/Components/DirectPlanningModal.vue";
 import { router, useForm } from "@inertiajs/vue3";
 import { computed, reactive, ref } from "vue";
 const props = defineProps({
@@ -9,6 +11,11 @@ const props = defineProps({
     filters: Object,
     planningBase: { type: String, default: "/coordinator/planning" },
     pageRole: { type: String, default: "coordinator" },
+    directItems: { type: Array, default: () => [] },
+    directPlannings: { type: Array, default: () => [] },
+    vendors: { type: Array, default: () => [] },
+    vehicleTypes: { type: Array, default: () => [] },
+    directPlanningBase: { type: String, default: "/coordinator/direct-plannings" },
 });
 const filter = reactive({
     search: "",
@@ -21,11 +28,29 @@ const filter = reactive({
 const dragging = ref(null),
     selected = ref(null),
     evidenceInput = ref(null),
-    evidenceItem = ref(null);
+    evidenceItem = ref(null),
+    directModalOpen = ref(false),
+    editingDirect = ref(null),
+    deletingDirect = ref(null);
 const backlog = computed(() => props.items.filter((x) => !x.planned_date));
 const normalizedDate = (value) => (value ? String(value).slice(0, 10) : null);
 const byDate = (date) =>
     props.items.filter((x) => normalizedDate(x.planned_date) === date);
+const directByDate = (date) => props.directItems.filter((x) => normalizedDate(x.planned_date) === date);
+const openDirect = (planning = null) => {
+    editingDirect.value = planning;
+    directModalOpen.value = true;
+};
+const closeDirect = () => {
+    directModalOpen.value = false;
+    editingDirect.value = null;
+};
+const directPlanning = (id) => props.directPlannings.find((item) => item.id === id);
+const toggleDirectLock = (item) => router.patch(`${props.directPlanningBase}/${item.direct_planning_id}/lock`, { locked: !item.is_locked }, { preserveScroll: true });
+const deleteDirect = () => {
+    if (!deletingDirect.value) return;
+    router.delete(`${props.directPlanningBase}/${deletingDirect.value.id}`, { preserveScroll: true, onFinish: () => (deletingDirect.value = null) });
+};
 const load = () =>
     router.get(props.planningBase, filter, {
         preserveState: true,
@@ -105,6 +130,9 @@ const sendEvidence = (event) => {
             {{ dateLabel(range.start) }} sampai
             {{ dateLabel(range.end) }}.</template
         >
+        <div class="mb-5 flex justify-end">
+            <button type="button" class="btn" @click="openDirect()">Buat Planning Langsung</button>
+        </div>
         <form class="panel mb-5" @submit.prevent="load">
             <div
                 class="grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_220px_190px_190px_160px_auto]"
@@ -214,7 +242,7 @@ const sendEvidence = (event) => {
                         >
                             <b class="min-w-0 text-xs">{{ dateLabel(date) }}</b
                             ><span class="shrink-0 text-[10px] text-slate-400"
-                                >{{ byDate(date).length }} agenda</span
+                                >{{ byDate(date).length + directByDate(date).length }} agenda</span
                             >
                         </header>
                         <div class="space-y-2">
@@ -329,6 +357,27 @@ const sendEvidence = (event) => {
                                     >
                                 </div>
                             </article>
+                            <article
+                                v-for="item in directByDate(date)"
+                                :key="`direct-${item.id}`"
+                                class="min-w-0 overflow-hidden rounded-xl border border-sky-200 bg-sky-50/50 p-3 shadow-sm"
+                            >
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <span class="inline-flex rounded-full bg-sky-700 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-white">Planning Langsung</span>
+                                        <b class="mt-2 block break-words text-xs text-slate-900">{{ item.vendor_name }}</b>
+                                    </div>
+                                    <span class="shrink-0 text-[10px] font-black" :class="item.is_locked ? 'text-amber-700' : 'text-emerald-700'">{{ item.is_locked ? "Terkunci" : "Aktif" }}</span>
+                                </div>
+                                <p class="mt-2 text-xs font-bold text-slate-800">{{ item.vehicle_plate }} · {{ item.vehicle_type }}</p>
+                                <p class="mt-1 break-words text-[10px] leading-4 text-slate-600">{{ item.route_from }} → {{ item.route_to }}</p>
+                                <p v-if="item.notes" class="mt-1 line-clamp-2 break-words text-[10px] text-slate-500">{{ item.notes }}</p>
+                                <div class="mt-3 flex flex-wrap gap-x-3 gap-y-2 border-t border-sky-100 pt-2">
+                                    <button type="button" class="text-[10px] font-black text-sky-700 disabled:cursor-not-allowed disabled:text-slate-300" :disabled="item.is_locked" @click.stop="openDirect(directPlanning(item.direct_planning_id))">Edit</button>
+                                    <button type="button" class="text-[10px] font-black text-amber-700" @click.stop="toggleDirectLock(item)">{{ item.is_locked ? "Buka Kunci" : "Kunci" }}</button>
+                                    <button type="button" class="text-[10px] font-black text-red-600 disabled:text-slate-300" :disabled="item.is_locked" @click.stop="deletingDirect = directPlanning(item.direct_planning_id)">Hapus</button>
+                                </div>
+                            </article>
                         </div>
                     </article>
                 </div>
@@ -341,5 +390,7 @@ const sendEvidence = (event) => {
             class="hidden"
             @change="sendEvidence"
         />
+        <DirectPlanningModal :show="directModalOpen" :planning="editingDirect" :vendors="vendors" :vehicle-types="vehicleTypes" :endpoint="directPlanningBase" :range="range" @close="closeDirect" />
+        <ActionConfirm :show="Boolean(deletingDirect)" title="Hapus planning langsung?" message="Seluruh unit dalam kelompok planning ini akan dihapus dari kalender." confirm-text="Hapus Planning" danger @close="deletingDirect = null" @confirm="deleteDirect" />
     </AppShell>
 </template>

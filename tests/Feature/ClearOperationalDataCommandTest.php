@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\DirectPlanning;
 use App\Models\ExpeditionReport;
 use App\Models\User;
 use App\Models\VendorCompany;
@@ -34,11 +35,25 @@ class ClearOperationalDataCommandTest extends TestCase
             'created_by' => $user->id,
             'site' => 'BIB',
         ]);
+        $directPlanning = DirectPlanning::create([
+            'vendor_company_id' => $company->id,
+            'site' => 'BIB',
+            'created_by' => $user->id,
+        ]);
+        $directPlanning->units()->create([
+            'vehicle_plate' => 'DA 9999 ZZ',
+            'vehicle_type' => 'Fuso',
+            'route_from' => 'Warehouse',
+            'route_to' => 'Workshop',
+            'planned_date' => now()->addDay(),
+        ]);
 
         $this->artisan('data:clear-dummy', ['--force' => true])
             ->assertSuccessful();
 
         $this->assertDatabaseCount('expedition_reports', 0);
+        $this->assertDatabaseCount('direct_plannings', 0);
+        $this->assertDatabaseCount('direct_planning_units', 0);
         $this->assertDatabaseHas('users', ['id' => $user->id]);
         $this->assertDatabaseHas('vendor_companies', ['id' => $company->id]);
     }

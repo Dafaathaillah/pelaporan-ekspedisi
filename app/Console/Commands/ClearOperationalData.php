@@ -20,6 +20,8 @@ class ClearOperationalData extends Command
      */
     private const OPERATIONAL_TABLES = [
         'expedition_reports',
+        'direct_planning_units',
+        'direct_plannings',
         'planning_items',
         'vendor_documents',
         'vendor_submission_units',
