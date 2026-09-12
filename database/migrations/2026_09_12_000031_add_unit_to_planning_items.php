@@ -15,6 +15,9 @@ return new class extends Migration
                 $table->foreignUuid('vendor_submission_unit_id')->nullable()->after('vendor_submission_id')->constrained('vendor_submission_units')->cascadeOnDelete();
             });
         }
+        if (! Schema::hasIndex('planning_items', 'planning_vendor_submission_lookup')) {
+            Schema::table('planning_items', fn (Blueprint $table) => $table->index('vendor_submission_id', 'planning_vendor_submission_lookup'));
+        }
         if (! Schema::hasIndex('planning_items', 'planning_submission_unit_unique')) {
             Schema::table('planning_items', fn (Blueprint $table) => $table->unique(['vendor_submission_id', 'vendor_submission_unit_id'], 'planning_submission_unit_unique'));
         }
@@ -55,9 +58,19 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('planning_items', function (Blueprint $table) {
-            $table->dropUnique('planning_submission_unit_unique');
-            $table->dropConstrainedForeignId('vendor_submission_unit_id');
-        });
+        if (! Schema::hasIndex('planning_items', 'planning_vendor_submission_lookup')) {
+            Schema::table('planning_items', fn (Blueprint $table) => $table->index('vendor_submission_id', 'planning_vendor_submission_lookup'));
+        }
+        try {
+            Schema::table('planning_items', fn (Blueprint $table) => $table->dropForeign(['vendor_submission_unit_id']));
+        } catch (Throwable) {
+            // Supports retry after MySQL partially committed a previous rollback.
+        }
+        if (Schema::hasIndex('planning_items', 'planning_submission_unit_unique')) {
+            Schema::table('planning_items', fn (Blueprint $table) => $table->dropUnique('planning_submission_unit_unique'));
+        }
+        if (Schema::hasColumn('planning_items', 'vendor_submission_unit_id')) {
+            Schema::table('planning_items', fn (Blueprint $table) => $table->dropColumn('vendor_submission_unit_id'));
+        }
     }
 };
