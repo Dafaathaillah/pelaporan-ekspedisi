@@ -12,7 +12,9 @@ const props = defineProps({
     completedReport: Object,
     expeditionCompany: String,
     reportBase: String,
+    selected: Boolean,
 });
+const emit = defineEmits(['update:selected']);
 
 const requiresP2h = computed(() => props.reportBase === '/expedition/reports');
 const completeIdentity = computed(() => props.unit.driver_name && props.unit.driver_phone && props.unit.plate_number && props.unit.vehicle_type && props.permit.destination);
@@ -21,6 +23,7 @@ const inputs = { arrival: ref(null), pressure: ref(null), p2h: ref(null) };
 const previews = { arrival: ref(''), pressure: ref(''), p2h: ref('') };
 const locating = ref({ arrival: false, pressure: false });
 const locationError = ref({ arrival: '', pressure: '' });
+const submitting = ref(false);
 const form = useForm({
     vendor_submission_unit_id: props.unit.id,
     blood_pressure_systolic: '', blood_pressure_diastolic: '',
@@ -64,17 +67,35 @@ const setPhoto = async (event, kind) => {
     form[{ arrival: 'arrival_photo', pressure: 'blood_pressure_photo', p2h: 'p2h_photo' }[kind]] = file;
     if (kind !== 'p2h') await captureLocation(kind);
 };
-const send = () => {
-    if (props.completedReport || blockedReason.value || !assessment.value || assessment.value.status === 'INVALID') return;
-    form.post(props.reportBase, { forceFormData: true, preserveScroll: true });
+const send = async () => {
+    form.clearErrors();
+    if (props.completedReport || blockedReason.value) throw new Error(blockedReason.value || 'Unit sudah dikirim.');
+    if (!assessment.value || assessment.value.status === 'INVALID') {
+        form.setError('blood_pressure_systolic', 'Isi nilai tensi yang valid untuk unit ini.');
+        throw new Error('Nilai tensi belum valid.');
+    }
+    const payload = new FormData();
+    Object.entries(form.data()).forEach(([key, value]) => {
+        if (value !== null && value !== '') payload.append(key, value);
+    });
+    submitting.value = true;
+    try {
+        await axios.post(props.reportBase, payload, { headers: { Accept: 'application/json' } });
+        return true;
+    } catch (error) {
+        const errors = error.response?.data?.errors || {};
+        Object.entries(errors).forEach(([field, messages]) => form.setError(field, Array.isArray(messages) ? messages[0] : messages));
+        throw error;
+    } finally { submitting.value = false; }
 };
+defineExpose({ send });
 onBeforeUnmount(() => Object.values(previews).forEach(preview => preview.value && URL.revokeObjectURL(preview.value)));
 </script>
 
 <template>
     <article class="overflow-hidden rounded-3xl border bg-white shadow-sm" :class="completedReport ? 'border-emerald-200' : 'border-slate-200'">
         <header class="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div><p class="text-xs font-black uppercase tracking-widest text-red-600">Unit {{ number }}</p><h3 class="mt-1 text-xl font-black text-slate-900">{{ unit.plate_number || 'Nomor polisi belum diisi' }}</h3><p class="mt-1 text-sm text-slate-500">Planning: {{ planning?.planned_date || 'Belum terjadwal' }}</p></div>
+            <label class="flex cursor-pointer items-start gap-4" :class="(completedReport || blockedReason) ? 'cursor-not-allowed opacity-70' : ''"><input :checked="selected" type="checkbox" class="mt-1 h-5 w-5 rounded border-slate-300 text-red-600 focus:ring-red-500" :disabled="!!completedReport || !!blockedReason || submitting" @change="emit('update:selected', $event.target.checked)"><span><span class="text-xs font-black uppercase tracking-widest text-red-600">Unit {{ number }}</span><span class="mt-1 block text-xl font-black text-slate-900">{{ unit.plate_number || 'Nomor polisi belum diisi' }}</span><span class="mt-1 block text-sm text-slate-500">Planning: {{ planning?.planned_date || 'Belum terjadwal' }}</span></span></label>
             <div v-if="completedReport" class="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800"><b class="block">✓ Kedatangan Sudah Dikirim</b><span>{{ formattedDate(completedReport.arrived_at) }} WITA</span></div>
             <span v-else class="w-fit rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">Menunggu kedatangan</span>
         </header>
@@ -83,7 +104,7 @@ onBeforeUnmount(() => Object.values(previews).forEach(preview => preview.value &
                 <div v-for="([label, value]) in [['Nama Driver', unit.driver_name], ['Nomor HP', unit.driver_phone], ['Jenis Kendaraan', unit.vehicle_type], ['Vendor/Pengirim', permit.vendor_name], ['Tujuan', permit.destination]]" :key="label" class="rounded-2xl bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ label }}</p><p class="mt-1 font-semibold text-slate-800">{{ value || '-' }}</p></div>
             </div>
             <p v-if="blockedReason && !completedReport" class="mt-4 rounded-2xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">{{ blockedReason }}</p>
-            <form v-if="!completedReport" class="mt-5" @submit.prevent="send">
+            <form v-if="!completedReport && selected" class="mt-5" @submit.prevent>
                 <div class="grid gap-4 sm:grid-cols-2">
                     <label class="text-sm font-semibold">Sistolik / tekanan atas *<input v-model="form.blood_pressure_systolic" type="number" min="60" max="250" class="field" placeholder="Contoh: 120"><p class="err">{{ form.errors.blood_pressure_systolic }}</p></label>
                     <label class="text-sm font-semibold">Diastolik / tekanan bawah *<input v-model="form.blood_pressure_diastolic" type="number" min="30" max="150" class="field" placeholder="Contoh: 80"><p class="err">{{ form.errors.blood_pressure_diastolic }}</p></label>
@@ -102,9 +123,10 @@ onBeforeUnmount(() => Object.values(previews).forEach(preview => preview.value &
                         <p class="err">{{ form.errors[{ arrival: 'arrival_photo', pressure: 'blood_pressure_photo', p2h: 'p2h_photo' }[kind]] }}</p>
                     </div>
                 </div>
-                <button :disabled="form.processing || !!blockedReason || locating.arrival || locating.pressure || !assessment || assessment.status === 'INVALID'" class="btn mt-5 w-full">{{ form.processing ? 'MENGIRIM...' : `KIRIM KEDATANGAN UNIT ${number}` }}</button>
                 <p v-if="form.errors.vendor_submission_unit_id" class="err text-center">{{ form.errors.vendor_submission_unit_id }}</p>
             </form>
+            <p v-else-if="!completedReport && !blockedReason" class="mt-4 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">Centang unit ini jika driver dan kendaraannya sudah tiba.</p>
+            <p v-if="submitting" class="mt-4 text-center text-sm font-bold text-red-600">Mengirim kedatangan Unit {{ number }}...</p>
         </div>
     </article>
 </template>

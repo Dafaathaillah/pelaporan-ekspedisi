@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace manual planning/unit selection with secure, independent per-unit arrival cards.
+**Goal:** Replace manual planning/unit selection with secure, checklist-driven per-unit arrival cards and partial monitoring.
 
 **Architecture:** Laravel resolves permit and planning ownership from a submitted unit UUID. Vue keeps permit selection in the page and delegates each independent arrival form to a reusable unit-card component.
 
@@ -45,8 +45,9 @@
 - Produces: multipart POST containing `vendor_submission_unit_id`, pressure values, GPS evidence, and required photos.
 
 - [ ] Move unit-specific form, pressure assessment, camera previews, GPS capture, and POST behavior into the component.
-- [ ] Keep only permit selection in the page and render all units in stable permit order.
+- [ ] Keep only permit selection in the page, render all units in stable permit order, and submit checked cards from one sticky batch action.
 - [ ] Render completed units with a green timestamp badge and disable resubmission; render incomplete/unplanned units with an actionable warning.
+- [ ] Keep unchecked units as `Menunggu Driver`, retain errors on failed checked units, and expose the same partial status labels to coordinator, purchasing admin, and developer monitoring.
 - [ ] Run `npm run build` and fix all compile failures.
 
 ### Task 3: Regression verification

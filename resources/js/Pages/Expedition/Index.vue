@@ -3,7 +3,7 @@ import AppShell from "@/Components/AppShell.vue";
 import DataTableFooter from "@/Components/DataTableFooter.vue";
 import ExpeditionArrivalUnitCard from "@/Components/ExpeditionArrivalUnitCard.vue";
 import { router, useForm } from "@inertiajs/vue3";
-import { computed, onBeforeUnmount, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref } from "vue";
 import axios from "axios";
 import { getPreciseLocation } from "@/lib/preciseLocation";
 
@@ -48,11 +48,31 @@ const form = useForm({
     blood_pressure_photo_captured_at: "",
 });
 const permitId = ref("");
+const selectedUnitIds = ref([]);
+const unitCardRefs = ref({});
+const batchSubmitting = ref(false);
+const batchMessage = ref("");
 const selectedPermit = computed(() => props.permits.find(p => p.id === permitId.value));
 const unitCards = computed(() => (selectedPermit.value?.units || []).map((unit, index) => {
     const planning = selectedPermit.value.planning_items.find(item => item.vendor_submission_unit_id === unit.id);
     return { unit, number: index + 1, planning, completedReport: planning?.reports?.find(report => report.vendor_submission_unit_id === unit.id) || null };
 }));
+const changePermit = () => { selectedUnitIds.value = []; unitCardRefs.value = {}; batchMessage.value = ''; };
+const setCardRef = (id, instance) => { if (instance) unitCardRefs.value[id] = instance; else delete unitCardRefs.value[id]; };
+const toggleUnit = (id, checked) => {
+    selectedUnitIds.value = checked ? [...new Set([...selectedUnitIds.value, id])] : selectedUnitIds.value.filter(unitId => unitId !== id);
+};
+const sendSelected = async () => {
+    if (!selectedUnitIds.value.length || batchSubmitting.value) return;
+    batchSubmitting.value = true; batchMessage.value = '';
+    await nextTick();
+    const results = await Promise.allSettled(selectedUnitIds.value.map(id => unitCardRefs.value[id]?.send()));
+    const sent = results.filter(result => result.status === 'fulfilled').length;
+    const failed = results.length - sent;
+    batchMessage.value = failed ? `${sent} unit berhasil dikirim, ${failed} unit perlu diperiksa kembali.` : `${sent} unit berhasil dikirim.`;
+    batchSubmitting.value = false;
+    if (sent) router.reload({ only: ['permits', 'reports'], preserveScroll: true, onSuccess: () => { selectedUnitIds.value = failed ? selectedUnitIds.value.filter((id, index) => results[index].status === 'rejected') : []; } });
+};
 const selectedPlanning = computed(() => selectedPermit.value?.planning_items.find(p => p.id === form.planning_item_id));
 const availableUnits = computed(() => (selectedPermit.value?.units || []).filter(u => (!selectedPlanning.value?.vendor_submission_unit_id || selectedPlanning.value.vendor_submission_unit_id === u.id) && !(selectedPlanning.value?.reports || []).some(r => r.vendor_submission_unit_id === u.id)));
 const selectUnit = () => {
@@ -210,14 +230,15 @@ onBeforeUnmount(clearPreviews);
         <section class="panel p-5 sm:p-6">
             <div class="mb-5 flex items-start gap-3">
                 <span class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-red-50 text-red-600">🚚</span>
-                <div><h2 class="font-black text-slate-900">Laporan Kedatangan · WITA</h2><p class="mt-1 text-sm text-slate-500">Pilih izin Released, lalu isi dan kirim kedatangan setiap unit secara terpisah.</p></div>
+                <div><h2 class="font-black text-slate-900">Laporan Kedatangan · WITA</h2><p class="mt-1 text-sm text-slate-500">Pilih izin Released, centang unit yang sudah tiba, lalu kirim kedatangannya.</p></div>
             </div>
-            <label class="block max-w-2xl text-sm font-semibold">Izin / Vendor<select v-model="permitId" class="field"><option value="">Pilih izin Released</option><option v-for="permit in permits" :key="permit.id" :value="permit.id">{{ permit.vendor_name }} · {{ permit.submission_number }}</option></select></label>
+            <label class="block max-w-2xl text-sm font-semibold">Izin / Vendor<select v-model="permitId" class="field" @change="changePermit"><option value="">Pilih izin Released</option><option v-for="permit in permits" :key="permit.id" :value="permit.id">{{ permit.vendor_name }} · {{ permit.submission_number }}</option></select></label>
             <p v-if="!permits.length" class="mt-4 text-sm text-slate-500">Belum ada izin Released yang masih berlaku.</p>
             <p v-else-if="!selectedPermit" class="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Pilih izin untuk menampilkan seluruh unit dan status kedatangannya.</p>
             <div v-else class="mt-6 space-y-5">
                 <div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-black text-slate-900">{{ selectedPermit.vendor_name }}</h3><p class="text-sm text-slate-500">{{ unitCards.length }} unit pada izin {{ selectedPermit.submission_number }}</p></div><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{{ unitCards.filter(card => card.completedReport).length }}/{{ unitCards.length }} sudah datang</span></div>
-                <ExpeditionArrivalUnitCard v-for="card in unitCards" :key="card.unit.id" :number="card.number" :permit="selectedPermit" :unit="card.unit" :planning="card.planning" :completed-report="card.completedReport" :expedition-company="expeditionCompany" :report-base="reportBase" />
+                <ExpeditionArrivalUnitCard v-for="card in unitCards" :key="card.unit.id" :ref="instance => setCardRef(card.unit.id, instance)" :number="card.number" :permit="selectedPermit" :unit="card.unit" :planning="card.planning" :completed-report="card.completedReport" :expedition-company="expeditionCompany" :report-base="reportBase" :selected="selectedUnitIds.includes(card.unit.id)" @update:selected="toggleUnit(card.unit.id, $event)" />
+                <div class="sticky bottom-4 z-10 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><b>{{ selectedUnitIds.length }} unit dipilih</b><p class="text-sm text-slate-500">Unit yang tidak dicentang tetap berstatus Menunggu Driver.</p></div><button type="button" class="btn" :disabled="!selectedUnitIds.length || batchSubmitting" @click="sendSelected">{{ batchSubmitting ? 'MENGIRIM KEDATANGAN...' : 'KIRIM KEDATANGAN UNIT TERPILIH' }}</button></div><p v-if="batchMessage" class="mt-3 text-sm font-semibold" :class="batchMessage.includes('perlu') ? 'text-amber-700' : 'text-emerald-700'">{{ batchMessage }}</p></div>
             </div>
         </section>
 
