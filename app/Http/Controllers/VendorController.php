@@ -95,7 +95,7 @@ class VendorController extends Controller
         $items = ExpeditionRequest::query()
             ->with(['submissions' => fn ($query) => $query
                 ->where('type', 'IJIN_LINTAS')
-                ->with(['planningItems:id,vendor_submission_id,planned_date,updated_at'])])
+                ->with(['planningItems' => fn ($planning) => $planning->select('id', 'vendor_submission_id', 'vendor_submission_unit_id', 'planned_date', 'updated_at')->orderByDesc('planned_date')])])
             ->withCount('submissions')
             ->where('site', $user->site)
             ->where('vendor_company_id', $user->vendor_company_id)
