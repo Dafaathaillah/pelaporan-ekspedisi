@@ -74,6 +74,7 @@ class DirectPlanningController extends Controller
 
     public function moveUnit(Request $request, DirectPlanningUnit $directPlanningUnit)
     {
+        $this->authorizeSite($request, $directPlanningUnit->planning);
         $data = $request->validate(['planned_date' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:'.now()->addMonth()->toDateString()]]);
         DB::transaction(function () use ($request, $directPlanningUnit, $data) {
             $planning = DirectPlanning::lockForUpdate()->findOrFail($directPlanningUnit->direct_planning_id);

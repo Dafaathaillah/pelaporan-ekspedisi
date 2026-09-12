@@ -38,7 +38,9 @@ class VendorPlanningController extends Controller
         $this->authorizeActiveReleased($request, $submission);
         $data = $this->validateDate($request, $submission);
         $item = $submission->planningItems()->whereNull('planned_date')->where('is_locked', false)->oldest()->first()
-            ?? $submission->planningItems()->create(['position' => $submission->planningItems()->max('position') + 1]);
+            ?? ($submission->units()->where('subject_type', 'UNIT')->doesntExist()
+                ? $submission->planningItems()->create(['position' => $submission->planningItems()->max('position') + 1])
+                : throw ValidationException::withMessages(['planned_date' => 'Semua unit sudah memiliki tanggal planning.']));
         $item->update(['planned_date' => $data['planned_date'], 'updated_by' => $request->user()->id]);
         SafeBroadcast::dispatch(new PlanningUpdated($item->fresh('submission')));
 
@@ -64,7 +66,11 @@ class VendorPlanningController extends Controller
         abort_if($planningItem->reports()->exists(), 422, 'Planning sudah memiliki laporan kedatangan dan tidak dapat dihapus.');
         $submission = $planningItem->submission;
         $event = new PlanningDeleted($planningItem->id, $submission->id, $submission->submission_number, $submission->vendor_name, $submission->site, $submission->created_by);
-        $planningItem->delete();
+        if ($planningItem->vendor_submission_unit_id) {
+            $planningItem->update(['planned_date' => null, 'updated_by' => $request->user()->id]);
+        } else {
+            $planningItem->delete();
+        }
         SafeBroadcast::dispatch($event);
 
         return back()->with('success', 'Tanggal planning berhasil dihapus.');
@@ -105,7 +111,7 @@ class VendorPlanningController extends Controller
     private function validateDate(Request $request, VendorSubmission $submission, ?PlanningItem $planningItem = null): array
     {
         return $request->validate([
-            'planned_date' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:'.$submission->release_expired_at->toDateString(), Rule::unique('planning_items', 'planned_date')->where('vendor_submission_id', $submission->id)->ignore($planningItem?->id)],
+            'planned_date' => array_values(array_filter(['required', 'date', 'after_or_equal:today', 'before_or_equal:'.$submission->release_expired_at->toDateString(), $planningItem?->vendor_submission_unit_id ? null : Rule::unique('planning_items', 'planned_date')->where('vendor_submission_id', $submission->id)->ignore($planningItem?->id)])),
         ], ['planned_date.unique' => 'Tanggal tersebut sudah ada pada planning izin ini.']);
     }
 }

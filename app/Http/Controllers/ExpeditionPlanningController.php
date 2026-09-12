@@ -21,7 +21,7 @@ class ExpeditionPlanningController extends Controller
             ->with([
                 'units:id,vendor_submission_id,plate_number,unit_order',
                 'expeditionRequest:id,request_number,pr_number,po_number,route_from,route_to',
-                'planningItems' => fn ($query) => $query->orderBy('planned_date')->orderBy('position'),
+                'planningItems' => fn ($query) => $query->with('unit:id,vendor_submission_id,plate_number,vehicle_type,unit_order')->orderBy('position'),
             ])
             ->where('site', $user->site)
             ->where('type', 'IJIN_LINTAS')
@@ -50,12 +50,12 @@ class ExpeditionPlanningController extends Controller
 
         $lastDate = min(now()->addMonth()->endOfDay(), $submission->release_expired_at?->endOfDay() ?? now()->addMonth()->endOfDay());
         $data = $request->validate([
+            'planning_item_id' => ['nullable', 'uuid'],
             'planned_date' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:'.$lastDate->toDateString()],
         ]);
-
-        $item = $submission->planningItems()->whereNull('planned_date')->oldest()->first()
-            ?? $submission->planningItems()->oldest('planned_date')->first()
-            ?? $submission->planningItems()->create(['position' => 0]);
+        $item = isset($data['planning_item_id'])
+            ? $submission->planningItems()->whereKey($data['planning_item_id'])->firstOrFail()
+            : ($submission->planningItems()->whereNull('planned_date')->oldest()->first() ?? $submission->planningItems()->oldest('planned_date')->firstOrFail());
         $item->update(['planned_date' => $data['planned_date'], 'updated_by' => $request->user()->id]);
         SafeBroadcast::dispatch(new PlanningUpdated($item->fresh('submission')));
 

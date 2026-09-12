@@ -2,7 +2,7 @@
 import AppShell from "@/Components/AppShell.vue";
 import DataTableFooter from "@/Components/DataTableFooter.vue";
 import { router } from "@inertiajs/vue3";
-import { reactive } from "vue";
+import { computed, reactive } from "vue";
 
 const props = defineProps({ items: Object, filters: Object });
 const query = reactive({
@@ -10,13 +10,9 @@ const query = reactive({
     per_page: Number(props.filters.per_page || 10),
 });
 const drafts = reactive({});
-const planningDates = (item) =>
-    item.planning_items
-        .filter((planning) => planning.planned_date)
-        .map((planning) => planning.planned_date);
+const cards = computed(() => props.items.data.flatMap(submission => submission.planning_items.map(planning => ({ ...planning, submission }))));
 const draft = (item) => {
-    if (!(item.id in drafts)) drafts[item.id] = planningDates(item)[0] || "";
-    return drafts[item.id];
+    if (!(item.id in drafts)) drafts[item.id] = item.planned_date?.slice(0, 10) || "";
 };
 const setDraft = (item, value) => (drafts[item.id] = value);
 const load = () =>
@@ -27,8 +23,8 @@ const load = () =>
     });
 const save = (item) =>
     router.patch(
-        `/expedition/planning/${item.id}`,
-        { planned_date: drafts[item.id] },
+        `/expedition/planning/${item.submission.id}`,
+        { planning_item_id: item.id, planned_date: drafts[item.id] },
         { preserveScroll: true },
     );
 const formatDate = (value) =>
@@ -77,7 +73,7 @@ const formatDate = (value) =>
 
             <div class="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
                 <article
-                    v-for="item in items.data"
+                    v-for="item in cards"
                     :key="item.id"
                     class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
                 >
@@ -89,16 +85,16 @@ const formatDate = (value) =>
                             <h3
                                 class="mt-2 break-words font-bold text-slate-900"
                             >
-                                {{ item.vendor_name }}
+                                {{ item.submission.vendor_name }}
                             </h3>
                             <p class="mt-1 break-all text-xs text-slate-500">
-                                {{ item.submission_number }}
+                                {{ item.submission.submission_number }}
                             </p>
                         </div>
                         <span
                             class="shrink-0 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-white"
                         >
-                            {{ item.units.length }} unit
+                            1 unit
                         </span>
                     </div>
 
@@ -109,7 +105,7 @@ const formatDate = (value) =>
                             <dt class="text-slate-500">Nomor Request</dt>
                             <dd class="mt-1 break-all font-bold">
                                 {{
-                                    item.expedition_request?.request_number ||
+                                    item.submission.expedition_request?.request_number ||
                                     "-"
                                 }}
                             </dd>
@@ -118,12 +114,12 @@ const formatDate = (value) =>
                             <dt class="text-slate-500">PR / PO</dt>
                             <dd class="mt-1 break-words font-bold">
                                 {{
-                                    item.expedition_request?.pr_number ||
+                                    item.submission.expedition_request?.pr_number ||
                                     "Belum rilis"
                                 }}
                                 /
                                 {{
-                                    item.expedition_request?.po_number ||
+                                    item.submission.expedition_request?.po_number ||
                                     "Belum rilis"
                                 }}
                             </dd>
@@ -132,10 +128,8 @@ const formatDate = (value) =>
                             <dt class="text-slate-500">Nomor Polisi</dt>
                             <dd class="mt-1 flex flex-wrap gap-1.5">
                                 <span
-                                    v-for="unit in item.units"
-                                    :key="unit.id"
                                     class="rounded-md bg-white px-2 py-1 font-bold text-slate-800"
-                                    >{{ unit.plate_number }}</span
+                                    >{{ item.unit?.plate_number || "Unit legacy" }} · {{ item.unit?.vehicle_type || "-" }}</span
                                 >
                             </dd>
                         </div>
@@ -143,13 +137,12 @@ const formatDate = (value) =>
                             <dt class="text-slate-500">Planning saat ini</dt>
                             <dd class="mt-1 flex flex-wrap gap-1.5">
                                 <span
-                                    v-for="date in planningDates(item)"
-                                    :key="date"
+                                    v-if="item.planned_date"
                                     class="rounded-md bg-red-50 px-2 py-1 font-semibold text-red-700"
-                                    >{{ formatDate(date) }}</span
+                                    >{{ formatDate(item.planned_date.slice(0, 10)) }}</span
                                 >
                                 <span
-                                    v-if="!planningDates(item).length"
+                                    v-if="!item.planned_date"
                                     class="font-semibold text-amber-700"
                                 >
                                     Belum dijadwalkan
@@ -169,7 +162,7 @@ const formatDate = (value) =>
                                 class="control min-w-0 flex-1"
                                 :value="draft(item)"
                                 :min="new Date().toISOString().slice(0, 10)"
-                                :max="item.release_expired_at?.slice(0, 10)"
+                                :max="item.submission.release_expired_at?.slice(0, 10)"
                                 required
                                 @input="setDraft(item, $event.target.value)"
                             />
@@ -179,7 +172,7 @@ const formatDate = (value) =>
                             Berlaku sampai
                             {{
                                 formatDate(
-                                    item.release_expired_at?.slice(0, 10),
+                                    item.submission.release_expired_at?.slice(0, 10),
                                 )
                             }}.
                         </p>
