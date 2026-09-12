@@ -70,6 +70,13 @@ const busiest = computed(() =>
 );
 const activePoint = ref(null);
 const selectedEscort = ref(null);
+const selectedP5m = ref(null);
+const p5mUrl = (report, download = false) =>
+    `/driver/escorts/${report.id}/p5m-photo${download ? "?download=1" : ""}`;
+const closeEscortDetail = () => {
+    selectedP5m.value = null;
+    selectedEscort.value = null;
+};
 const selectPoint = (point) => (activePoint.value = point);
 const load = () =>
     router.get("/coordinator", f, {
@@ -904,7 +911,7 @@ const healthStatusClass = (status) =>
         <Modal
             :show="Boolean(selectedEscort)"
             max-width="lg"
-            @close="selectedEscort = null"
+            @close="closeEscortDetail"
         >
             <div v-if="selectedEscort" class="p-5 sm:p-6">
                 <div
@@ -930,7 +937,7 @@ const healthStatusClass = (status) =>
                         type="button"
                         class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200"
                         aria-label="Tutup detail"
-                        @click="selectedEscort = null"
+                        @click="closeEscortDetail"
                     >
                         ✕
                     </button>
@@ -1013,6 +1020,35 @@ const healthStatusClass = (status) =>
                     </div>
                 </div>
 
+                <section class="mt-3 rounded-2xl border border-amber-200 bg-amber-50/50 p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                                Batch Escort
+                            </p>
+                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                {{ selectedEscort.escort_batch_members?.length || 1 }} unit dalam escort ini
+                            </p>
+                        </div>
+                        <span class="rounded-lg bg-white px-2.5 py-1 font-mono text-[10px] text-slate-500">
+                            {{ selectedEscort.escort_batch_id ? selectedEscort.escort_batch_id.slice(0, 8) : "LEGACY" }}
+                        </span>
+                    </div>
+                    <ul class="mt-3 grid gap-2 sm:grid-cols-2">
+                        <li
+                            v-for="unit in selectedEscort.escort_batch_members || []"
+                            :key="unit.id"
+                            class="flex items-center justify-between gap-3 rounded-xl border border-amber-100 bg-white p-3"
+                        >
+                            <span class="min-w-0">
+                                <b class="block truncate text-xs text-slate-900">{{ unit.report_number }}</b>
+                                <small class="mt-1 block truncate text-slate-500">{{ unit.expedition_company }} · {{ unit.vehicle_type }}</small>
+                            </span>
+                            <b class="plate-badge shrink-0">{{ unit.vehicle_plate }}</b>
+                        </li>
+                    </ul>
+                </section>
+
                 <div class="mt-3 rounded-2xl border border-slate-200 p-4">
                     <p
                         class="text-[10px] font-bold uppercase tracking-wide text-slate-400"
@@ -1048,8 +1084,43 @@ const healthStatusClass = (status) =>
                     </p>
                 </div>
 
+                <section class="mt-4 rounded-2xl border border-slate-200 p-4">
+                    <p
+                        class="text-[10px] font-bold uppercase tracking-wide text-slate-400"
+                    >
+                        Foto P5M
+                    </p>
+                    <template v-if="selectedEscort.p5m_photo_path">
+                        <p class="mt-2 text-sm font-bold text-slate-900">
+                            Diambil oleh
+                            {{ selectedEscort.escort_driver?.name || "Driver" }}
+                        </p>
+                        <p class="mt-1 text-xs text-slate-500">
+                            Nomor lambung
+                            {{ selectedEscort.escort_driver?.hull_number || "-" }}
+                        </p>
+                        <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+                            <button
+                                type="button"
+                                class="btn-ghost min-h-11 flex-1"
+                                @click="selectedP5m = selectedEscort"
+                            >
+                                Preview P5M
+                            </button>
+                            <a
+                                class="btn inline-flex min-h-11 flex-1 items-center justify-center"
+                                :href="p5mUrl(selectedEscort, true)"
+                            >
+                                Download P5M
+                            </a>
+                        </div>
+                    </template>
+                    <p v-else class="mt-2 text-sm text-slate-500">
+                        Foto P5M tidak tersedia.
+                    </p>
+                </section>
+
                 <div class="mt-4 grid gap-2 sm:grid-cols-2">
-                    <a v-if="selectedEscort.p5m_photo_path" :href="`/driver/escorts/${selectedEscort.id}/p5m-photo`" target="_blank" class="mt-3 inline-block text-sm font-semibold text-blue-700">Lihat Foto P5M</a>
                     <a
                         v-if="selectedEscort.escort_close_photo_path"
                         :href="`/coordinator/reports/${selectedEscort.id}/escort-photo`"
@@ -1067,6 +1138,52 @@ const healthStatusClass = (status) =>
                         >Buka di Google Maps</a
                     >
                 </div>
+            </div>
+        </Modal>
+        <Modal
+            :show="Boolean(selectedP5m)"
+            max-width="2xl"
+            @close="selectedP5m = null"
+        >
+            <div v-if="selectedP5m" class="p-5 sm:p-6">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <p
+                            class="text-[10px] font-bold uppercase tracking-[.18em] text-red-600"
+                        >
+                            Preview Foto P5M
+                        </p>
+                        <h3 class="mt-1 text-xl font-bold text-slate-950">
+                            {{ selectedP5m.vehicle_plate }}
+                        </h3>
+                        <p class="mt-1 break-words text-sm text-slate-500">
+                            {{ selectedP5m.report_number }} ·
+                            {{ selectedP5m.escort_driver?.name || "Driver" }}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="btn-ghost min-h-11 shrink-0"
+                        @click="selectedP5m = null"
+                    >
+                        Tutup
+                    </button>
+                </div>
+                <div
+                    class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100"
+                >
+                    <img
+                        :src="p5mUrl(selectedP5m)"
+                        :alt="`Foto P5M ${selectedP5m.vehicle_plate}`"
+                        class="max-h-[70vh] min-h-64 w-full object-contain"
+                    />
+                </div>
+                <a
+                    class="btn mt-4 inline-flex min-h-11 w-full items-center justify-center sm:w-auto"
+                    :href="p5mUrl(selectedP5m, true)"
+                >
+                    Download P5M
+                </a>
             </div>
         </Modal>
     </AppShell>

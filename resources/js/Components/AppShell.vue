@@ -159,12 +159,6 @@ const menus = computed(() => {
                 href: "/vendor/planning-lintas",
                 badge: notificationCounts.value.released_ijin_lintas,
             },
-            {
-                label: "Ganti Password",
-                short: "Password",
-                icon: "lock",
-                href: "/profile",
-            },
         ];
     if (user.value.role === "driver")
         return [
@@ -174,12 +168,6 @@ const menus = computed(() => {
                 icon: "steering",
                 href: "/driver/escorts",
                 exact: true,
-            },
-            {
-                label: "Ganti Password",
-                short: "Password",
-                icon: "lock",
-                href: "/profile",
             },
         ];
     if (user.value.role === "purchasing_admin")
@@ -226,12 +214,6 @@ const menus = computed(() => {
             short: "Planning",
             icon: "calendar",
             href: "/expedition/planning",
-        },
-        {
-            label: "Ganti Password",
-            short: "Password",
-            icon: "lock",
-            href: "/profile",
         },
     ];
 });

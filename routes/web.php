@@ -42,6 +42,8 @@ Route::middleware('auth')->group(function () {
     });
     Route::middleware(['role:driver', 'permission:driver.escort'])->prefix('driver')->group(function () {
         Route::get('/escorts', [DriverEscortController::class, 'index'])->name('driver.escorts.index');
+        Route::post('/escort-batches', [DriverEscortController::class, 'claimBatch'])->name('driver.escort-batches.claim');
+        Route::post('/escort-batches/{report}/close', [DriverEscortController::class, 'closeBatch'])->name('driver.escort-batches.close');
         Route::patch('/escorts/{report}/claim', [DriverEscortController::class, 'claim'])->name('driver.escorts.claim');
         Route::post('/escorts/{report}/close', [DriverEscortController::class, 'close'])->name('driver.escorts.close');
         Route::get('/escorts/{report}/photo', [DriverEscortController::class, 'photo'])->name('driver.escorts.photo');

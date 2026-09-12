@@ -49,6 +49,19 @@ class CoordinatorController extends Controller
         $reports = $this->expeditionQuery($r)
             ->orderBy($this->sortColumn($r, ['arrived_at', 'expedition_company', 'driver_name', 'driver_phone', 'vehicle_plate', 'vehicle_type', 'sender_vendor', 'destination'], 'arrived_at'), $this->sortDirection($r))
             ->paginate($this->perPage($r))->withQueryString();
+        $batchIds = $reports->getCollection()->pluck('escort_batch_id')->filter()->unique()->values();
+        $membersByBatch = ExpeditionReport::query()
+            ->where('site', $site)
+            ->whereIn('escort_batch_id', $batchIds)
+            ->orderBy('report_number')
+            ->get(['id', 'escort_batch_id', 'report_number', 'vehicle_plate', 'vehicle_type', 'expedition_company'])
+            ->groupBy('escort_batch_id');
+        $reports->getCollection()->each(function ($report) use ($membersByBatch) {
+            $members = $report->escort_batch_id
+                ? $membersByBatch->get($report->escort_batch_id, collect())
+                : collect([$report->only(['id', 'report_number', 'vehicle_plate', 'vehicle_type', 'expedition_company'])]);
+            $report->setAttribute('escort_batch_members', $members->values()->all());
+        });
 
         return Inertia::render('Coordinator/Index', [
             'reports' => $reports,

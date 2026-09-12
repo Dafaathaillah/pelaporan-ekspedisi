@@ -1,13 +1,14 @@
 <script setup>
-import FileDropInput from "@/Components/FileDropInput.vue";
 import AppShell from "@/Components/AppShell.vue";
 import Modal from "@/Components/Modal.vue";
+import P5mCameraCapture from "@/Components/P5mCameraCapture.vue";
 import { router, useForm, usePage } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 import { getPreciseLocation } from "@/lib/preciseLocation";
 const props = defineProps({ items: Array });
 const user = computed(() => usePage().props.auth.user),
-    selectedClaim = ref(null),
+    selectedClaim = ref(false),
+    selectedIds = ref([]),
     closing = ref(null),
     locating = ref(false),
     locationError = ref("");
@@ -23,6 +24,19 @@ const waiting = computed(() =>
 );
 const active = computed(() =>
     props.items.filter((x) => x.escort_status === "PROCESS"),
+);
+const selectedReports = computed(() =>
+    waiting.value.filter((item) => selectedIds.value.includes(item.id)),
+);
+const activeBatches = computed(() =>
+    Object.values(
+        active.value.reduce((groups, item) => {
+            const key = item.escort_batch_id || item.id;
+            if (!groups[key]) groups[key] = { id: key, leader: item, members: [] };
+            groups[key].members.push(item);
+            return groups;
+        }, {}),
+    ),
 );
 const mine = computed(() =>
     props.items.filter(
@@ -41,16 +55,39 @@ const dateTime = (v) =>
         minute: "2-digit",
         hour12: false,
     }) + " WITA";
-const claimForm = useForm({ p5m_photo: null });
+const claimForm = useForm({ report_ids: [], p5m_photo: null });
+const openClaim = () => {
+    if (!selectedIds.value.length) return;
+    claimForm.reset();
+    claimForm.clearErrors();
+    selectedClaim.value = true;
+};
+const closeClaim = () => {
+    selectedClaim.value = false;
+    claimForm.reset();
+    claimForm.clearErrors();
+};
+const toggleSelection = (id) => {
+    selectedIds.value = selectedIds.value.includes(id)
+        ? selectedIds.value.filter((selectedId) => selectedId !== id)
+        : [...selectedIds.value, id];
+};
+const setP5mPhoto = (file) => {
+    claimForm.p5m_photo = file;
+    if (file) claimForm.clearErrors("p5m_photo");
+};
 const claim = () => {
-    if (!selectedClaim.value) return;
-    claimForm.transform(data => ({ ...data, _method: "patch" })).post(`/driver/escorts/${selectedClaim.value.id}/claim`, {
+    if (!selectedIds.value.length) return;
+    claimForm.transform(data => ({ ...data, report_ids: selectedIds.value })).post('/driver/escort-batches', {
         forceFormData: true, preserveScroll: true,
-        onSuccess: () => { selectedClaim.value = null; claimForm.reset(); },
+        onSuccess: () => {
+            selectedIds.value = [];
+            closeClaim();
+        },
     });
 };
-const openClose = (x) => {
-    closing.value = x;
+const openClose = (batch) => {
+    closing.value = batch;
     locationError.value = "";
     form.reset();
     form.clearErrors();
@@ -86,7 +123,7 @@ const captureLocation = async () => {
     }
 };
 const submitClose = () =>
-    form.post(`/driver/escorts/${closing.value.id}/close`, {
+    form.post(`/driver/escort-batches/${closing.value.leader.id}/close`, {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
@@ -133,8 +170,8 @@ const submitClose = () =>
             </p>
             <div class="mt-4 grid gap-4 xl:grid-cols-2">
                 <article
-                    v-for="x in active"
-                    :key="x.id"
+                    v-for="batch in activeBatches"
+                    :key="batch.id"
                     class="rounded-2xl border border-amber-200 bg-amber-50/50 p-5"
                 >
                     <div
@@ -146,14 +183,14 @@ const submitClose = () =>
                                 >● SEDANG DI-ESCORT</span
                             >
                             <h3 class="mt-3 text-lg font-semibold">
-                                {{ x.expedition_company }}
+                                Batch {{ batch.members.length }} Unit
                             </h3>
                             <p class="mt-1 text-sm text-slate-600">
-                                {{ x.report_number }} ·
-                                {{ dateTime(x.arrived_at) }}
+                                {{ batch.leader.expedition_company }} ·
+                                {{ dateTime(batch.leader.escort_started_at) }}
                             </p>
                         </div>
-                        <b class="plate-badge">{{ x.vehicle_plate }}</b>
+                        <b class="plate-badge">{{ batch.members.length }} UNIT</b>
                     </div>
                     <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                         <div class="rounded-xl bg-white/80 p-3 sm:col-span-2">
@@ -161,12 +198,12 @@ const submitClose = () =>
                                 Escort dimulai oleh
                             </dt>
                             <dd class="font-semibold">
-                                {{ x.escort_driver?.name || "Driver" }} ·
+                                {{ batch.leader.escort_driver?.name || "Driver" }} ·
                                 Lambung
-                                {{ x.escort_driver?.hull_number || "-" }}
+                                {{ batch.leader.escort_driver?.hull_number || "-" }}
                             </dd>
                             <p
-                                v-if="x.escort_driver_id !== user.id"
+                                v-if="batch.leader.escort_driver_id !== user.id"
                                 class="mt-1 text-xs font-semibold text-amber-700"
                             >
                                 Anda akan tercatat sebagai petugas penutup
@@ -177,26 +214,32 @@ const submitClose = () =>
                             <dt class="text-xs text-slate-500">
                                 Driver kendaraan
                             </dt>
-                            <dd class="font-semibold">{{ x.driver_name }}</dd>
+                            <dd class="font-semibold">{{ batch.members.length }} unit</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-slate-500">
                                 Vendor / Pengirim
                             </dt>
-                            <dd class="font-semibold">{{ x.sender_vendor }}</dd>
+                            <dd class="font-semibold">{{ batch.leader.sender_vendor }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-slate-500">Kendaraan</dt>
-                            <dd class="font-semibold">{{ x.vehicle_type }}</dd>
+                            <dd class="font-semibold">{{ batch.leader.vehicle_type }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-slate-500">Tujuan</dt>
-                            <dd class="font-semibold">{{ x.destination }}</dd>
+                            <dd class="font-semibold">{{ batch.leader.destination }}</dd>
                         </div>
                     </dl>
-                    <a v-if="x.p5m_photo_path && (x.escort_driver_id === user.id || x.escort_closed_by === user.id)" :href="`/driver/escorts/${x.id}/p5m-photo`" target="_blank" class="mt-3 block text-sm font-semibold text-blue-700">Lihat Foto P5M</a>
-                    <button class="btn mt-5 w-full" @click="openClose(x)">
-                        Tutup Escort sebagai Lambung {{ user.hull_number }}
+                    <ul class="mt-3 grid gap-2">
+                        <li v-for="unit in batch.members" :key="unit.id" class="flex items-center justify-between gap-3 rounded-xl bg-white p-3">
+                            <span class="min-w-0"><b class="block truncate text-sm">{{ unit.expedition_company }}</b><small class="block truncate text-slate-500">{{ unit.report_number }} · {{ unit.vehicle_type }}</small></span>
+                            <b class="plate-badge shrink-0">{{ unit.vehicle_plate }}</b>
+                        </li>
+                    </ul>
+                    <a v-if="batch.leader.p5m_photo_path" :href="`/driver/escorts/${batch.leader.id}/p5m-photo`" target="_blank" class="mt-3 block text-sm font-semibold text-blue-700">Lihat Foto P5M</a>
+                    <button class="btn mt-5 w-full" @click="openClose(batch)">
+                        Tutup {{ batch.members.length }} Unit Sekaligus
                     </button>
                 </article>
                 <p
@@ -218,7 +261,17 @@ const submitClose = () =>
                     v-for="x in waiting"
                     :key="x.id"
                     class="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-red-200 hover:shadow-lg"
+                    :class="selectedIds.includes(x.id) ? 'border-red-400 ring-2 ring-red-100' : ''"
                 >
+                    <label class="mb-4 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl bg-slate-50 px-3 text-sm font-bold text-slate-700">
+                        <input
+                            type="checkbox"
+                            class="h-5 w-5 rounded border-slate-300 text-red-600 focus:ring-red-500"
+                            :checked="selectedIds.includes(x.id)"
+                            @change="toggleSelection(x.id)"
+                        />
+                        Pilih Unit
+                    </label>
                     <div class="flex items-start justify-between gap-3">
                         <span class="status-badge bg-blue-50 text-blue-700"
                             >MENUNGGU DRIVER</span
@@ -264,8 +317,8 @@ const submitClose = () =>
                         </div>
                     </dl>
                     <a v-if="x.p5m_photo_path && (x.escort_driver_id === user.id || x.escort_closed_by === user.id)" :href="`/driver/escorts/${x.id}/p5m-photo`" target="_blank" class="mt-3 block text-sm font-semibold text-blue-700">Lihat Foto P5M</a>
-                    <button class="btn mt-5 w-full" @click="claimForm.reset(); claimForm.clearErrors(); selectedClaim = x">
-                        Pilih & Mulai Escort
+                    <button class="btn-ghost mt-5 w-full" @click="toggleSelection(x.id)">
+                        {{ selectedIds.includes(x.id) ? "Batalkan Pilihan" : "Pilih Unit Ini" }}
                     </button>
                 </article>
                 <p
@@ -275,14 +328,59 @@ const submitClose = () =>
                     Tidak ada kendaraan ekspedisi yang menunggu driver escort.
                 </p>
             </div>
+            <div
+                v-if="selectedIds.length"
+                class="sticky bottom-4 z-20 mt-5 flex flex-col gap-3 rounded-2xl border border-red-200 bg-white p-4 shadow-xl shadow-slate-200/70 sm:flex-row sm:items-center sm:justify-between"
+            >
+                <div>
+                    <p class="text-sm font-bold text-slate-900">
+                        {{ selectedIds.length }} unit dipilih
+                    </p>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Satu foto P5M berlaku untuk seluruh unit.
+                    </p>
+                </div>
+                <div class="flex flex-col-reverse gap-2 sm:flex-row">
+                    <button type="button" class="btn-ghost" @click="selectedIds = []">
+                        Reset Pilihan
+                    </button>
+                    <button type="button" class="btn" @click="openClaim">
+                        Ambil P5M & Mulai Escort
+                    </button>
+                </div>
+            </div>
         </section>
-        <Modal :show="Boolean(selectedClaim)" max-width="md" @close="selectedClaim = null">
+        <Modal :show="Boolean(selectedClaim)" max-width="lg" @close="closeClaim">
             <form class="p-6" @submit.prevent="claim">
-                <h2 class="text-xl font-bold">Mulai Escort {{ selectedClaim?.vehicle_plate }}</h2>
-                <FileDropInput class="mt-4" label="Foto P5M (opsional)" accept-types="image/jpeg,image/png,image/webp" file-label="JPG, PNG, atau WebP" :max-mb="8" :model-value="claimForm.p5m_photo" :error="claimForm.errors.p5m_photo" @update:model-value="claimForm.p5m_photo = $event" />
-                <div class="mt-5 flex justify-end gap-3">
-                    <button type="button" class="btn-ghost" @click="selectedClaim = null">Batal</button>
-                    <button class="btn" :disabled="claimForm.processing">Mulai Escort</button>
+                <p class="text-[10px] font-bold uppercase tracking-[.18em] text-red-600">
+                    Foto P5M Wajib
+                </p>
+                <h2 class="mt-1 text-xl font-bold">
+                    Mulai Escort {{ selectedIds.length }} Unit
+                </h2>
+                <p class="mt-2 text-sm text-slate-500">
+                    Ambil foto P5M terbaru menggunakan kamera perangkat.
+                </p>
+                <P5mCameraCapture
+                    class="mt-4"
+                    :active="Boolean(selectedClaim)"
+                    :error="claimForm.errors.p5m_photo"
+                    @captured="setP5mPhoto"
+                />
+                <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <button type="button" class="btn-ghost" @click="closeClaim">
+                        Batal
+                    </button>
+                    <button
+                        class="btn"
+                        :disabled="claimForm.processing || !claimForm.p5m_photo"
+                    >
+                        {{
+                            claimForm.processing
+                                ? "Menyimpan..."
+                                : "Gunakan Foto & Mulai Escort"
+                        }}
+                    </button>
                 </div>
             </form>
         </Modal>
@@ -294,8 +392,7 @@ const submitClose = () =>
                     Konfirmasi Close Escort Ekspedisi
                 </p>
                 <h2 class="mt-2 text-2xl font-semibold">
-                    {{ closing?.expedition_company }} ·
-                    {{ closing?.vehicle_plate }}
+                    Tutup {{ closing?.members.length }} Unit Sekaligus
                 </h2>
                 <p class="mt-2 text-sm text-slate-500">
                     Pastikan Anda berada di lokasi tujuan. Escort hanya dapat
@@ -306,10 +403,10 @@ const submitClose = () =>
                     class="mt-4 grid gap-2 rounded-xl bg-slate-50 p-3 text-xs sm:grid-cols-2"
                 >
                     <p>
-                        <a v-if="closing?.p5m_photo_path && (closing.escort_driver_id === user.id || closing.escort_closed_by === user.id)" :href="`/driver/escorts/${closing.id}/p5m-photo`" target="_blank" class="block text-blue-700">Lihat Foto P5M</a><span class="block text-slate-500">Dimulai oleh</span>
+                        <a v-if="closing?.leader.p5m_photo_path" :href="`/driver/escorts/${closing.leader.id}/p5m-photo`" target="_blank" class="block text-blue-700">Lihat Foto P5M</a><span class="block text-slate-500">Dimulai oleh</span>
                         <b
-                            >{{ closing?.escort_driver?.name }} · Lambung
-                            {{ closing?.escort_driver?.hull_number }}</b
+                            >{{ closing?.leader.escort_driver?.name }} · Lambung
+                            {{ closing?.leader.escort_driver?.hull_number }}</b
                         >
                     </p>
                     <p>
@@ -319,6 +416,11 @@ const submitClose = () =>
                         <b>{{ user.name }} · Lambung {{ user.hull_number }}</b>
                     </p>
                 </div>
+                <ul class="mt-3 grid gap-2 sm:grid-cols-2">
+                    <li v-for="unit in closing?.members" :key="unit.id" class="flex items-center justify-between rounded-xl border border-slate-200 p-3 text-sm">
+                        <span>{{ unit.report_number }}</span><b>{{ unit.vehicle_plate }}</b>
+                    </li>
+                </ul>
                 <div
                     v-if="locating"
                     class="mt-6 rounded-xl bg-blue-50 p-4 text-sm text-blue-700"
