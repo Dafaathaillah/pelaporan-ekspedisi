@@ -281,7 +281,7 @@ const sendEvidence = (event) => {
                                     <b
                                         class="line-clamp-2 min-w-0 flex-1 whitespace-normal break-all text-xs leading-relaxed"
                                         >{{ item.submission.vendor_name }}</b
-                                    ><span
+                                    ><span  
                                         class="shrink-0 rounded bg-red-50 px-1.5 py-1 text-[9px] font-black text-red-600"
                                         >{{
                                             item.unit ? 1 : item.submission.units_count
