@@ -24,4 +24,13 @@ class TableSpacingStylesTest extends TestCase
         $this->assertStringContainsString('bottom-[calc(5rem+env(safe-area-inset-bottom))]', $page);
         $this->assertStringContainsString('lg:bottom-4', $page);
     }
+
+    public function test_p5m_capture_offers_a_gallery_fallback_without_forcing_camera_capture(): void
+    {
+        $component = file_get_contents(resource_path('js/Components/P5mCameraCapture.vue'));
+
+        $this->assertStringContainsString('Pilih dari Galeri', $component);
+        $this->assertStringContainsString('accept="image/*"', $component);
+        $this->assertStringNotContainsString('capture="environment"', $component);
+    }
 }

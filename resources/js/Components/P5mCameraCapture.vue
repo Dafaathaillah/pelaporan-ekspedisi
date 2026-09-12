@@ -9,6 +9,7 @@ const emit = defineEmits(["captured"]);
 
 const video = ref(null);
 const canvas = ref(null);
+const galleryInput = ref(null);
 const stream = ref(null);
 const previewUrl = ref("");
 const cameraError = ref("");
@@ -121,6 +122,17 @@ const capturePhoto = () => {
     );
 };
 
+const chooseFromGallery = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    stopCamera();
+    clearPreview();
+    cameraError.value = "";
+    previewUrl.value = URL.createObjectURL(file);
+    emit("captured", file);
+    event.target.value = "";
+};
+
 const retake = () => startCamera();
 
 watch(
@@ -205,7 +217,7 @@ onBeforeUnmount(() => {
                     class="min-h-11 w-full rounded-xl border border-white/20 px-4 text-sm font-bold text-white transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-red-400"
                     @click="retake"
                 >
-                    Foto Ulang
+                    Buka Kamera untuk Foto Ulang
                 </button>
             </div>
         </div>
@@ -233,6 +245,25 @@ onBeforeUnmount(() => {
         </div>
 
         <canvas ref="canvas" class="hidden"></canvas>
+        <div class="border-t border-white/10 bg-slate-900 p-3">
+            <input
+                ref="galleryInput"
+                type="file"
+                accept="image/*"
+                class="hidden"
+                @change="chooseFromGallery"
+            />
+            <button
+                type="button"
+                class="min-h-11 w-full rounded-xl border border-white/25 bg-white/10 px-4 text-sm font-bold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-red-400"
+                @click="galleryInput?.click()"
+            >
+                Pilih dari Galeri
+            </button>
+            <p class="mt-2 text-center text-xs text-slate-400">
+                Gunakan foto P5M terbaru dan terlihat jelas.
+            </p>
+        </div>
         <p
             v-if="error"
             class="border-t border-red-400/30 bg-red-950 px-4 py-3 text-sm font-semibold text-red-200"
