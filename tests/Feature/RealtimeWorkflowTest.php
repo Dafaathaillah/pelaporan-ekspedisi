@@ -26,6 +26,14 @@ class RealtimeWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_frontend_reconnects_realtime_after_inertia_login_navigation(): void
+    {
+        $bootstrap = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringContainsString('router.on("navigate"', $bootstrap);
+        $this->assertStringContainsString('connect(event.detail.page.props.auth?.user)', $bootstrap);
+    }
+
     public function test_new_request_and_pr_po_updates_target_all_relevant_private_channels(): void
     {
         $company = VendorCompany::create(['name' => 'Vendor Realtime', 'abbreviation' => 'VRT', 'category' => 'REGULAR', 'is_active' => true]);
