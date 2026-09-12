@@ -29,8 +29,9 @@ class TableSpacingStylesTest extends TestCase
     {
         $component = file_get_contents(resource_path('js/Components/P5mCameraCapture.vue'));
 
-        $this->assertStringContainsString('Pilih dari Galeri', $component);
-        $this->assertStringContainsString('accept="image/*"', $component);
-        $this->assertStringNotContainsString('capture="environment"', $component);
+        $this->assertStringContainsString('Buka Kamera', $component);
+        $this->assertStringContainsString('Pilih / Upload Foto', $component);
+        $this->assertStringContainsString('ref="cameraInput" type="file" accept="image/*" capture="environment"', $component);
+        $this->assertStringContainsString('ref="galleryInput" type="file" accept="image/*" class="hidden"', $component);
     }
 }

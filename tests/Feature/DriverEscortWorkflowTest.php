@@ -58,7 +58,7 @@ class DriverEscortWorkflowTest extends TestCase
 
         $this->actingAs($driver)->post('/driver/escort-batches', [
             'report_ids' => [$first->id, $second->id],
-            'p5m_photo' => UploadedFile::fake()->image('p5m-batch.jpg'),
+            'p5m_photo' => UploadedFile::fake()->image('p5m-batch.png', 3000, 2000),
         ])->assertSessionHasNoErrors();
 
         $first->refresh();
@@ -69,6 +69,9 @@ class DriverEscortWorkflowTest extends TestCase
         $this->assertSame($driver->id, $first->escort_driver_id);
         $this->assertSame($driver->id, $second->escort_driver_id);
         $this->assertCount(1, Storage::disk('local')->allFiles('private/expedition-reports/escort-batches'));
+        $this->assertStringEndsWith('.jpg', $first->p5m_photo_path);
+        [$width, $height] = getimagesize(Storage::disk('local')->path($first->p5m_photo_path));
+        $this->assertLessThanOrEqual(1920, max($width, $height));
     }
 
     public function test_batch_claim_is_atomic_when_one_selected_unit_is_unavailable(): void

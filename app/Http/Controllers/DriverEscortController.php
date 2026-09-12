@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\ExpeditionEscortUpdated;
 use App\Models\ExpeditionReport;
+use App\Services\PrivatePhotoResizer;
 use App\Support\SafeBroadcast;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -29,18 +30,18 @@ class DriverEscortController extends Controller
         return Inertia::render('Driver/Escorts', ['items' => $items]);
     }
 
-    public function claim(Request $request, ExpeditionReport $report)
+    public function claim(Request $request, ExpeditionReport $report, PrivatePhotoResizer $photoResizer)
     {
         $request->validate([
-            'p5m_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            'p5m_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp'],
         ], [
             'p5m_photo.required' => 'Foto P5M wajib diambil sebelum memulai escort.',
         ]);
-        DB::transaction(function () use ($request, $report) {
+        DB::transaction(function () use ($request, $report, $photoResizer) {
             $item = ExpeditionReport::lockForUpdate()->findOrFail($report->id);
             abort_unless($item->site === $request->user()->site, 403);
             abort_if($item->escort_status !== 'WAITING' || $item->escort_driver_id, 422, 'Unit ekspedisi sudah diambil driver escort lain.');
-            $path = $request->file('p5m_photo')?->store('private/expedition-reports/'.$item->report_number, 'local');
+            $path = $photoResizer->store($request->file('p5m_photo'), 'private/expedition-reports/'.$item->report_number, 'p5m');
             try {
                 $item->update(['escort_status' => 'PROCESS', 'escort_driver_id' => $request->user()->id, 'escort_started_at' => now(), 'p5m_photo_path' => $path]);
             } catch (\Throwable $error) {
@@ -55,12 +56,12 @@ class DriverEscortController extends Controller
         return back()->with('success', 'Escort dimulai. Selesaikan tugas dan lakukan close escort di lokasi tujuan.');
     }
 
-    public function claimBatch(Request $request)
+    public function claimBatch(Request $request, PrivatePhotoResizer $photoResizer)
     {
         $data = $request->validate([
             'report_ids' => ['required', 'array', 'min:1'],
             'report_ids.*' => ['required', 'uuid', 'distinct'],
-            'p5m_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            'p5m_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp'],
         ], [
             'report_ids.required' => 'Pilih minimal satu unit yang akan di-escort.',
             'report_ids.min' => 'Pilih minimal satu unit yang akan di-escort.',
@@ -73,7 +74,7 @@ class DriverEscortController extends Controller
         $updatedIds = [];
 
         try {
-            DB::transaction(function () use ($request, $ids, $batchId, &$path, &$updatedIds) {
+            DB::transaction(function () use ($request, $ids, $batchId, $photoResizer, &$path, &$updatedIds) {
                 $items = ExpeditionReport::query()
                     ->whereIn('id', $ids)
                     ->orderBy('id')
@@ -84,7 +85,7 @@ class DriverEscortController extends Controller
                 abort_if($items->contains(fn ($item) => $item->site !== $request->user()->site), 403);
                 abort_if($items->contains(fn ($item) => $item->escort_status !== 'WAITING' || $item->escort_driver_id), 422, 'Salah satu unit sudah diambil driver escort lain. Muat ulang daftar kendaraan.');
 
-                $path = $request->file('p5m_photo')->store('private/expedition-reports/escort-batches/'.$batchId, 'local');
+                $path = $photoResizer->store($request->file('p5m_photo'), 'private/expedition-reports/escort-batches/'.$batchId, 'p5m');
                 $startedAt = now();
 
                 foreach ($items as $item) {
