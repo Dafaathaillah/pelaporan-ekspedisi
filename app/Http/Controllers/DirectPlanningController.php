@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\SaveDirectPlanningRequest;
 use App\Models\DirectPlanning;
+use App\Models\DirectPlanningUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -69,6 +70,20 @@ class DirectPlanningController extends Controller
         });
 
         return back()->with('success', 'Planning langsung berhasil dihapus.');
+    }
+
+    public function moveUnit(Request $request, DirectPlanningUnit $directPlanningUnit)
+    {
+        $data = $request->validate(['planned_date' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:'.now()->addMonth()->toDateString()]]);
+        DB::transaction(function () use ($request, $directPlanningUnit, $data) {
+            $planning = DirectPlanning::lockForUpdate()->findOrFail($directPlanningUnit->direct_planning_id);
+            $this->authorizeSite($request, $planning);
+            abort_if($planning->is_locked, 422, 'Planning langsung terkunci. Buka kunci sebelum memindahkan tanggal.');
+            DirectPlanningUnit::whereKey($directPlanningUnit->id)->update(['planned_date' => $data['planned_date']]);
+            $planning->update(['updated_by' => $request->user()->id]);
+        });
+
+        return back()->with('success', 'Tanggal unit planning langsung berhasil dipindahkan.');
     }
 
     private function authorizeSite(Request $request, DirectPlanning $planning): void

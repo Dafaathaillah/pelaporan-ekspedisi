@@ -142,6 +142,24 @@ class DirectPlanningTest extends TestCase
         $this->assertDatabaseCount('direct_planning_units', 2);
     }
 
+    public function test_direct_units_move_independently_and_locked_or_cross_site_moves_are_rejected(): void
+    {
+        $user = $this->coordinator();
+        $planning = $this->createPlanning($user);
+        $first = $planning->units[0];
+        $second = $planning->units[1];
+        $newDate = now()->addDays(5)->toDateString();
+
+        $this->actingAs($user)->patch('/coordinator/direct-planning-units/'.$first->id.'/move', ['planned_date' => $newDate])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame($newDate, $first->fresh()->planned_date->toDateString());
+        $this->assertSame(now()->addDays(2)->toDateString(), $second->fresh()->planned_date->toDateString());
+
+        $planning->update(['is_locked' => true]);
+        $this->patch('/coordinator/direct-planning-units/'.$first->id.'/move', ['planned_date' => now()->addDays(6)->toDateString()])->assertStatus(422);
+        $planning->update(['is_locked' => false]);
+        $this->actingAs($this->coordinator('KJB'))->patch('/coordinator/direct-planning-units/'.$first->id.'/move', ['planned_date' => now()->addDays(6)->toDateString()])->assertForbidden();
+    }
+
     public function test_calendar_returns_direct_and_existing_sources_without_cross_site_data(): void
     {
         $user = $this->coordinator();

@@ -43,6 +43,9 @@ class StoreExpeditionReportRequest extends FormRequest
             $allowed = $permit && app(ArrivalPlanningService::class)->permits($this->user())->whereKey($permit->id)->exists();
             abort_unless($allowed, 403);
             $unit = $permit->units->firstWhere('id', $this->vendor_submission_unit_id);
+            if ($planning?->vendor_submission_unit_id && $planning->vendor_submission_unit_id !== $this->vendor_submission_unit_id) {
+                throw ValidationException::withMessages(['vendor_submission_unit_id' => 'Unit tidak sesuai dengan kartu planning yang dipilih.']);
+            }
             if (! $unit || $permit->status->value !== 'RELEASED' || ! $permit->release_expired_at || $permit->release_expired_at->isPast() || ! $planning->planned_date) {
                 throw ValidationException::withMessages(['vendor_submission_unit_id' => 'Pilih unit dengan izin Released yang masih berlaku dan memiliki planning.']);
             }

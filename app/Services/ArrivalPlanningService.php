@@ -18,7 +18,9 @@ class ArrivalPlanningService
 
     public function progress(PlanningItem $item): array
     {
-        $units = $item->submission->units->where('subject_type', 'UNIT');
+        $units = $item->vendor_submission_unit_id
+            ? $item->submission->units->where('id', $item->vendor_submission_unit_id)
+            : $item->submission->units->where('subject_type', 'UNIT');
         $arrived = $item->reports->pluck('vendor_submission_unit_id');
 
         return [

@@ -102,6 +102,7 @@ const dateLabel = (value) =>
                             @input="editDates[item.id] = $event.target.value"
                         />
                         <div>
+                            <p v-if="item.unit" class="mb-2 text-sm font-black text-slate-900">{{ item.unit.plate_number }} · {{ item.unit.vehicle_type || "Kendaraan" }}</p>
                             <p v-if="item.reschedule_reason" class="mb-2 break-words text-sm text-amber-800">Alasan reschedule: {{ item.reschedule_reason }}</p><span
                                 class="status-badge"
                                 :class="item.is_locked ? 'status-revision' : 'status-approved'"

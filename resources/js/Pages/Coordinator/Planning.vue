@@ -32,6 +32,7 @@ const dragging = ref(null),
     directModalOpen = ref(false),
     editingDirect = ref(null),
     deletingDirect = ref(null);
+const directDragging = ref(null), directSelected = ref(null);
 const backlog = computed(() => props.items.filter((x) => !x.planned_date));
 const normalizedDate = (value) => (value ? String(value).slice(0, 10) : null);
 const byDate = (date) =>
@@ -64,11 +65,16 @@ const move = (id, date) =>
         { preserveScroll: true },
     );
 const drop = (date) => {
-    if (dragging.value) move(dragging.value, date);
+    if (directDragging.value) router.patch(`${props.directPlanningBase.replace('/direct-plannings', '/direct-planning-units')}/${directDragging.value}/move`, { planned_date: date }, { preserveScroll: true });
+    else if (dragging.value) move(dragging.value, date);
     dragging.value = null;
+    directDragging.value = null;
 };
 const placeSelected = (date) => {
-    if (selected.value) {
+    if (directSelected.value) {
+        router.patch(`${props.directPlanningBase.replace('/direct-plannings', '/direct-planning-units')}/${directSelected.value}/move`, { planned_date: date }, { preserveScroll: true });
+        directSelected.value = null;
+    } else if (selected.value) {
         move(selected.value, date);
         selected.value = null;
     }
@@ -94,7 +100,7 @@ const typeLabel = (value) =>
         IJIN_LINTAS: "Ijin Lintas",
     })[value] || value;
 const subjects = (item) =>
-    (item.submission.units || [])
+    (item.unit ? [item.unit] : (item.submission.units || []))
         .map((unit) =>
             unit.subject_type === "UNIT" ? unit.plate_number : unit.person_name,
         )
@@ -269,7 +275,7 @@ const sendEvidence = (event) => {
                                     ><span
                                         class="shrink-0 rounded bg-red-50 px-1.5 py-1 text-[9px] font-black text-red-600"
                                         >{{
-                                            item.submission.units_count
+                                            item.unit ? 1 : item.submission.units_count
                                         }}
                                         unit</span
                                     >
@@ -360,7 +366,11 @@ const sendEvidence = (event) => {
                             <article
                                 v-for="item in directByDate(date)"
                                 :key="`direct-${item.id}`"
+                                :draggable="!item.is_locked"
                                 class="min-w-0 overflow-hidden rounded-xl border border-sky-200 bg-sky-50/50 p-3 shadow-sm"
+                                :class="[!item.is_locked ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed', directSelected === item.id ? 'ring-2 ring-sky-300' : '']"
+                                @dragstart="!item.is_locked && (directDragging = item.id)"
+                                @click.stop="!item.is_locked && (directSelected = directSelected === item.id ? null : item.id)"
                             >
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="min-w-0">

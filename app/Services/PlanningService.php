@@ -10,7 +10,7 @@ class PlanningService
 {
     public function register(VendorSubmission $submission): void
     {
-        $submission->planningItems()->firstOrCreate([], ['position' => 0]);
+        $this->syncUnits($submission);
     }
 
     public function syncRelease(VendorSubmission $submission): void
@@ -18,6 +18,18 @@ class PlanningService
         if ($submission->type !== SubmissionType::IJIN_LINTAS || $submission->status !== SubmissionStatus::RELEASED) {
             return;
         }
-        $submission->planningItems()->firstOrCreate(['planned_date' => null], ['position' => 0]);
+        $this->syncUnits($submission);
+    }
+
+    private function syncUnits(VendorSubmission $submission): void
+    {
+        if ($submission->type === SubmissionType::IJIN_LINTAS && $submission->units()->where('subject_type', 'UNIT')->exists()) {
+            $submission->units()->where('subject_type', 'UNIT')->orderBy('unit_order')->get()->each(
+                fn ($unit, $position) => $submission->planningItems()->firstOrCreate(['vendor_submission_unit_id' => $unit->id], ['position' => $position]),
+            );
+
+            return;
+        }
+        $submission->planningItems()->firstOrCreate([], ['position' => 0]);
     }
 }

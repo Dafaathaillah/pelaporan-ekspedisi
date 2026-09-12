@@ -46,7 +46,7 @@ const form = useForm({
 const permitId = ref("");
 const selectedPermit = computed(() => props.permits.find(p => p.id === permitId.value));
 const selectedPlanning = computed(() => selectedPermit.value?.planning_items.find(p => p.id === form.planning_item_id));
-const availableUnits = computed(() => (selectedPermit.value?.units || []).filter(u => !(selectedPlanning.value?.reports || []).some(r => r.vendor_submission_unit_id === u.id)));
+const availableUnits = computed(() => (selectedPermit.value?.units || []).filter(u => (!selectedPlanning.value?.vendor_submission_unit_id || selectedPlanning.value.vendor_submission_unit_id === u.id) && !(selectedPlanning.value?.reports || []).some(r => r.vendor_submission_unit_id === u.id)));
 const selectUnit = () => {
     const unit = availableUnits.value.find(u => u.id === form.vendor_submission_unit_id);
     Object.assign(form, { driver_name: unit?.driver_name || "", driver_phone: unit?.driver_phone || "", vehicle_plate: unit?.plate_number || "", vehicle_type: unit?.vehicle_type || "", sender_vendor: selectedPermit.value?.vendor_name || "", destination: selectedPermit.value?.destination || "" });

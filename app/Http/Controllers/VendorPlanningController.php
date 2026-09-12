@@ -23,7 +23,7 @@ class VendorPlanningController extends Controller
     public function index(Request $request): Response
     {
         $items = VendorSubmission::query()
-            ->with(['units:id,vendor_submission_id,plate_number,unit_order', 'planningItems' => fn ($query) => $query->whereNotNull('planned_date')->with('locker:id,name')->orderBy('planned_date')])
+            ->with(['units:id,vendor_submission_id,plate_number,unit_order', 'planningItems' => fn ($query) => $query->whereNotNull('planned_date')->with(['locker:id,name', 'unit:id,vendor_submission_id,plate_number,vehicle_type,unit_order'])->orderBy('planned_date')])
             ->where('created_by', $request->user()->id)->where('site', $request->user()->site)
             ->where('type', SubmissionType::IJIN_LINTAS)->where('status', SubmissionStatus::RELEASED)
             ->whereDate('release_expired_at', '>=', today())->latest('released_at')->get();
