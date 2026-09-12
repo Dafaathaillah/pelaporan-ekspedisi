@@ -16,6 +16,7 @@ const props = defineProps({
     vendors: { type: Array, default: () => [] },
     vehicleTypes: { type: Array, default: () => [] },
     directPlanningBase: { type: String, default: "/coordinator/direct-plannings" },
+    internalItems: { type: Array, default: () => [] },
 });
 const filter = reactive({
     search: "",
@@ -32,12 +33,15 @@ const dragging = ref(null),
     directModalOpen = ref(false),
     editingDirect = ref(null),
     deletingDirect = ref(null);
-const directDragging = ref(null), directSelected = ref(null);
+const directDragging = ref(null), directSelected = ref(null), internalDragging = ref(null), internalSelected = ref(null);
 const backlog = computed(() => props.items.filter((x) => !x.planned_date));
 const normalizedDate = (value) => (value ? String(value).slice(0, 10) : null);
 const byDate = (date) =>
     props.items.filter((x) => normalizedDate(x.planned_date) === date);
 const directByDate = (date) => props.directItems.filter((x) => normalizedDate(x.planned_date) === date);
+const internalByDate = (date) => props.internalItems.filter((x) => normalizedDate(x.escort_date) === date);
+const internalBase = computed(() => props.planningBase.replace('/planning', '/internal-ijin-lintas'));
+const moveInternal = (id, date) => router.patch(`${internalBase.value}/${id}/move`, { escort_date: date }, { preserveScroll: true });
 const openDirect = (planning = null) => {
     editingDirect.value = planning;
     directModalOpen.value = true;
@@ -65,13 +69,18 @@ const move = (id, date) =>
         { preserveScroll: true },
     );
 const drop = (date) => {
-    if (directDragging.value) router.patch(`${props.directPlanningBase.replace('/direct-plannings', '/direct-planning-units')}/${directDragging.value}/move`, { planned_date: date }, { preserveScroll: true });
+    if (internalDragging.value) moveInternal(internalDragging.value, date);
+    else if (directDragging.value) router.patch(`${props.directPlanningBase.replace('/direct-plannings', '/direct-planning-units')}/${directDragging.value}/move`, { planned_date: date }, { preserveScroll: true });
     else if (dragging.value) move(dragging.value, date);
     dragging.value = null;
     directDragging.value = null;
+    internalDragging.value = null;
 };
 const placeSelected = (date) => {
-    if (directSelected.value) {
+    if (internalSelected.value) {
+        moveInternal(internalSelected.value, date);
+        internalSelected.value = null;
+    } else if (directSelected.value) {
         router.patch(`${props.directPlanningBase.replace('/direct-plannings', '/direct-planning-units')}/${directSelected.value}/move`, { planned_date: date }, { preserveScroll: true });
         directSelected.value = null;
     } else if (selected.value) {
@@ -248,7 +257,7 @@ const sendEvidence = (event) => {
                         >
                             <b class="min-w-0 text-xs">{{ dateLabel(date) }}</b
                             ><span class="shrink-0 text-[10px] text-slate-400"
-                                >{{ byDate(date).length + directByDate(date).length }} agenda</span
+                                >{{ byDate(date).length + directByDate(date).length + internalByDate(date).length }} agenda</span
                             >
                         </header>
                         <div class="space-y-2">
@@ -272,7 +281,7 @@ const sendEvidence = (event) => {
                                     <b
                                         class="line-clamp-2 min-w-0 flex-1 whitespace-normal break-all text-xs leading-relaxed"
                                         >{{ item.submission.vendor_name }}</b
-                                    ><span  
+                                    ><span
                                         class="shrink-0 rounded bg-red-50 px-1.5 py-1 text-[9px] font-black text-red-600"
                                         >{{
                                             item.unit ? 1 : item.submission.units_count
@@ -362,6 +371,19 @@ const sendEvidence = (event) => {
                                         >Lihat</a
                                     >
                                 </div>
+                            </article>
+                            <article
+                                v-for="item in internalByDate(date)"
+                                :key="`internal-${item.id}`"
+                                draggable="true"
+                                class="min-w-0 overflow-hidden rounded-xl border border-violet-200 bg-violet-50/60 p-3 shadow-sm cursor-grab active:cursor-grabbing"
+                                :class="internalSelected === item.id ? 'ring-2 ring-violet-300' : ''"
+                                @dragstart="internalDragging = item.id"
+                                @click.stop="internalSelected = internalSelected === item.id ? null : item.id"
+                            >
+                                <div class="flex items-start justify-between gap-2"><div class="min-w-0"><span class="inline-flex rounded-full bg-violet-700 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-white">Izin Lintas Internal</span><b class="mt-2 block break-words text-xs text-slate-900">{{ item.title }}</b></div><span class="shrink-0 text-[10px] font-black text-emerald-700">Aktif</span></div>
+                                <p class="mt-2 text-xs font-bold text-slate-800">{{ item.unit_count }} unit</p>
+                                <p class="mt-1 break-words text-[10px] leading-4 text-slate-600">{{ item.vehicle_plates.join(', ') }}</p>
                             </article>
                             <article
                                 v-for="item in directByDate(date)"

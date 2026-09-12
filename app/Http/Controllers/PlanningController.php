@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\PlanningUpdated;
 use App\Models\DirectPlanning;
+use App\Models\InternalIjinLintas;
 use App\Models\PlanningItem;
 use App\Models\VendorCompany;
 use App\Support\SafeBroadcast;
@@ -51,11 +52,14 @@ class PlanningController extends Controller
             ]))->values();
 
         $isPurchasing = $request->user()->role->value === 'purchasing_admin';
+        $internalItems = InternalIjinLintas::where('site', $request->user()->site)
+            ->whereBetween('escort_date', [$start, $end])->latest()->get();
 
         return Inertia::render('Coordinator/Planning', [
             'items' => $items,
             'directItems' => $directItems,
             'directPlannings' => $directPlannings,
+            'internalItems' => $internalItems,
             'vendors' => VendorCompany::where('is_active', true)->orderBy('name')->get(['id', 'name', 'abbreviation']),
             'vehicleTypes' => ['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya'],
             'dates' => collect(range(0, $start->diffInDays($end)))->map(fn ($day) => $start->copy()->addDays($day)->toDateString()),

@@ -7,6 +7,7 @@ use App\Http\Controllers\DriverEscortController;
 use App\Http\Controllers\ExpeditionController;
 use App\Http\Controllers\ExpeditionPlanningController;
 use App\Http\Controllers\ExpeditionRequestController;
+use App\Http\Controllers\InternalIjinLintasController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PushSubscriptionController;
@@ -60,6 +61,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('/vendor-submission/{submission}/release-details', [CoordinatorController::class, 'updateReleaseDetails']);
         Route::post('/vendor-submission/{submission}/request-resubmission', [CoordinatorController::class, 'requestResubmission'])->name('purchasing.vendor-submission.request-resubmission');
         Route::patch('/vendor-document/{document}/verify', [CoordinatorController::class, 'verifyDocument'])->name('purchasing.vendor-document.verify');
+        Route::post('/internal-ijin-lintas', [InternalIjinLintasController::class, 'store']);
         Route::get('/arrival-monitoring', [ExpeditionController::class, 'monitoring']);
         Route::get('/planning', [PlanningController::class, 'index'])->name('purchasing.planning');
         Route::patch('/planning/{planningItem}', [PlanningController::class, 'move'])->name('purchasing.planning.move');
@@ -69,6 +71,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('/direct-plannings/{directPlanning}/lock', [DirectPlanningController::class, 'lock']);
         Route::delete('/direct-plannings/{directPlanning}', [DirectPlanningController::class, 'destroy']);
         Route::patch('/direct-planning-units/{directPlanningUnit}/move', [DirectPlanningController::class, 'moveUnit']);
+        Route::patch('/internal-ijin-lintas/{internalIjinLintas}/move', [InternalIjinLintasController::class, 'move']);
     });
     Route::get('/expedition-requests/{expeditionRequest}/evidence', [ExpeditionRequestController::class, 'evidence'])->name('expedition-requests.evidence');
     Route::middleware('role:coordinator')->get('/coordinator/reports/{report}/escort-photo', [DriverEscortController::class, 'photo'])->name('coordinator.expedition.escort-photo');
@@ -113,8 +116,10 @@ Route::middleware('auth')->group(function () {
             Route::patch('/direct-plannings/{directPlanning}/lock', [DirectPlanningController::class, 'lock']);
             Route::delete('/direct-plannings/{directPlanning}', [DirectPlanningController::class, 'destroy']);
             Route::patch('/direct-planning-units/{directPlanningUnit}/move', [DirectPlanningController::class, 'moveUnit']);
+            Route::patch('/internal-ijin-lintas/{internalIjinLintas}/move', [InternalIjinLintasController::class, 'move']);
         });
         Route::middleware('permission:coordinator.vendor')->group(function () {
+            Route::post('/internal-ijin-lintas', [InternalIjinLintasController::class, 'store']);
             Route::get('/submissions/{type}', [CoordinatorController::class, 'submissions'])->name('coordinator.submissions');
             Route::get('/submissions/{type}/export', [CoordinatorController::class, 'exportSubmissions'])->name('coordinator.submissions.export');
             Route::get('/submission/{submission}', [CoordinatorController::class, 'showSubmission'])->name('coordinator.show');

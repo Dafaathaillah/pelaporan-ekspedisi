@@ -12,6 +12,7 @@ const p = defineProps({
     filters: Object,
     reviewBase: { type: String, default: "/coordinator" },
     pageRole: { type: String, default: "coordinator" },
+    internalItems: { type: Array, default: () => [] },
 });
 const listUrl = computed(() =>
     p.reviewBase === "/purchasing"
@@ -47,7 +48,14 @@ const statusLabels = {
     CLOSED: "Closed",
 };
 const dialog = ref(null);
+const internalDialog = ref(false);
 const statusForm = useForm({ status: "", coordinator_note: "" });
+const internalForm = useForm({ title: "", escort_date: "", unit_count: 1, vehicle_plates: "" });
+const internalEndpoint = computed(() => `${p.reviewBase}/internal-ijin-lintas`);
+const saveInternal = () => internalForm.post(internalEndpoint.value, {
+    preserveScroll: true,
+    onSuccess: () => { internalDialog.value = false; internalForm.reset(); },
+});
 const load = () =>
     router.get(listUrl.value, f, {
         preserveState: true,
@@ -174,6 +182,21 @@ const requestAgain = (x) =>
                 <strong>{{ stats.revision }}</strong
                 ><span>Menunggu perbaikan vendor</span>
             </article>
+        </section>
+        <section v-if="type === 'IJIN_LINTAS'" class="panel my-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div><h2 class="panel-title">Izin Lintas Internal</h2><p class="panel-copy">Buat izin internal dan jadwalkan satu card untuk seluruh unit.</p></div>
+            <button type="button" class="btn shrink-0" @click="internalDialog = true">Buat Izin Lintas</button>
+        </section>
+        <section v-if="type === 'IJIN_LINTAS' && internalItems.length" class="panel my-5">
+            <h2 class="panel-title">Daftar Izin Lintas Internal</h2>
+            <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <article v-for="item in internalItems" :key="item.id" class="rounded-2xl border border-sky-200 bg-sky-50/50 p-4">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-sky-700">Internal</span>
+                    <h3 class="mt-1 font-black text-slate-900">{{ item.title }}</h3>
+                    <p class="mt-2 text-sm text-slate-600">{{ date(item.escort_date) }} · {{ item.unit_count }} unit</p>
+                    <p class="mt-1 break-words text-sm font-semibold text-slate-800">{{ item.vehicle_plates.join(', ') }}</p>
+                </article>
+            </div>
         </section>
         <form class="panel my-5" @submit.prevent="load">
             <h2 class="panel-title">Filter Pengajuan</h2>
@@ -687,6 +710,19 @@ const requestAgain = (x) =>
                     -->
                 </article>
             </div>
-        </section></AppShell
-    >
+        </section>
+        <div v-if="internalDialog" class="fixed inset-0 z-[110] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-sm" @click.self="internalDialog = false">
+            <form class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl" @submit.prevent="saveInternal">
+                <div class="flex items-start justify-between gap-4"><div><p class="text-[10px] font-black uppercase tracking-widest text-sky-700">Izin Lintas Internal</p><h3 class="mt-1 text-xl font-black">Buat Jadwal Escort</h3></div><button type="button" class="rounded-lg bg-slate-100 px-3 py-2" @click="internalDialog = false">×</button></div>
+                <div class="mt-5 space-y-4">
+                    <label class="block text-sm font-bold">Judul Escort<input v-model="internalForm.title" class="field" maxlength="150" required /><p class="err">{{ internalForm.errors.title }}</p></label>
+                    <label class="block text-sm font-bold">Tanggal Escort<input v-model="internalForm.escort_date" type="date" class="field" required /><p class="err">{{ internalForm.errors.escort_date }}</p></label>
+                    <label class="block text-sm font-bold">Jumlah Unit<input v-model.number="internalForm.unit_count" type="number" min="1" max="100" class="field" required /><p class="err">{{ internalForm.errors.unit_count }}</p></label>
+                    <label class="block text-sm font-bold">Plat Nomor<textarea v-model="internalForm.vehicle_plates" class="field" rows="3" placeholder="DA 1, DA 2" required></textarea><span class="mt-1 block text-xs font-normal text-slate-500">Pisahkan setiap plat dengan koma.</span><p class="err">{{ internalForm.errors.vehicle_plates || internalForm.errors.plates }}</p></label>
+                </div>
+                <div class="mt-6 flex justify-end gap-3"><button type="button" class="rounded-xl px-4 py-2 font-bold text-slate-600" @click="internalDialog = false">Batal</button><button class="btn" :disabled="internalForm.processing">Simpan Izin Lintas</button></div>
+            </form>
+        </div>
+    </AppShell
+>
 </template>

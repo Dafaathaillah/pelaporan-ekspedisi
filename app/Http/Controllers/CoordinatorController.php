@@ -10,6 +10,7 @@ use App\Events\VendorSubmissionCreated;
 use App\Events\VendorSubmissionStatusChanged;
 use App\Http\Requests\UpdateSubmissionStatusRequest;
 use App\Models\ExpeditionReport;
+use App\Models\InternalIjinLintas;
 use App\Models\VendorDocument;
 use App\Models\VendorSubmission;
 use App\Services\PlanningService;
@@ -104,7 +105,11 @@ class CoordinatorController extends Controller
         $items = $q->orderBy($sort, $this->sortDirection($r))->paginate($this->perPage($r))->withQueryString();
         $items->getCollection()->load('expeditionRequest');
 
-        return Inertia::render('Coordinator/Submissions', ['type' => $type->value, 'items' => $items, 'stats' => $stats, 'filters' => $r->only(['search', 'status', 'date_from', 'date_to', 'sort', 'direction', 'per_page']), 'reviewBase' => $this->reviewBase($r), 'pageRole' => $r->user()->role->value]);
+        $internalItems = $type === SubmissionType::IJIN_LINTAS
+            ? InternalIjinLintas::where('site', $r->user()->site)->latest()->get()
+            : collect();
+
+        return Inertia::render('Coordinator/Submissions', ['type' => $type->value, 'items' => $items, 'stats' => $stats, 'internalItems' => $internalItems, 'filters' => $r->only(['search', 'status', 'date_from', 'date_to', 'sort', 'direction', 'per_page']), 'reviewBase' => $this->reviewBase($r), 'pageRole' => $r->user()->role->value]);
     }
 
     public function exportSubmissions(Request $r, SubmissionType $type)
