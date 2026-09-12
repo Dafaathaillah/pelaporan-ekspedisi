@@ -16,4 +16,12 @@ class TableSpacingStylesTest extends TestCase
         $this->assertStringContainsString('padding-block: var(--table-cell-block-space);', $css);
         $this->assertStringContainsString('min-width: 1900px;', $css);
     }
+
+    public function test_arrival_batch_action_clears_the_mobile_bottom_navigation(): void
+    {
+        $page = file_get_contents(resource_path('js/Pages/Expedition/Index.vue'));
+
+        $this->assertStringContainsString('bottom-[calc(5rem+env(safe-area-inset-bottom))]', $page);
+        $this->assertStringContainsString('lg:bottom-4', $page);
+    }
 }
