@@ -34,4 +34,14 @@ class TableSpacingStylesTest extends TestCase
         $this->assertStringContainsString('ref="cameraInput" type="file" accept="image/*" capture="environment"', $component);
         $this->assertStringContainsString('ref="galleryInput" type="file" accept="image/*" class="hidden"', $component);
     }
+
+    public function test_coordinator_can_preview_p5m_directly_from_escort_information(): void
+    {
+        $page = file_get_contents(resource_path('js/Pages/Coordinator/Index.vue'));
+
+        $this->assertMatchesRegularExpression(
+            '/v-if="x\.p5m_photo_path"[\s\S]*?@click="selectedP5m = x"[\s\S]*?Preview P5M/',
+            $page,
+        );
+    }
 }

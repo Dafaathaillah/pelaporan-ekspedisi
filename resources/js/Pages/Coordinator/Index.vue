@@ -807,6 +807,25 @@ const healthStatusClass = (status) =>
                                             </dd>
                                         </div>
                                         <button
+                                            v-if="x.p5m_photo_path"
+                                            type="button"
+                                            class="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                                            @click="selectedP5m = x"
+                                        >
+                                            <svg
+                                                class="h-4 w-4"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                aria-hidden="true"
+                                            >
+                                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                                                <circle cx="12" cy="12" r="3" />
+                                            </svg>
+                                            Preview P5M
+                                        </button>
+                                        <button
                                             v-if="x.escort_status === 'CLOSED'"
                                             type="button"
                                             class="mt-1 inline-flex w-full items-center justify-center rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-600 transition hover:border-red-200 hover:bg-red-600 hover:text-white"
