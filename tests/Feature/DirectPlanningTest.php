@@ -179,6 +179,26 @@ class DirectPlanningTest extends TestCase
             ->where('directPlanningBase', '/coordinator/direct-plannings'));
     }
 
+    public function test_calendar_can_be_filtered_by_a_custom_start_and_end_date(): void
+    {
+        $user = $this->coordinator();
+        $planning = $this->createPlanning($user);
+        $startDate = now()->addDays(2)->toDateString();
+        $endDate = now()->addDays(2)->toDateString();
+
+        $this->actingAs($user)->get('/coordinator/planning?start_date='.$startDate.'&end_date='.$endDate)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Coordinator/Planning')
+                ->has('directItems', 1)
+                ->where('directItems.0.id', $planning->units[1]->id)
+                ->where('dates', [$startDate])
+                ->where('range.start', $startDate)
+                ->where('range.end', $endDate)
+                ->where('filters.start_date', $startDate)
+                ->where('filters.end_date', $endDate));
+    }
+
     private function coordinator(string $site = 'BIB'): User
     {
         return User::factory()->create(['role' => UserRole::COORDINATOR, 'site' => $site, 'permissions' => ['coordinator.planning']]);

@@ -16,8 +16,16 @@ class PlanningController extends Controller
 {
     public function index(Request $request)
     {
-        $start = now()->startOfDay();
-        $end = $start->copy()->addMonth();
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+        ]);
+        $start = isset($validated['start_date'])
+            ? now()->parse($validated['start_date'])->startOfDay()
+            : now()->startOfDay();
+        $end = isset($validated['end_date'])
+            ? now()->parse($validated['end_date'])->startOfDay()
+            : $start->copy()->addMonth();
         $sort = in_array($request->sort, ['vendor_name', 'type', 'status', 'submitted_at'], true) ? $request->sort : 'submitted_at';
         $direction = $request->direction === 'asc' ? 'asc' : 'desc';
         $items = PlanningItem::with(['locker:id,name', 'unit:id,vendor_submission_id,subject_type,person_name,plate_number,vehicle_type,unit_order', 'submission' => fn ($q) => $q->with('units:id,vendor_submission_id,subject_type,person_name,plate_number,vehicle_type,unit_order')->withCount('units')])
@@ -26,13 +34,13 @@ class PlanningController extends Controller
                 ->when($request->search, fn ($x, $v) => $x->where(fn ($y) => $y->where('vendor_name', 'like', '%'.$v.'%')->orWhere('submission_number', 'like', '%'.$v.'%')->orWhere('applicant_name', 'like', '%'.$v.'%')))
                 ->when($request->type, fn ($x, $v) => $x->where('type', $v))
                 ->when($request->status, fn ($x, $v) => $x->where('status', $v)))
-            ->where(fn ($q) => $q->whereNull('planned_date')->orWhereBetween('planned_date', [$start, $end]))
+            ->where(fn ($q) => $q->whereNull('planned_date')->orWhereBetween('planned_date', [$start->toDateString(), $end->toDateString()]))
             ->join('vendor_submissions', 'vendor_submissions.id', '=', 'planning_items.vendor_submission_id')
             ->select('planning_items.*')->orderBy('vendor_submissions.'.$sort, $direction)->orderBy('planning_items.position')->get();
 
         $directPlannings = DirectPlanning::with(['vendorCompany:id,name,abbreviation', 'locker:id,name', 'units'])
             ->where('site', $request->user()->site)
-            ->whereHas('units', fn ($query) => $query->whereBetween('planned_date', [$start, $end]))
+            ->whereHas('units', fn ($query) => $query->whereBetween('planned_date', [$start->toDateString(), $end->toDateString()]))
             ->latest()->get();
         $directItems = $directPlannings->flatMap(fn ($planning) => $planning->units
             ->filter(fn ($unit) => $unit->planned_date->betweenIncluded($start, $end))
@@ -53,7 +61,7 @@ class PlanningController extends Controller
 
         $isPurchasing = $request->user()->role->value === 'purchasing_admin';
         $internalItems = InternalIjinLintas::where('site', $request->user()->site)
-            ->whereBetween('escort_date', [$start, $end])->latest()->get();
+            ->whereBetween('escort_date', [$start->toDateString(), $end->toDateString()])->latest()->get();
 
         return Inertia::render('Coordinator/Planning', [
             'items' => $items,
@@ -64,7 +72,7 @@ class PlanningController extends Controller
             'vehicleTypes' => ['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya'],
             'dates' => collect(range(0, $start->diffInDays($end)))->map(fn ($day) => $start->copy()->addDays($day)->toDateString()),
             'range' => ['start' => $start->toDateString(), 'end' => $end->toDateString()],
-            'filters' => $request->only(['search', 'type', 'status', 'sort', 'direction']),
+            'filters' => $request->only(['search', 'type', 'status', 'sort', 'direction', 'start_date', 'end_date']),
             'planningBase' => $isPurchasing ? '/purchasing/planning' : '/coordinator/planning',
             'directPlanningBase' => $isPurchasing ? '/purchasing/direct-plannings' : '/coordinator/direct-plannings',
             'pageRole' => $request->user()->role->value,

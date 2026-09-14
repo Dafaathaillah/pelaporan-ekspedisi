@@ -25,6 +25,8 @@ const filter = reactive({
     sort: "submitted_at",
     direction: "desc",
     ...props.filters,
+    start_date: props.filters.start_date || props.range.start,
+    end_date: props.filters.end_date || props.range.end,
 });
 const dragging = ref(null),
     selected = ref(null),
@@ -62,6 +64,21 @@ const load = () =>
         preserveScroll: true,
         replace: true,
     });
+const resetFilters = () => {
+    Object.assign(filter, {
+        search: "",
+        type: "",
+        status: "",
+        sort: "submitted_at",
+        direction: "desc",
+        start_date: props.range.start,
+        end_date: props.range.end,
+    });
+    router.get(props.planningBase, {}, {
+        preserveScroll: true,
+        replace: true,
+    });
+};
 const move = (id, date) =>
     router.patch(
         `${props.planningBase}/${id}`,
@@ -136,7 +153,7 @@ const sendEvidence = (event) => {
 <template>
     <AppShell
         :title="pageRole === 'purchasing_admin' ? 'Planning Lintas' : 'Planning Escort'"
-        subtitle="Susun agenda sarana satu bulan ke depan"
+        subtitle="Susun agenda sarana sesuai periode kerja"
         :eyebrow="pageRole === 'purchasing_admin' ? 'Admin Purchasing · Planning' : 'Koordinator Sarana · Planning'"
     >
         <template #hero-title>Planning Escort Sarana Logistik</template
@@ -150,11 +167,11 @@ const sendEvidence = (event) => {
         </div>
         <form class="panel mb-5" @submit.prevent="load">
             <div
-                class="grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_220px_190px_190px_160px_auto]"
+                class="grid gap-3 md:grid-cols-2 xl:grid-cols-6"
             >
                 <input
                     v-model="filter.search"
-                    class="control"
+                    class="control xl:col-span-2"
                     placeholder="Cari vendor, PIC, nomor pengajuan..."
                 /><select v-model="filter.type" class="control">
                     <option value="">Semua pengajuan</option>
@@ -177,7 +194,28 @@ const sendEvidence = (event) => {
                 ><select v-model="filter.direction" class="control">
                     <option value="asc">A–Z / Terlama</option>
                     <option value="desc">Z–A / Terbaru</option></select
-                ><button class="btn">Terapkan</button>
+                >
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 md:col-span-2 xl:col-span-6">
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
+                        <div class="grid flex-1 gap-3 sm:grid-cols-2">
+                            <label class="block">
+                                <span class="mb-1.5 block text-xs font-bold text-slate-600">Tanggal mulai</span>
+                                <input v-model="filter.start_date" type="date" class="control bg-white" :max="filter.end_date || undefined" required />
+                            </label>
+                            <label class="block">
+                                <span class="mb-1.5 block text-xs font-bold text-slate-600">Tanggal selesai</span>
+                                <input v-model="filter.end_date" type="date" class="control bg-white" :min="filter.start_date || undefined" required />
+                            </label>
+                        </div>
+                        <div class="flex gap-2 sm:justify-end">
+                            <button type="button" class="flex-1 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition hover:border-slate-300 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-slate-100 lg:flex-none" @click="resetFilters">
+                                Reset
+                            </button>
+                            <button class="btn flex-1 lg:flex-none">Terapkan Filter</button>
+                        </div>
+                    </div>
+                    <p class="mt-2 text-xs text-slate-400">Pilih periode agenda yang ingin ditampilkan pada kalender.</p>
+                </div>
             </div>
         </form>
         <section
@@ -232,7 +270,7 @@ const sendEvidence = (event) => {
         </section>
         <section class="panel overflow-hidden p-0">
             <div class="border-b px-5 py-4">
-                <h2 class="panel-title">Kalender Satu Bulan ke Depan</h2>
+                <h2 class="panel-title">Kalender Periode Terpilih</h2>
                 <p class="panel-copy">
                     Drag & drop aktif · klik evidence untuk melampirkan
                     screenshot/file WhatsApp.
