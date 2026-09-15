@@ -9,11 +9,11 @@ const submit = () => form.post('/login', { onFinish: () => form.reset('password'
 
 <template>
     <Head title="Portal Masuk" />
-    <main class="auth-page relative isolate min-h-screen overflow-x-hidden text-white">
+    <main class="auth-page relative isolate h-[100dvh] overflow-hidden text-white">
         <div class="auth-backdrop absolute inset-0 -z-20"></div>
         <div class="auth-overlay absolute inset-0 -z-10"></div>
 
-        <div class="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-4 py-5 sm:px-7 sm:py-7 lg:px-10 xl:px-14">
+        <div class="mx-auto flex h-full min-h-0 w-full max-w-[1600px] flex-col px-4 py-4 sm:px-7 sm:py-5 lg:px-10 xl:px-14">
             <header class="auth-enter flex items-center justify-between" aria-label="Identitas aplikasi">
                 <div class="flex min-w-0 items-center gap-3.5 sm:gap-4">
                     <div class="grid h-12 w-[72px] shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/40 bg-white/90 p-1 shadow-[0_10px_30px_rgba(15,23,42,.18)] sm:h-14 sm:w-[84px]">
@@ -29,20 +29,20 @@ const submit = () => form.post('/login', { onFinish: () => form.reset('password'
                 </div>
             </header>
 
-            <div class="grid flex-1 items-center gap-8 py-8 md:grid-cols-[minmax(0,1fr)_minmax(400px,480px)] md:py-10 lg:gap-14 xl:grid-cols-[minmax(0,1fr)_minmax(460px,520px)] xl:gap-24">
-                <section class="auth-enter hidden max-w-[690px] md:block" aria-labelledby="auth-intro-title">
+            <div class="auth-layout grid min-h-0 flex-1 items-center gap-8 py-4 md:grid-cols-[minmax(0,1fr)_minmax(400px,480px)] md:py-5 lg:gap-14 xl:grid-cols-[minmax(0,1fr)_minmax(460px,520px)] xl:gap-24">
+                <section class="auth-intro auth-enter hidden max-w-[690px] md:block" aria-labelledby="auth-intro-title">
                     <p class="flex items-center gap-3 text-[11px] font-bold uppercase tracking-[.24em] text-white/75"><span class="h-px w-8 bg-[#f25a61]"></span>Portal Operasional</p>
                     <h1 id="auth-intro-title" class="mt-5 max-w-[620px] text-[clamp(2.7rem,5vw,5rem)] font-semibold leading-[1.02] tracking-[-.055em] text-white">Satu akses untuk operasional yang lebih tertata.</h1>
                     <p class="mt-6 max-w-[610px] text-[15px] leading-7 text-white/75 lg:text-[17px] lg:leading-8">Pelaporan kedatangan ekspedisi, pengajuan dokumen vendor, serta monitoring persetujuan dalam satu sistem yang aman dan terintegrasi.</p>
 
-                    <div class="mt-8 grid max-w-[650px] grid-cols-3 gap-3 lg:mt-10 lg:gap-4">
+                    <div class="auth-stats mt-8 grid max-w-[650px] grid-cols-3 gap-3 lg:mt-10 lg:gap-4">
                         <article class="mini-glass-card"><svg class="h-5 w-5 text-white/65" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M3 6h11v10H3zM14 9h3l4 4v3h-7M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg><strong>01</strong><span>Laporan ekspedisi</span></article>
                         <article class="mini-glass-card"><svg class="h-5 w-5 text-white/65" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M7 3h7l4 4v14H7zM14 3v5h4M10 13h5m-5 4h5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg><strong>04</strong><span>Jenis pengajuan</span></article>
                         <article class="mini-glass-card"><svg class="h-5 w-5 text-white/65" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3" stroke-width="1.7" stroke-linecap="round" /></svg><strong>24/7</strong><span>Monitoring data</span></article>
                     </div>
                 </section>
 
-                <section class="auth-card-enter mx-auto w-full max-w-[520px] rounded-[24px] border border-white/50 bg-white/[.76] p-5 text-slate-900 shadow-[0_28px_80px_rgba(38,6,9,.28)] backdrop-blur-[24px] sm:p-8 lg:p-9">
+                <section class="auth-card auth-card-enter mx-auto w-full max-w-[520px] rounded-[24px] border border-white/50 bg-white/[.76] p-5 text-slate-900 shadow-[0_28px_80px_rgba(38,6,9,.28)] backdrop-blur-[24px] sm:p-8 lg:p-9">
                     <form @submit.prevent="submit" novalidate>
                         <span class="inline-flex items-center gap-2 rounded-full border border-red-200/70 bg-red-50/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#a90f18]"><span class="h-1.5 w-1.5 rounded-full bg-[#e31e24]"></span>Portal Operasional</span>
                         <h2 class="mt-4 text-3xl font-semibold tracking-[-.045em] text-slate-950 sm:text-[2.15rem]">Selamat datang</h2>
@@ -90,7 +90,7 @@ const submit = () => form.post('/login', { onFinish: () => form.reset('password'
                 </section>
             </div>
 
-            <footer class="auth-enter flex flex-col gap-2 border-t border-white/15 pt-4 text-[10px] leading-5 text-white/60 sm:flex-row sm:items-end sm:justify-between sm:text-[11px]">
+            <footer class="auth-footer auth-enter flex flex-col gap-2 border-t border-white/15 pt-3 text-[10px] leading-5 text-white/60 sm:flex-row sm:items-end sm:justify-between sm:text-[11px]">
                 <div><p class="font-bold uppercase tracking-[.15em] text-white/80">Kolaborasi SCM <span class="text-[#ff8589]">•</span> FAW <span class="text-[#ff8589]">•</span> ICT</p><p>Sinergi Operasional Terintegrasi</p></div>
                 <div class="sm:text-right"><p>© 2026 PT Putra Perkasa Abadi — Site BIB</p><p>Digital Report &amp; Vendor Permit</p></div>
             </footer>
@@ -112,6 +112,20 @@ const submit = () => form.post('/login', { onFinish: () => form.reset('password'
 .auth-enter, .auth-card-enter { animation: auth-rise 480ms cubic-bezier(.22,1,.36,1) both; }
 .auth-card-enter { animation-delay: 90ms; }
 @keyframes auth-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@media (max-width: 767px) { .auth-page { min-height: 100svh; overflow-y: auto; } .auth-overlay { background: linear-gradient(180deg, rgba(71,5,10,.88) 0%, rgba(64,5,9,.68) 28%, rgba(28,6,9,.64) 100%); } }
+@media (max-height: 820px) and (min-width: 768px) {
+    .auth-layout { padding-top: .75rem; padding-bottom: .75rem; }
+    .auth-intro h1 { margin-top: .75rem; font-size: clamp(2.4rem, 4.2vw, 4rem); }
+    .auth-intro > p:last-of-type { margin-top: .75rem; }
+    .auth-stats { margin-top: 1rem; }
+    .mini-glass-card { padding: .75rem; }
+    .mini-glass-card strong { margin-top: .65rem; }
+    .auth-card { padding: 1.5rem; }
+    .auth-card form > div:first-of-type { margin-top: 1rem; }
+    .auth-card form > div { margin-top: .85rem; }
+    .auth-card form > button { margin-top: 1rem; }
+    .auth-card form > div:last-child { margin-top: 1rem; padding-top: .65rem; padding-bottom: .65rem; }
+}
+@media (max-width: 767px) { .auth-page { height: 100svh; } .auth-overlay { background: linear-gradient(180deg, rgba(71,5,10,.88) 0%, rgba(64,5,9,.68) 28%, rgba(28,6,9,.64) 100%); } }
+@media (max-width: 767px) and (max-height: 760px) { .auth-footer { display: none; } .auth-layout { padding-top: .5rem; padding-bottom: 0; } .auth-card { padding: 1rem; } .auth-card form > div { margin-top: .75rem; } .auth-card form > button { margin-top: .85rem; } .auth-card form > div:last-child { margin-top: .75rem; padding: .65rem; } }
 @media (prefers-reduced-motion: reduce) { .auth-enter, .auth-card-enter, .mini-glass-card { animation: none; transition: none; } }
 </style>
