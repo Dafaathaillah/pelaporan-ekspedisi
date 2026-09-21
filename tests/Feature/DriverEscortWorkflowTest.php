@@ -82,6 +82,33 @@ class DriverEscortWorkflowTest extends TestCase
         $this->actingAs($other)->get('/driver/escorts/'.$report->id.'/p5m-photo')->assertNotFound();
     }
 
+    public function test_driver_cannot_start_expedition_escort_before_seven_hours(): void
+    {
+        Storage::fake('local');
+        $this->travelTo(Carbon::parse('2026-09-21 16:59:59'));
+        $driver = User::factory()->create(['role' => UserRole::DRIVER, 'site' => 'BIB', 'permissions' => ['driver.escort']]);
+        $report = $this->report(User::factory()->create(['role' => UserRole::EXPEDITION]), [
+            'arrived_at' => Carbon::parse('2026-09-21 10:00:00'),
+        ]);
+
+        $this->claim($driver, $report)->assertSessionHasErrors('ready_escort_at');
+        $this->assertSame('WAITING', $report->fresh()->escort_status);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    public function test_driver_can_start_expedition_escort_at_seven_hours(): void
+    {
+        Storage::fake('local');
+        $this->travelTo(Carbon::parse('2026-09-21 17:00:00'));
+        $driver = User::factory()->create(['role' => UserRole::DRIVER, 'site' => 'BIB', 'permissions' => ['driver.escort']]);
+        $report = $this->report(User::factory()->create(['role' => UserRole::EXPEDITION]), [
+            'arrived_at' => Carbon::parse('2026-09-21 10:00:00'),
+        ]);
+
+        $this->claim($driver, $report)->assertSessionHasNoErrors();
+        $this->assertSame('PROCESS', $report->fresh()->escort_status);
+    }
+
     public function test_internal_escort_can_only_start_on_its_scheduled_date(): void
     {
         Storage::fake('local');
@@ -162,6 +189,32 @@ class DriverEscortWorkflowTest extends TestCase
         $this->assertSame('WAITING', $available->escort_status);
         $this->assertNull($available->escort_driver_id);
         $this->assertNull($available->p5m_photo_path);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    public function test_batch_claim_is_atomic_when_one_selected_unit_is_not_ready(): void
+    {
+        Storage::fake('local');
+        $this->travelTo(Carbon::parse('2026-09-21 17:00:00'));
+        $driver = User::factory()->create(['role' => UserRole::DRIVER, 'site' => 'BIB', 'permissions' => ['driver.escort']]);
+        $expedition = User::factory()->create(['role' => UserRole::EXPEDITION]);
+        $ready = $this->report($expedition, ['arrived_at' => Carbon::parse('2026-09-21 10:00:00')]);
+        $notReady = $this->report($expedition, [
+            'report_number' => 'EXP-NOT-READY',
+            'vehicle_plate' => 'DA 2 AA',
+            'arrived_at' => Carbon::parse('2026-09-21 10:00:01'),
+        ]);
+
+        $this->actingAs($driver)->post('/driver/escort-batches', [
+            'report_ids' => [$ready->id, $notReady->id],
+            'p5m_photo' => UploadedFile::fake()->image('p5m-batch.jpg'),
+        ])->assertSessionHasErrors('ready_escort_at');
+
+        foreach ([$ready->fresh(), $notReady->fresh()] as $report) {
+            $this->assertSame('WAITING', $report->escort_status);
+            $this->assertNull($report->escort_batch_id);
+            $this->assertNull($report->p5m_photo_path);
+        }
         $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
@@ -249,7 +302,7 @@ class DriverEscortWorkflowTest extends TestCase
 
     private function report(User $expedition, array $overrides = []): ExpeditionReport
     {
-        return ExpeditionReport::create(array_merge(['report_number' => 'EXP-ESCORT', 'expedition_company' => 'Ekspedisi A', 'driver_name' => 'Driver Unit', 'driver_phone' => '081', 'vehicle_plate' => 'DA 1 AA', 'vehicle_type' => 'Fuso', 'sender_vendor' => 'Vendor A', 'destination' => 'PPA', 'arrived_at' => now(), 'created_by' => $expedition->id, 'site' => 'BIB'], $overrides));
+        return ExpeditionReport::create(array_merge(['report_number' => 'EXP-ESCORT', 'expedition_company' => 'Ekspedisi A', 'driver_name' => 'Driver Unit', 'driver_phone' => '081', 'vehicle_plate' => 'DA 1 AA', 'vehicle_type' => 'Fuso', 'sender_vendor' => 'Vendor A', 'destination' => 'PPA', 'arrived_at' => now()->subHours(7), 'created_by' => $expedition->id, 'site' => 'BIB'], $overrides));
     }
 
     public function test_driver_only_sees_expedition_reports_and_can_close_with_precise_gps(): void

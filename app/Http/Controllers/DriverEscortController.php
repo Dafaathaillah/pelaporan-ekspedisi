@@ -43,6 +43,7 @@ class DriverEscortController extends Controller
             $item = ExpeditionReport::lockForUpdate()->findOrFail($report->id);
             abort_unless($item->site === $request->user()->site, 403);
             $this->ensureInternalEscortIsScheduledToday($item);
+            $this->ensureExpeditionIsReady($item);
             abort_if($item->escort_status !== 'WAITING' || $item->escort_driver_id, 422, 'Unit ekspedisi sudah diambil driver escort lain.');
             $path = $photoResizer->store($request->file('p5m_photo'), 'private/expedition-reports/'.$item->report_number, 'p5m');
             try {
@@ -87,6 +88,7 @@ class DriverEscortController extends Controller
                 abort_if($items->count() !== $ids->count(), 422, 'Salah satu unit tidak ditemukan. Muat ulang daftar kendaraan.');
                 abort_if($items->contains(fn ($item) => $item->site !== $request->user()->site), 403);
                 $items->each(fn ($item) => $this->ensureInternalEscortIsScheduledToday($item));
+                $items->each(fn ($item) => $this->ensureExpeditionIsReady($item));
                 abort_if($items->contains(fn ($item) => $item->escort_status !== 'WAITING' || $item->escort_driver_id), 422, 'Salah satu unit sudah diambil driver escort lain. Muat ulang daftar kendaraan.');
 
                 $path = $photoResizer->store($request->file('p5m_photo'), 'private/expedition-reports/escort-batches/'.$batchId, 'p5m');
@@ -268,5 +270,16 @@ class DriverEscortController extends Controller
                 'escort_date' => 'Izin internal hanya dapat di-escort tepat pada tanggal yang dijadwalkan.',
             ]);
         }
+    }
+
+    private function ensureExpeditionIsReady(ExpeditionReport $report): void
+    {
+        if ($report->internal_ijin_lintas_id || $report->is_ready_for_escort) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'ready_escort_at' => 'Unit belum ready escort. Dapat mulai escort pada '.$report->ready_escort_at->format('d/m/Y H:i').' WITA.',
+        ]);
     }
 }
