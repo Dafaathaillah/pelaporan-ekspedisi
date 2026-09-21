@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\ExpeditionReport;
 use App\Models\InternalIjinLintas;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -15,6 +16,38 @@ use Tests\TestCase;
 class DriverEscortWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_expedition_readiness_is_seven_hours_after_arrival_and_is_exposed_to_driver(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-21 15:00:00'));
+        $driver = User::factory()->create(['role' => UserRole::DRIVER, 'site' => 'BIB', 'permissions' => ['driver.escort']]);
+        $report = $this->report(User::factory()->create(['role' => UserRole::EXPEDITION]), [
+            'arrived_at' => Carbon::parse('2026-09-21 10:00:00'),
+        ]);
+
+        $this->assertSame('2026-09-21 17:00:00', $report->ready_escort_at?->format('Y-m-d H:i:s'));
+        $this->assertFalse($report->is_ready_for_escort);
+        $this->actingAs($driver)->get('/driver/escorts')->assertInertia(fn (Assert $page) => $page
+            ->where('items.0.ready_escort_at', Carbon::parse('2026-09-21 17:00:00')->toISOString())
+            ->where('items.0.is_ready_for_escort', false));
+    }
+
+    public function test_internal_escort_is_exempt_from_the_seven_hour_readiness_rule(): void
+    {
+        $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR, 'site' => 'BIB']);
+        $permit = InternalIjinLintas::create([
+            'title' => 'Internal',
+            'escort_date' => today(),
+            'unit_count' => 1,
+            'vehicle_plates' => ['DA 1'],
+            'site' => 'BIB',
+            'created_by' => $coordinator->id,
+        ]);
+        $report = $this->report($coordinator, ['internal_ijin_lintas_id' => $permit->id]);
+
+        $this->assertNull($report->ready_escort_at);
+        $this->assertTrue($report->is_ready_for_escort);
+    }
 
     public function test_driver_must_attach_p5m_when_starting_escort(): void
     {

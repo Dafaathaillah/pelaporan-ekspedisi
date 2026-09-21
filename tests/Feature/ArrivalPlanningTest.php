@@ -79,6 +79,21 @@ class ArrivalPlanningTest extends TestCase
         $this->assertDatabaseHas('expedition_reports', ['planning_item_id' => $item->id, 'driver_name' => 'Budi', 'vehicle_plate' => 'DA 123 XX', 'vendor_user_id' => $vendor->id]);
         $this->post('/vendor/arrivals', $payload)->assertSessionHasErrors('vendor_submission_unit_id');
         $this->get('/vendor/arrival-monitoring')->assertOk()->assertInertia(fn (Assert $page) => $page->where('items.0.completed', 1)->where('items.0.total', 2)->has('items.0.pending_units', 1));
+
+        foreach ([
+            UserRole::COORDINATOR,
+            UserRole::PURCHASING_ADMIN,
+            UserRole::DEVELOPER,
+        ] as $role) {
+            $reviewer = User::factory()->create(['role' => $role, 'site' => 'BIB']);
+            $url = $role === UserRole::PURCHASING_ADMIN
+                ? '/purchasing/arrival-monitoring'
+                : '/coordinator/arrival-monitoring';
+            $this->actingAs($reviewer)->get($url)->assertOk()->assertInertia(fn (Assert $page) => $page
+                ->where('items.0.arrived_units.0.ready_escort_at', fn ($value) => is_string($value))
+                ->where('items.0.arrived_units.0.is_ready_for_escort', false));
+        }
+        $this->actingAs($vendor);
         $this->patch('/vendor/planning-lintas/items/'.$item->id.'/reschedule', ['planned_date' => today()->addDay()->toDateString(), 'reschedule_reason' => 'Sisa unit menunggu sparepart'])->assertSessionHasNoErrors();
         $this->get('/vendor/arrival-monitoring')->assertInertia(fn (Assert $page) => $page->where('items.0.completed', 1)->where('items.0.reschedule_reason', 'Sisa unit menunggu sparepart'));
         $otherVendor = User::factory()->create(['role' => UserRole::VENDOR]);

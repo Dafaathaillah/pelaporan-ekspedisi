@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 
 class ExpeditionReport extends Model
@@ -13,9 +14,24 @@ class ExpeditionReport extends Model
 
     protected $with = ['escortCloser:id,name,hull_number'];
 
+    protected $appends = ['ready_escort_at', 'is_ready_for_escort'];
+
     protected function casts(): array
     {
         return ['arrived_at' => 'datetime', 'arrival_photo_captured_at' => 'datetime', 'blood_pressure_photo_captured_at' => 'datetime', 'escort_started_at' => 'datetime', 'escort_closed_at' => 'datetime', 'escort_close_photo_captured_at' => 'datetime', 'arrival_latitude' => 'decimal:7', 'arrival_longitude' => 'decimal:7', 'blood_pressure_latitude' => 'decimal:7', 'blood_pressure_longitude' => 'decimal:7', 'escort_close_latitude' => 'decimal:7', 'escort_close_longitude' => 'decimal:7'];
+    }
+
+    protected function readyEscortAt(): Attribute
+    {
+        return Attribute::get(fn () => $this->internal_ijin_lintas_id || ! $this->arrived_at
+            ? null
+            : $this->arrived_at->copy()->addHours(7));
+    }
+
+    protected function isReadyForEscort(): Attribute
+    {
+        return Attribute::get(fn () => (bool) ($this->internal_ijin_lintas_id
+            || ($this->ready_escort_at && now()->greaterThanOrEqualTo($this->ready_escort_at))));
     }
 
     public function creator()
