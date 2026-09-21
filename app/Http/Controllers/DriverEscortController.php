@@ -7,11 +7,13 @@ use App\Models\ExpeditionReport;
 use App\Services\PrivatePhotoResizer;
 use App\Support\SafeBroadcast;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class DriverEscortController extends Controller
@@ -19,7 +21,7 @@ class DriverEscortController extends Controller
     public function index(Request $request)
     {
         $items = ExpeditionReport::query()
-            ->with(['escortDriver:id,name,hull_number', 'escortCloser:id,name,hull_number'])
+            ->with(['escortDriver:id,name,hull_number', 'escortCloser:id,name,hull_number', 'internalIjinLintas:id,title,escort_date'])
             ->where('site', $request->user()->site)
             ->where(fn ($query) => $query
                 ->whereIn('escort_status', ['WAITING', 'PROCESS'])
@@ -40,6 +42,7 @@ class DriverEscortController extends Controller
         DB::transaction(function () use ($request, $report, $photoResizer) {
             $item = ExpeditionReport::lockForUpdate()->findOrFail($report->id);
             abort_unless($item->site === $request->user()->site, 403);
+            $this->ensureInternalEscortIsScheduledToday($item);
             abort_if($item->escort_status !== 'WAITING' || $item->escort_driver_id, 422, 'Unit ekspedisi sudah diambil driver escort lain.');
             $path = $photoResizer->store($request->file('p5m_photo'), 'private/expedition-reports/'.$item->report_number, 'p5m');
             try {
@@ -83,6 +86,7 @@ class DriverEscortController extends Controller
 
                 abort_if($items->count() !== $ids->count(), 422, 'Salah satu unit tidak ditemukan. Muat ulang daftar kendaraan.');
                 abort_if($items->contains(fn ($item) => $item->site !== $request->user()->site), 403);
+                $items->each(fn ($item) => $this->ensureInternalEscortIsScheduledToday($item));
                 abort_if($items->contains(fn ($item) => $item->escort_status !== 'WAITING' || $item->escort_driver_id), 422, 'Salah satu unit sudah diambil driver escort lain. Muat ulang daftar kendaraan.');
 
                 $path = $photoResizer->store($request->file('p5m_photo'), 'private/expedition-reports/escort-batches/'.$batchId, 'p5m');
@@ -113,7 +117,7 @@ class DriverEscortController extends Controller
         return back()->with('success', $ids->count().' unit berhasil dimulai dalam satu batch escort.');
     }
 
-    public function close(Request $request, ExpeditionReport $report)
+    public function close(Request $request, ExpeditionReport $report, PrivatePhotoResizer $photoResizer)
     {
         abort_unless($report->site === $request->user()->site && $report->escort_status === 'PROCESS', 403);
         $data = $request->validate([
@@ -122,25 +126,32 @@ class DriverEscortController extends Controller
             'accuracy' => ['required', 'numeric', 'min:0', 'max:100'],
             'location_name' => ['nullable', 'string', 'max:1000'],
             'captured_at' => ['required', 'date'],
+            'escort_close_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp'],
         ], [
             'accuracy.max' => 'Akurasi lokasi close escort wajib di bawah atau sama dengan ±100 meter. Aktifkan GPS dan coba kembali.',
         ]);
-        DB::transaction(function () use ($request, $report, $data) {
-            $item = ExpeditionReport::lockForUpdate()->findOrFail($report->id);
-            abort_unless($item->site === $request->user()->site && $item->escort_status === 'PROCESS', 422, 'Escort sudah ditutup driver lain.');
-            $item->update([
-                'escort_status' => 'CLOSED', 'escort_closed_at' => now(), 'escort_closed_by' => $request->user()->id,
-                'escort_close_photo_path' => null, 'escort_close_latitude' => $data['latitude'],
-                'escort_close_longitude' => $data['longitude'], 'escort_close_location_accuracy' => $data['accuracy'],
-                'escort_close_location_name' => $data['location_name'] ?? null, 'escort_close_photo_captured_at' => $data['captured_at'],
-            ]);
-        });
+        $path = $photoResizer->store($request->file('escort_close_photo'), 'private/expedition-reports/'.$report->report_number, 'escort_close');
+        try {
+            DB::transaction(function () use ($request, $report, $data, $path) {
+                $item = ExpeditionReport::lockForUpdate()->findOrFail($report->id);
+                abort_unless($item->site === $request->user()->site && $item->escort_status === 'PROCESS', 422, 'Escort sudah ditutup driver lain.');
+                $item->update([
+                    'escort_status' => 'CLOSED', 'escort_closed_at' => now(), 'escort_closed_by' => $request->user()->id,
+                    'escort_close_photo_path' => $path, 'escort_close_latitude' => $data['latitude'],
+                    'escort_close_longitude' => $data['longitude'], 'escort_close_location_accuracy' => $data['accuracy'],
+                    'escort_close_location_name' => $data['location_name'] ?? null, 'escort_close_photo_captured_at' => $data['captured_at'],
+                ]);
+            });
+        } catch (\Throwable $error) {
+            Storage::disk('local')->delete($path);
+            throw $error;
+        }
         SafeBroadcast::dispatch(new ExpeditionEscortUpdated($report->fresh()));
 
         return back()->with('success', 'Escort berhasil ditutup. Koordinat dan identitas driver penutup telah tersimpan.');
     }
 
-    public function closeBatch(Request $request, ExpeditionReport $report)
+    public function closeBatch(Request $request, ExpeditionReport $report, PrivatePhotoResizer $photoResizer)
     {
         $data = $request->validate([
             'latitude' => ['required', 'numeric', 'between:-90,90'],
@@ -148,42 +159,49 @@ class DriverEscortController extends Controller
             'accuracy' => ['required', 'numeric', 'min:0', 'max:100'],
             'location_name' => ['nullable', 'string', 'max:1000'],
             'captured_at' => ['required', 'date'],
+            'escort_close_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp'],
         ], [
             'accuracy.max' => 'Akurasi lokasi close escort wajib di bawah atau sama dengan ±100 meter. Aktifkan GPS dan coba kembali.',
         ]);
 
         $closedIds = [];
-        DB::transaction(function () use ($request, $report, $data, &$closedIds) {
-            $items = ExpeditionReport::query()
-                ->when(
-                    $report->escort_batch_id,
-                    fn ($query, $batchId) => $query->where('escort_batch_id', $batchId),
-                    fn ($query) => $query->whereKey($report->id),
-                )
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->get();
+        $path = $photoResizer->store($request->file('escort_close_photo'), 'private/expedition-reports/escort-closing/'.($report->escort_batch_id ?: $report->id), 'escort_close');
+        try {
+            DB::transaction(function () use ($request, $report, $data, $path, &$closedIds) {
+                $items = ExpeditionReport::query()
+                    ->when(
+                        $report->escort_batch_id,
+                        fn ($query, $batchId) => $query->where('escort_batch_id', $batchId),
+                        fn ($query) => $query->whereKey($report->id),
+                    )
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
 
-            abort_if($items->isEmpty(), 422, 'Batch escort tidak ditemukan.');
-            abort_if($items->contains(fn ($item) => $item->site !== $request->user()->site), 403);
-            abort_if($items->contains(fn ($item) => $item->escort_status !== 'PROCESS'), 422, 'Salah satu unit dalam batch sudah tidak aktif. Muat ulang daftar escort.');
+                abort_if($items->isEmpty(), 422, 'Batch escort tidak ditemukan.');
+                abort_if($items->contains(fn ($item) => $item->site !== $request->user()->site), 403);
+                abort_if($items->contains(fn ($item) => $item->escort_status !== 'PROCESS'), 422, 'Salah satu unit dalam batch sudah tidak aktif. Muat ulang daftar escort.');
 
-            $closedAt = now();
-            foreach ($items as $item) {
-                $item->update([
-                    'escort_status' => 'CLOSED',
-                    'escort_closed_at' => $closedAt,
-                    'escort_closed_by' => $request->user()->id,
-                    'escort_close_photo_path' => null,
-                    'escort_close_latitude' => $data['latitude'],
-                    'escort_close_longitude' => $data['longitude'],
-                    'escort_close_location_accuracy' => $data['accuracy'],
-                    'escort_close_location_name' => $data['location_name'] ?? null,
-                    'escort_close_photo_captured_at' => $data['captured_at'],
-                ]);
-                $closedIds[] = $item->id;
-            }
-        });
+                $closedAt = now();
+                foreach ($items as $item) {
+                    $item->update([
+                        'escort_status' => 'CLOSED',
+                        'escort_closed_at' => $closedAt,
+                        'escort_closed_by' => $request->user()->id,
+                        'escort_close_photo_path' => $path,
+                        'escort_close_latitude' => $data['latitude'],
+                        'escort_close_longitude' => $data['longitude'],
+                        'escort_close_location_accuracy' => $data['accuracy'],
+                        'escort_close_location_name' => $data['location_name'] ?? null,
+                        'escort_close_photo_captured_at' => $data['captured_at'],
+                    ]);
+                    $closedIds[] = $item->id;
+                }
+            });
+        } catch (\Throwable $error) {
+            Storage::disk('local')->delete($path);
+            throw $error;
+        }
 
         ExpeditionReport::whereIn('id', $closedIds)->get()->each(
             fn ($item) => SafeBroadcast::dispatch(new ExpeditionEscortUpdated($item)),
@@ -236,5 +254,19 @@ class DriverEscortController extends Controller
         });
 
         return response()->json(['display_name' => $name]);
+    }
+
+    private function ensureInternalEscortIsScheduledToday(ExpeditionReport $report): void
+    {
+        if (! $report->internal_ijin_lintas_id) {
+            return;
+        }
+
+        $escortDate = $report->internalIjinLintas()->value('escort_date');
+        if (! $escortDate || ! Carbon::parse($escortDate)->isToday()) {
+            throw ValidationException::withMessages([
+                'escort_date' => 'Izin internal hanya dapat di-escort tepat pada tanggal yang dijadwalkan.',
+            ]);
+        }
     }
 }

@@ -23,6 +23,11 @@ class ExpeditionReport extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function internalIjinLintas()
+    {
+        return $this->belongsTo(InternalIjinLintas::class);
+    }
+
     public function vendorAccount()
     {
         return $this->belongsTo(User::class, 'vendor_user_id');

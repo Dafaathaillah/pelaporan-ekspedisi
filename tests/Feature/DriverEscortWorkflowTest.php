@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\ExpeditionReport;
+use App\Models\InternalIjinLintas;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -46,6 +47,42 @@ class DriverEscortWorkflowTest extends TestCase
         $this->get('/driver/escorts/'.$report->id.'/p5m-photo')->assertOk();
         $other = User::factory()->create(['role' => UserRole::DRIVER, 'permissions' => ['driver.escort']]);
         $this->actingAs($other)->get('/driver/escorts/'.$report->id.'/p5m-photo')->assertNotFound();
+    }
+
+    public function test_internal_escort_can_only_start_on_its_scheduled_date(): void
+    {
+        Storage::fake('local');
+        $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR, 'site' => 'BIB']);
+        $driver = User::factory()->create(['role' => UserRole::DRIVER, 'site' => 'BIB', 'permissions' => ['driver.escort']]);
+        $permit = InternalIjinLintas::create(['title' => 'Internal', 'escort_date' => today()->addDay(), 'unit_count' => 1, 'vehicle_plates' => ['DA 1'], 'site' => 'BIB', 'created_by' => $coordinator->id]);
+        $report = $this->report($coordinator, ['internal_ijin_lintas_id' => $permit->id]);
+
+        $this->claim($driver, $report)->assertSessionHasErrors('escort_date');
+        $this->assertSame('WAITING', $report->fresh()->escort_status);
+
+        $permit->update(['escort_date' => today()]);
+        session()->forget('errors');
+        $this->claim($driver, $report)->assertSessionHasNoErrors();
+        $this->assertSame('PROCESS', $report->fresh()->escort_status);
+    }
+
+    public function test_close_requires_and_stores_a_photo(): void
+    {
+        Storage::fake('local');
+        $driver = User::factory()->create(['role' => UserRole::DRIVER, 'site' => 'BIB', 'permissions' => ['driver.escort']]);
+        $report = $this->report(User::factory()->create(['role' => UserRole::EXPEDITION]));
+        $this->claim($driver, $report)->assertSessionHasNoErrors();
+
+        $this->actingAs($driver)->post('/driver/escorts/'.$report->id.'/close', $this->closePayload(false))
+            ->assertSessionHasErrors('escort_close_photo');
+        $this->assertSame('PROCESS', $report->fresh()->escort_status);
+
+        $this->actingAs($driver)->post('/driver/escorts/'.$report->id.'/close', $this->closePayload())
+            ->assertSessionHasNoErrors();
+        $report->refresh();
+        $this->assertSame('CLOSED', $report->escort_status);
+        $this->assertNotNull($report->escort_close_photo_path);
+        Storage::disk('local')->assertExists($report->escort_close_photo_path);
     }
 
     public function test_driver_can_claim_multiple_units_as_one_escort_batch_with_one_p5m(): void
@@ -189,9 +226,9 @@ class DriverEscortWorkflowTest extends TestCase
         $report = $this->report($expedition);
         $this->actingAs($driver)->get('/driver/escorts')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Driver/Escorts')->has('items', 1)->where('items.0.id', $report->id));
         $this->claim($driver, $report)->assertSessionHasNoErrors();
-        $this->actingAs($driver)->post('/driver/escorts/'.$report->id.'/close', ['latitude' => -3.5131255, 'longitude' => 115.6062433, 'accuracy' => 4, 'location_name' => 'Site BIB', 'captured_at' => now()->toISOString()])->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('expedition_reports', ['id' => $report->id, 'escort_driver_id' => $driver->id, 'escort_closed_by' => $driver->id, 'escort_status' => 'CLOSED', 'escort_close_location_name' => 'Site BIB']);
-        $this->assertNull($report->fresh()->escort_close_photo_path);
+        $this->actingAs($driver)->post('/driver/escorts/'.$report->id.'/close', $this->closePayload())->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('expedition_reports', ['id' => $report->id, 'escort_driver_id' => $driver->id, 'escort_closed_by' => $driver->id, 'escort_status' => 'CLOSED', 'escort_close_location_name' => 'Workshop Plant']);
+        $this->assertNotNull($report->fresh()->escort_close_photo_path);
     }
 
     public function test_second_driver_cannot_take_active_expedition_escort(): void
@@ -221,6 +258,7 @@ class DriverEscortWorkflowTest extends TestCase
             'accuracy' => 3,
             'location_name' => 'Workshop Plant',
             'captured_at' => now()->toISOString(),
+            'escort_close_photo' => UploadedFile::fake()->image('escort-close.jpg'),
         ])->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('expedition_reports', [
@@ -246,6 +284,7 @@ class DriverEscortWorkflowTest extends TestCase
             'accuracy' => 87,
             'location_name' => 'Site BIB',
             'captured_at' => now()->toISOString(),
+            'escort_close_photo' => UploadedFile::fake()->image('escort-close.jpg'),
         ])->assertSessionHasNoErrors();
 
         $this->assertSame('CLOSED', $report->fresh()->escort_status);
@@ -265,6 +304,7 @@ class DriverEscortWorkflowTest extends TestCase
             'accuracy' => 101,
             'location_name' => 'Site BIB',
             'captured_at' => now()->toISOString(),
+            'escort_close_photo' => UploadedFile::fake()->image('escort-close.jpg'),
         ])->assertSessionHasErrors('accuracy');
 
         $this->assertSame('PROCESS', $report->fresh()->escort_status);
@@ -296,7 +336,7 @@ class DriverEscortWorkflowTest extends TestCase
             ->where('reports.data.0.escort_batch_members.1.report_number', 'EXP-MEMBER-2'));
     }
 
-    public function test_coordinator_receives_close_location_information_without_photo(): void
+    public function test_coordinator_receives_close_location_and_photo_information(): void
     {
         $expedition = User::factory()->create(['role' => UserRole::EXPEDITION]);
         $driver = User::factory()->create(['role' => UserRole::DRIVER, 'hull_number' => '8001', 'permissions' => ['driver.escort']]);
@@ -310,6 +350,7 @@ class DriverEscortWorkflowTest extends TestCase
             'accuracy' => 4,
             'location_name' => 'Workshop Plant, Tanah Bumbu',
             'captured_at' => now()->toISOString(),
+            'escort_close_photo' => UploadedFile::fake()->image('escort-close.jpg'),
         ])->assertSessionHasNoErrors();
 
         $this->actingAs($coordinator)->get('/coordinator')->assertOk()->assertInertia(fn (Assert $page) => $page
@@ -318,7 +359,7 @@ class DriverEscortWorkflowTest extends TestCase
             ->where('reports.data.0.escort_close_latitude', '-3.5131255')
             ->where('reports.data.0.escort_close_longitude', '115.6062433')
             ->where('reports.data.0.escort_close_location_accuracy', 4)
-            ->where('reports.data.0.escort_close_photo_path', null)
+            ->whereNot('reports.data.0.escort_close_photo_path', null)
         );
     }
 
@@ -338,14 +379,20 @@ class DriverEscortWorkflowTest extends TestCase
         ]);
     }
 
-    private function closePayload(): array
+    private function closePayload(bool $withPhoto = true): array
     {
-        return [
+        $payload = [
             'latitude' => -3.5131255,
             'longitude' => 115.6062433,
             'accuracy' => 4,
             'location_name' => 'Workshop Plant',
             'captured_at' => now()->toISOString(),
         ];
+
+        if ($withPhoto) {
+            $payload['escort_close_photo'] = UploadedFile::fake()->image('escort-close.jpg');
+        }
+
+        return $payload;
     }
 }

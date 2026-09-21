@@ -18,7 +18,10 @@ const form = useForm({
     accuracy: "",
     location_name: "",
     captured_at: "",
+    escort_close_photo: null,
 });
+const siteToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Makassar", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+const canStart = (item) => !item.internal_ijin_lintas || item.internal_ijin_lintas.escort_date === siteToday;
 const waiting = computed(() =>
     props.items.filter((x) => x.escort_status === "WAITING"),
 );
@@ -68,6 +71,8 @@ const closeClaim = () => {
     claimForm.clearErrors();
 };
 const toggleSelection = (id) => {
+    const item = waiting.value.find((candidate) => candidate.id === id);
+    if (!item || !canStart(item)) return;
     selectedIds.value = selectedIds.value.includes(id)
         ? selectedIds.value.filter((selectedId) => selectedId !== id)
         : [...selectedIds.value, id];
@@ -75,6 +80,10 @@ const toggleSelection = (id) => {
 const setP5mPhoto = (file) => {
     claimForm.p5m_photo = file;
     if (file) claimForm.clearErrors("p5m_photo");
+};
+const setClosePhoto = (file) => {
+    form.escort_close_photo = file;
+    if (file) form.clearErrors("escort_close_photo");
 };
 const claim = () => {
     if (!selectedIds.value.length) return;
@@ -268,10 +277,15 @@ const submitClose = () =>
                             type="checkbox"
                             class="h-5 w-5 rounded border-slate-300 text-red-600 focus:ring-red-500"
                             :checked="selectedIds.includes(x.id)"
+                            :disabled="!canStart(x)"
                             @change="toggleSelection(x.id)"
                         />
                         Pilih Unit
                     </label>
+                    <div v-if="x.internal_ijin_lintas" class="mb-4 rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs text-violet-800">
+                        <b class="block">Izin Lintas Internal · {{ x.internal_ijin_lintas.title }}</b>
+                        <span>{{ canStart(x) ? "Jadwal hari ini · Siap di-escort" : `Belum dapat di-escort · Jadwal ${x.internal_ijin_lintas.escort_date}` }}</span>
+                    </div>
                     <div class="flex items-start justify-between gap-3">
                         <span class="status-badge bg-blue-50 text-blue-700"
                             >MENUNGGU DRIVER</span
@@ -317,8 +331,8 @@ const submitClose = () =>
                         </div>
                     </dl>
                     <a v-if="x.p5m_photo_path && (x.escort_driver_id === user.id || x.escort_closed_by === user.id)" :href="`/driver/escorts/${x.id}/p5m-photo`" target="_blank" class="mt-3 block text-sm font-semibold text-blue-700">Lihat Foto P5M</a>
-                    <button class="btn-ghost mt-5 w-full" @click="toggleSelection(x.id)">
-                        {{ selectedIds.includes(x.id) ? "Batalkan Pilihan" : "Pilih Unit Ini" }}
+                    <button class="btn-ghost mt-5 w-full" :disabled="!canStart(x)" @click="toggleSelection(x.id)">
+                        {{ !canStart(x) ? "Menunggu Tanggal Escort" : selectedIds.includes(x.id) ? "Batalkan Pilihan" : "Pilih Unit Ini" }}
                     </button>
                 </article>
                 <p
@@ -454,6 +468,14 @@ const submitClose = () =>
                         form.errors.accuracy
                     }}
                 </p>
+                <P5mCameraCapture
+                    class="mt-4"
+                    :active="Boolean(closing)"
+                    :error="form.errors.escort_close_photo"
+                    label="Foto Closing"
+                    ready-label="Foto closing siap digunakan"
+                    @captured="setClosePhoto"
+                />
                 <div
                     class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"
                 >
@@ -466,7 +488,7 @@ const submitClose = () =>
                     ><button
                         class="btn"
                         :disabled="
-                            form.processing || locating || !form.latitude
+                            form.processing || locating || !form.latitude || !form.escort_close_photo
                         "
                     >
                         {{

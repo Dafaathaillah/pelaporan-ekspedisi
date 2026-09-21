@@ -60,8 +60,9 @@ class PlanningController extends Controller
             ]))->values();
 
         $isPurchasing = $request->user()->role->value === 'purchasing_admin';
-        $internalItems = InternalIjinLintas::where('site', $request->user()->site)
-            ->whereBetween('escort_date', [$start->toDateString(), $end->toDateString()])->latest()->get();
+        $internalItems = InternalIjinLintas::with('escortReports:id,internal_ijin_lintas_id,escort_status')->where('site', $request->user()->site)
+            ->whereBetween('escort_date', [$start->toDateString(), $end->toDateString()])->latest()->get()
+            ->each(fn ($item) => $item->append('operational_status'));
 
         return Inertia::render('Coordinator/Planning', [
             'items' => $items,

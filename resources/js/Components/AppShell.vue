@@ -224,7 +224,8 @@ const logout = () => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-[#f7f8fa] text-[#101b35] lg:flex">
+    <div class="app-shell min-h-screen text-[#101b35] lg:flex">
+        <div class="app-shell-backdrop" aria-hidden="true"></div>
         <aside class="sidebar-shell" :class="collapsed ? 'w-[88px]' : 'w-72'">
             <button
                 type="button"

@@ -191,7 +191,7 @@ const requestAgain = (x) =>
             <h2 class="panel-title">Daftar Izin Lintas Internal</h2>
             <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 <article v-for="item in internalItems" :key="item.id" class="rounded-2xl border border-sky-200 bg-sky-50/50 p-4">
-                    <span class="text-[10px] font-black uppercase tracking-wider text-sky-700">Internal</span>
+                    <div class="flex items-center justify-between gap-2"><span class="text-[10px] font-black uppercase tracking-wider text-sky-700">Internal</span><span class="status-badge" :class="item.operational_status === 'CLOSED' ? 'bg-emerald-100 text-emerald-700' : item.operational_status === 'PROCESS' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'">{{ item.operational_status === 'CLOSED' ? 'Closed' : item.operational_status === 'PROCESS' ? 'Sedang Escort' : 'Menunggu' }}</span></div>
                     <h3 class="mt-1 font-black text-slate-900">{{ item.title }}</h3>
                     <p class="mt-2 text-sm text-slate-600">{{ date(item.escort_date) }} · {{ item.unit_count }} unit</p>
                     <p class="mt-1 break-words text-sm font-semibold text-slate-800">{{ item.vehicle_plates.join(', ') }}</p>

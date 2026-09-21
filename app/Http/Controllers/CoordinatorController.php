@@ -106,7 +106,7 @@ class CoordinatorController extends Controller
         $items->getCollection()->load('expeditionRequest');
 
         $internalItems = $type === SubmissionType::IJIN_LINTAS
-            ? InternalIjinLintas::where('site', $r->user()->site)->latest()->get()
+            ? InternalIjinLintas::with('escortReports:id,internal_ijin_lintas_id,escort_status')->where('site', $r->user()->site)->latest()->get()->each(fn ($item) => $item->append('operational_status'))
             : collect();
 
         return Inertia::render('Coordinator/Submissions', ['type' => $type->value, 'items' => $items, 'stats' => $stats, 'internalItems' => $internalItems, 'filters' => $r->only(['search', 'status', 'date_from', 'date_to', 'sort', 'direction', 'per_page']), 'reviewBase' => $this->reviewBase($r), 'pageRole' => $r->user()->role->value]);

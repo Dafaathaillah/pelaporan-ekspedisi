@@ -419,7 +419,7 @@ const sendEvidence = (event) => {
                                 @dragstart="internalDragging = item.id"
                                 @click.stop="internalSelected = internalSelected === item.id ? null : item.id"
                             >
-                                <div class="flex items-start justify-between gap-2"><div class="min-w-0"><span class="inline-flex rounded-full bg-violet-700 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-white">Izin Lintas Internal</span><b class="mt-2 block break-words text-xs text-slate-900">{{ item.title }}</b></div><span class="shrink-0 text-[10px] font-black text-emerald-700">Aktif</span></div>
+                                <div class="flex items-start justify-between gap-2"><div class="min-w-0"><span class="inline-flex rounded-full bg-violet-700 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-white">Izin Lintas Internal</span><b class="mt-2 block break-words text-xs text-slate-900">{{ item.title }}</b></div><span class="shrink-0 text-[10px] font-black" :class="item.operational_status === 'CLOSED' ? 'text-emerald-700' : 'text-amber-700'">{{ item.operational_status === 'CLOSED' ? 'Closed' : item.operational_status === 'PROCESS' ? 'Sedang Escort' : 'Menunggu' }}</span></div>
                                 <p class="mt-2 text-xs font-bold text-slate-800">{{ item.unit_count }} unit</p>
                                 <p class="mt-1 break-words text-[10px] leading-4 text-slate-600">{{ item.vehicle_plates.join(', ') }}</p>
                             </article>
