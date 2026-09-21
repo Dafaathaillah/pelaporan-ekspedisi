@@ -7,6 +7,7 @@ use App\Http\Controllers\DriverEscortController;
 use App\Http\Controllers\ExpeditionController;
 use App\Http\Controllers\ExpeditionPlanningController;
 use App\Http\Controllers\ExpeditionRequestController;
+use App\Http\Controllers\HistoricalManagementController;
 use App\Http\Controllers\InternalIjinLintasController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ProfileController;
@@ -33,6 +34,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/push/subscriptions', [PushSubscriptionController::class, 'destroy'])->name('push.subscriptions.destroy');
     Route::post('/push/test', [PushSubscriptionController::class, 'test'])->name('push.test');
     Route::get('/dashboard', fn () => redirect(request()->user()->homePath()))->name('dashboard');
+    Route::get('/historical-management', [HistoricalManagementController::class, 'index'])->name('historical-management.index');
+    Route::get('/historical-management/{report}/photos/{kind}', [HistoricalManagementController::class, 'photo'])->name('historical-management.photo');
     Route::middleware(['role:expedition', 'permission:expedition.report'])->prefix('expedition')->group(function () {
         Route::get('/', [ExpeditionController::class, 'index'])->name('expedition.index');
         Route::post('/reports', [ExpeditionController::class, 'store'])->name('expedition.store');

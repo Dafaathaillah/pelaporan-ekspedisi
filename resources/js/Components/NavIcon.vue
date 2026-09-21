@@ -16,6 +16,7 @@ defineProps({ name: { type: String, required: true } });
     <template v-else-if="name==='lock'"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></template>
     <template v-else-if="name==='bell'"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></template>
     <template v-else-if="name==='steering'"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M3.5 10h17M12 14v7M6 10l6 4 6-4"/></template>
+    <template v-else-if="name==='history'"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2M3 5v5h5"/></template>
     <template v-else><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></template>
 </svg>
 </template>

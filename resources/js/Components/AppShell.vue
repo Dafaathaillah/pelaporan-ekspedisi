@@ -97,6 +97,7 @@ const menus = computed(() => {
             {
                 label: "Monitoring Kedatangan", short: "Kedatangan", icon: "truck", href: "/coordinator/arrival-monitoring", permission: "coordinator.planning",
             },
+            { label: "Manajemen Historikal", short: "Historikal", icon: "history", href: "/historical-management" },
             {
                 label: "Planning Escort",
                 short: "Planning",
@@ -189,6 +190,7 @@ const menus = computed(() => {
             {
                 label: "Monitoring Kedatangan", short: "Kedatangan", icon: "truck", href: "/purchasing/arrival-monitoring",
             },
+            { label: "Manajemen Historikal", short: "Historikal", icon: "history", href: "/historical-management" },
             { label: "Planning Lintas", short: "Planning", icon: "calendar", href: "/purchasing/planning",
             },
             {
