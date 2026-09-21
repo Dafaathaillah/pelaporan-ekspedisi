@@ -1,10 +1,12 @@
 <script setup>
 import AppShell from "@/Components/AppShell.vue";
+import EscortReadinessBadge from "@/Components/EscortReadinessBadge.vue";
 import Modal from "@/Components/Modal.vue";
 import P5mCameraCapture from "@/Components/P5mCameraCapture.vue";
 import { router, useForm, usePage } from "@inertiajs/vue3";
-import { computed, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { getPreciseLocation } from "@/lib/preciseLocation";
+import { isEscortReady } from "@/lib/escortReadiness";
 const props = defineProps({ items: Array });
 const user = computed(() => usePage().props.auth.user),
     selectedClaim = ref(false),
@@ -21,7 +23,17 @@ const form = useForm({
     escort_close_photo: null,
 });
 const siteToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Makassar", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-const canStart = (item) => !item.internal_ijin_lintas || item.internal_ijin_lintas.escort_date === siteToday;
+const now = ref(Date.now());
+let readinessTimer;
+onMounted(() => {
+    readinessTimer = window.setInterval(() => {
+        now.value = Date.now();
+    }, 1000);
+});
+onUnmounted(() => window.clearInterval(readinessTimer));
+const canStart = (item) => item.internal_ijin_lintas
+    ? item.internal_ijin_lintas.escort_date === siteToday
+    : isEscortReady(item, now.value);
 const waiting = computed(() =>
     props.items.filter((x) => x.escort_status === "WAITING"),
 );
@@ -60,6 +72,7 @@ const dateTime = (v) =>
     }) + " WITA";
 const claimForm = useForm({ report_ids: [], p5m_photo: null });
 const openClaim = () => {
+    selectedIds.value = selectedReports.value.filter(canStart).map((item) => item.id);
     if (!selectedIds.value.length) return;
     claimForm.reset();
     claimForm.clearErrors();
@@ -86,6 +99,7 @@ const setClosePhoto = (file) => {
     if (file) form.clearErrors("escort_close_photo");
 };
 const claim = () => {
+    selectedIds.value = selectedReports.value.filter(canStart).map((item) => item.id);
     if (!selectedIds.value.length) return;
     claimForm.transform(data => ({ ...data, report_ids: selectedIds.value })).post('/driver/escort-batches', {
         forceFormData: true, preserveScroll: true,
@@ -286,6 +300,7 @@ const submitClose = () =>
                         <b class="block">Izin Lintas Internal · {{ x.internal_ijin_lintas.title }}</b>
                         <span>{{ canStart(x) ? "Jadwal hari ini · Siap di-escort" : `Belum dapat di-escort · Jadwal ${x.internal_ijin_lintas.escort_date}` }}</span>
                     </div>
+                    <EscortReadinessBadge v-else :item="x" class="mb-4" />
                     <div class="flex items-start justify-between gap-3">
                         <span class="status-badge bg-blue-50 text-blue-700"
                             >MENUNGGU DRIVER</span
@@ -332,7 +347,7 @@ const submitClose = () =>
                     </dl>
                     <a v-if="x.p5m_photo_path && (x.escort_driver_id === user.id || x.escort_closed_by === user.id)" :href="`/driver/escorts/${x.id}/p5m-photo`" target="_blank" class="mt-3 block text-sm font-semibold text-blue-700">Lihat Foto P5M</a>
                     <button class="btn-ghost mt-5 w-full" :disabled="!canStart(x)" @click="toggleSelection(x.id)">
-                        {{ !canStart(x) ? "Menunggu Tanggal Escort" : selectedIds.includes(x.id) ? "Batalkan Pilihan" : "Pilih Unit Ini" }}
+                        {{ !canStart(x) ? (x.internal_ijin_lintas ? "Menunggu Tanggal Escort" : "Menunggu 7 Jam") : selectedIds.includes(x.id) ? "Batalkan Pilihan" : "Pilih Unit Ini" }}
                     </button>
                 </article>
                 <p
@@ -381,6 +396,9 @@ const submitClose = () =>
                     :error="claimForm.errors.p5m_photo"
                     @captured="setP5mPhoto"
                 />
+                <p v-if="claimForm.errors.ready_escort_at" class="err mt-3">
+                    {{ claimForm.errors.ready_escort_at }}
+                </p>
                 <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <button type="button" class="btn-ghost" @click="closeClaim">
                         Batal

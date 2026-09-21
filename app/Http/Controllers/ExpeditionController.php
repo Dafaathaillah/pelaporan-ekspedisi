@@ -68,7 +68,7 @@ class ExpeditionController extends Controller
     public function monitoring(Request $request): Response
     {
         $service = app(ArrivalPlanningService::class);
-        $items = PlanningItem::with(['submission.units', 'reports:id,planning_item_id,vendor_submission_unit_id,internal_ijin_lintas_id,vehicle_plate,driver_name,vehicle_type,arrived_at'])
+        $items = PlanningItem::with(['submission.units', 'reports:id,planning_item_id,vendor_submission_unit_id,internal_ijin_lintas_id,vehicle_plate,driver_name,vehicle_type,arrived_at,escort_status'])
             ->whereIn('vendor_submission_id', $service->permits($request->user())->select('id'))
             ->whereNotNull('planned_date')->orderByDesc('planned_date')->get()
             ->map(fn ($item) => [...$item->toArray(), ...$service->progress($item)]);

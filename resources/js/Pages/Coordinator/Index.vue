@@ -1,6 +1,7 @@
 <script setup>
 import AppShell from "@/Components/AppShell.vue";
 import DataTableFooter from "@/Components/DataTableFooter.vue";
+import EscortReadinessBadge from "@/Components/EscortReadinessBadge.vue";
 import Modal from "@/Components/Modal.vue";
 import SortButton from "@/Components/SortButton.vue";
 import { router } from "@inertiajs/vue3";
@@ -736,6 +737,7 @@ const healthStatusClass = (status) =>
                                             date(x.arrived_at)
                                         }}</b>
                                     </div>
+                                    <EscortReadinessBadge :item="x" class="mt-2" />
                                     <dl
                                         class="mt-2 grid gap-1.5 text-[11px] leading-4"
                                     >

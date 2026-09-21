@@ -1,5 +1,6 @@
 <script setup>
 import AppShell from '@/Components/AppShell.vue';
+import EscortReadinessBadge from '@/Components/EscortReadinessBadge.vue';
 import { useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 const props = defineProps({ items: Array, isVendor: Boolean });
@@ -34,7 +35,13 @@ const reschedule = item => form.patch(`/vendor/planning-lintas/items/${item.id}/
                     </div>
                     <p v-if="!item.pending_units.length" class="text-sm text-emerald-700">Semua unit sudah datang.</p>
                 </div>
-                <details v-if="item.arrived_units.length" class="mt-4 text-sm"><summary class="cursor-pointer font-semibold text-emerald-700">Sudah Datang ({{ item.completed }})</summary><p v-for="report in item.arrived_units" :key="report.id" class="mt-2 break-words">{{ report.vehicle_plate }} · {{ report.driver_name }} · {{ date(report.arrived_at) }}</p></details>
+                <details v-if="item.arrived_units.length" class="mt-4 text-sm">
+                    <summary class="cursor-pointer font-semibold text-emerald-700">Sudah Datang ({{ item.completed }})</summary>
+                    <div v-for="report in item.arrived_units" :key="report.id" class="mt-2 rounded-xl border border-slate-200 p-3">
+                        <p class="break-words">{{ report.vehicle_plate }} · {{ report.driver_name }} · {{ date(report.arrived_at) }}</p>
+                        <EscortReadinessBadge :item="report" class="mt-2" />
+                    </div>
+                </details>
                 <template v-if="isVendor && item.pending_units.length">
                     <button class="btn-ghost mt-4" :disabled="item.is_locked || new Date(item.submission.release_expired_at) < new Date()" @click="open(item)">Reschedule Sisa Kedatangan</button>
                     <p v-if="item.is_locked" class="mt-2 text-xs text-amber-700">Planning terkunci. Reviewer perlu membuka kunci sebelum reschedule.</p>
