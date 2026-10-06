@@ -441,22 +441,17 @@ const healthStatusClass = (status) =>
                 >
             </div>
             <div class="overflow-x-auto">
-                <table class="data-table min-w-[2220px] table-fixed">
+                <table class="data-table min-w-[1540px] table-fixed align-top">
                     <colgroup>
                         <col class="w-[55px]" />
-                        <col class="w-[115px]" />
-                        <col class="w-[125px]" />
+                        <col class="w-[135px]" />
+                        <col class="w-[225px]" />
+                        <col class="w-[185px]" />
+                        <col class="w-[190px]" />
                         <col class="w-[220px]" />
-                        <col class="w-[175px]" />
-                        <col class="w-[145px]" />
-                        <col class="w-[150px]" />
-                        <col class="w-[130px]" />
-                        <col class="w-[90px]" />
-                        <col class="w-[145px]" />
-                        <col class="w-[330px]" />
-                        <col class="w-[175px]" />
-                        <col class="w-[150px]" />
-                        <col class="w-[320px]" />
+                        <col class="w-[285px]" />
+                        <col class="w-[190px]" />
+                        <col class="w-[300px]" />
                     </colgroup>
                     <thead>
                         <tr>
@@ -472,16 +467,7 @@ const healthStatusClass = (status) =>
                             </th>
                             <th>
                                 <SortButton
-                                    label="Jam Tiba"
-                                    column="arrived_at"
-                                    :sort="f.sort"
-                                    :direction="f.direction"
-                                    @sort="sort"
-                                />
-                            </th>
-                            <th>
-                                <SortButton
-                                    label="Perusahaan"
+                                    label="Unit & Perusahaan"
                                     column="expedition_company"
                                     :sort="f.sort"
                                     :direction="f.direction"
@@ -490,97 +476,45 @@ const healthStatusClass = (status) =>
                             </th>
                             <th>
                                 <SortButton
-                                    label="Driver"
+                                    label="Driver & Kontak"
                                     column="driver_name"
                                     :sort="f.sort"
                                     :direction="f.direction"
                                     @sort="sort"
                                 />
                             </th>
-                            <th>
-                                <SortButton
-                                    label="Nomor HP"
-                                    column="driver_phone"
-                                    :sort="f.sort"
-                                    :direction="f.direction"
-                                    @sort="sort"
-                                />
-                            </th>
-                            <th>
-                                <SortButton
-                                    label="Nomor Polisi"
-                                    column="vehicle_plate"
-                                    :sort="f.sort"
-                                    :direction="f.direction"
-                                    @sort="sort"
-                                />
-                            </th>
-                            <th>
-                                <SortButton
-                                    label="Kendaraan"
-                                    column="vehicle_type"
-                                    :sort="f.sort"
-                                    :direction="f.direction"
-                                    @sort="sort"
-                                />
-                            </th>
                             <th>Tensi</th>
-                            <th>Bukti Foto</th>
-                            <th>Koordinat & Lokasi</th>
-                            <th>
-                                <SortButton
-                                    label="Vendor"
-                                    column="sender_vendor"
-                                    :sort="f.sort"
-                                    :direction="f.direction"
-                                    @sort="sort"
-                                />
-                            </th>
-                            <th>
-                                <SortButton
-                                    label="Tujuan"
-                                    column="destination"
-                                    :sort="f.sort"
-                                    :direction="f.direction"
-                                    @sort="sort"
-                                />
-                            </th>
+                            <th>Bukti & Approval P2H</th>
+                            <th>Lokasi Pengambilan Foto</th>
+                            <th>Vendor & Tujuan</th>
                             <th>Informasi Escort</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="(x, i) in reports.data" :key="x.id">
                             <td>{{ reports.from + i }}</td>
-                            <td>{{ date(x.arrived_at) }}</td>
                             <td>
-                                <span
-                                    class="time-badge inline-flex whitespace-nowrap"
-                                    >{{ time(x.arrived_at) }} WITA</span
-                                >
+                                <b class="block whitespace-nowrap text-slate-800">{{ date(x.arrived_at) }}</b>
+                                <span class="mt-1 inline-flex whitespace-nowrap rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600">{{ time(x.arrived_at) }} WITA</span>
                             </td>
                             <td>
-                                <strong>{{ x.expedition_company }}</strong
-                                ><small>{{ x.report_number }}</small>
+                                <span class="plate-badge inline-flex whitespace-nowrap">{{ x.vehicle_plate }}</span>
+                                <strong class="mt-2 block break-words">{{ x.expedition_company }}</strong>
+                                <small class="break-all">{{ x.report_number }}</small>
+                                <span class="mt-1 block text-xs text-slate-500">{{ x.vehicle_type }}</span>
                             </td>
-                            <td>{{ x.driver_name }}</td>
                             <td>
+                                <b class="block break-words text-slate-800">{{ x.driver_name }}</b>
                                 <a
                                     :href="'tel:' + x.driver_phone"
-                                    class="text-blue-600 underline"
+                                    class="mt-1 inline-flex break-all text-xs font-semibold text-blue-600 underline"
                                     >{{ x.driver_phone }}</a
                                 >
                             </td>
                             <td>
-                                <span
-                                    class="plate-badge inline-flex whitespace-nowrap"
-                                    >{{ x.vehicle_plate }}</span
-                                >
-                            </td>
-                            <td>{{ x.vehicle_type }}</td>
-                            <td>
                                 <div
                                     v-if="x.blood_pressure_systolic"
-                                    class="min-w-44"
+                                    class="min-w-0"
                                 >
                                     <b
                                         >{{ x.blood_pressure_systolic }}/{{
@@ -608,22 +542,20 @@ const healthStatusClass = (status) =>
                                 <span v-else>-</span>
                             </td>
                             <td>
-                                <div class="flex flex-wrap gap-2">
+                                <div class="grid grid-cols-3 gap-1.5">
                                     <a
                                         v-if="x.arrival_photo_path"
                                         :href="`/coordinator/reports/${x.id}/photos/arrival`"
                                         target="_blank"
-                                        class="font-bold text-red-600"
+                                        class="rounded-lg bg-red-50 px-2 py-1.5 text-center text-[11px] font-bold text-red-600"
                                         >Kedatangan</a
                                     ><a
                                         v-if="x.blood_pressure_photo_path"
                                         :href="`/coordinator/reports/${x.id}/photos/blood-pressure`"
                                         target="_blank"
-                                        class="font-bold text-red-600"
+                                        class="rounded-lg bg-red-50 px-2 py-1.5 text-center text-[11px] font-bold text-red-600"
                                         >Tensi</a
-                                    ><a v-if="x.p2h_photo_path" :href="`/coordinator/reports/${x.id}/photos/p2h`" target="_blank" class="font-bold text-red-600">P2H</a
-                                    ><span v-if="x.p2h_photo_path" class="basis-full text-[10px] font-bold" :class="x.p2h_status === 'APPROVED' ? 'text-emerald-700' : x.p2h_status === 'REJECTED' ? 'text-red-700' : 'text-amber-700'">{{ x.p2h_status === 'APPROVED' ? 'Disetujui' : x.p2h_status === 'REJECTED' ? 'Ditolak' : 'Menunggu Approval' }}</span
-                                    ><div v-if="x.p2h_photo_path && x.p2h_status !== 'APPROVED'" class="flex basis-full gap-2"><button type="button" class="text-[10px] font-bold text-emerald-700" @click="openP2hReview(x, 'APPROVED')">Setujui</button><button type="button" class="text-[10px] font-bold text-red-700" @click="openP2hReview(x, 'REJECTED')">Tolak</button></div
+                                    ><a v-if="x.p2h_photo_path" :href="`/coordinator/reports/${x.id}/photos/p2h`" target="_blank" class="rounded-lg bg-red-50 px-2 py-1.5 text-center text-[11px] font-bold text-red-600">P2H</a
                                     ><span
                                         v-if="
                                             !x.arrival_photo_path &&
@@ -632,6 +564,11 @@ const healthStatusClass = (status) =>
                                         "
                                         >-</span
                                     >
+                                </div>
+                                <div v-if="x.p2h_photo_path" class="mt-3 rounded-xl border p-3" :class="x.p2h_status === 'APPROVED' ? 'border-emerald-200 bg-emerald-50' : x.p2h_status === 'REJECTED' ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'">
+                                    <span class="block text-[10px] font-black uppercase tracking-wide" :class="x.p2h_status === 'APPROVED' ? 'text-emerald-700' : x.p2h_status === 'REJECTED' ? 'text-red-700' : 'text-amber-700'">{{ x.p2h_status === 'APPROVED' ? 'P2H Disetujui' : x.p2h_status === 'REJECTED' ? 'P2H Ditolak' : 'Menunggu Approval' }}</span>
+                                    <p v-if="x.p2h_rejection_reason" class="mt-1 whitespace-normal break-words text-[11px] text-red-700">{{ x.p2h_rejection_reason }}</p>
+                                    <div v-if="x.p2h_status !== 'APPROVED'" class="mt-2 grid grid-cols-2 gap-2"><button type="button" class="rounded-lg bg-emerald-600 px-2 py-2 text-[11px] font-bold text-white hover:bg-emerald-700" @click="openP2hReview(x, 'APPROVED')">Setujui</button><button type="button" class="rounded-lg border border-red-200 bg-white px-2 py-2 text-[11px] font-bold text-red-700 hover:bg-red-600 hover:text-white" @click="openP2hReview(x, 'REJECTED')">Tolak</button></div>
                                 </div>
                             </td>
                             <td>
@@ -725,8 +662,12 @@ const healthStatusClass = (status) =>
                                 </div>
                                 <span v-else class="text-slate-400">—</span>
                             </td>
-                            <td>{{ x.sender_vendor }}</td>
-                            <td>{{ x.destination }}</td>
+                            <td>
+                                <span class="block text-[10px] font-black uppercase tracking-wide text-slate-400">Vendor / Pengirim</span>
+                                <b class="mt-1 block break-words text-slate-800">{{ x.sender_vendor }}</b>
+                                <span class="mt-3 block text-[10px] font-black uppercase tracking-wide text-slate-400">Tujuan</span>
+                                <span class="mt-1 block break-words font-semibold text-slate-700">{{ x.destination }}</span>
+                            </td>
                             <td>
                                 <div
                                     class="rounded-xl border border-slate-200 bg-slate-50 p-3"
