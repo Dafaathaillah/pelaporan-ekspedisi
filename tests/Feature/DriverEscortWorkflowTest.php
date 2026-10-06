@@ -302,7 +302,7 @@ class DriverEscortWorkflowTest extends TestCase
 
     private function report(User $expedition, array $overrides = []): ExpeditionReport
     {
-        return ExpeditionReport::create(array_merge(['report_number' => 'EXP-ESCORT', 'expedition_company' => 'Ekspedisi A', 'driver_name' => 'Driver Unit', 'driver_phone' => '081', 'vehicle_plate' => 'DA 1 AA', 'vehicle_type' => 'Fuso', 'sender_vendor' => 'Vendor A', 'destination' => 'PPA', 'arrived_at' => now()->subHours(7), 'created_by' => $expedition->id, 'site' => 'BIB'], $overrides));
+        return ExpeditionReport::create(array_merge(['report_number' => 'EXP-ESCORT', 'expedition_company' => 'Ekspedisi A', 'driver_name' => 'Driver Unit', 'driver_phone' => '081', 'vehicle_plate' => 'DA 1 AA', 'vehicle_type' => 'Fuso', 'sender_vendor' => 'Vendor A', 'destination' => 'PPA', 'arrived_at' => now()->subHours(7), 'p2h_status' => 'APPROVED', 'created_by' => $expedition->id, 'site' => 'BIB'], $overrides));
     }
 
     public function test_driver_only_sees_expedition_reports_and_can_close_with_precise_gps(): void

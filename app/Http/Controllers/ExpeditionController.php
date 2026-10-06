@@ -91,6 +91,26 @@ class ExpeditionController extends Controller
         return Storage::disk('local')->response($path);
     }
 
+    public function replaceP2h(Request $request, ExpeditionReport $report, PrivatePhotoResizer $photoResizer): RedirectResponse
+    {
+        abort_unless($report->site === $request->user()->site && $report->created_by === $request->user()->id, 403);
+        abort_unless($report->p2h_status === 'REJECTED', 422, 'Foto P2H hanya dapat diunggah ulang setelah ditolak coordinator.');
+        $request->validate(['p2h_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp']]);
+        $oldPath = $report->p2h_photo_path;
+        $path = $photoResizer->store($request->file('p2h_photo'), 'private/expedition-reports/'.$report->report_number, 'p2h');
+        try {
+            $report->update(['p2h_photo_path' => $path, 'p2h_status' => 'PENDING', 'p2h_rejection_reason' => null, 'p2h_reviewed_at' => null, 'p2h_reviewed_by' => null]);
+        } catch (\Throwable $error) {
+            Storage::disk('local')->delete($path);
+            throw $error;
+        }
+        if ($oldPath && $oldPath !== $path) {
+            Storage::disk('local')->delete($oldPath);
+        }
+
+        return back()->with('success', 'Foto P2H baru berhasil dikirim dan menunggu approval coordinator.');
+    }
+
     public function reverseGeocode(Request $request)
     {
         $coordinates = $request->validate(['latitude' => ['required', 'numeric', 'between:-90,90'], 'longitude' => ['required', 'numeric', 'between:-180,180']]);

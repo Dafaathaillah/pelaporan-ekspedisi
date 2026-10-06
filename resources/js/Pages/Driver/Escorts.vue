@@ -31,9 +31,17 @@ onMounted(() => {
     }, 1000);
 });
 onUnmounted(() => window.clearInterval(readinessTimer));
-const canStart = (item) => item.internal_ijin_lintas
+const p2hReady = (item) => !item.p2h_photo_path || item.p2h_status === "APPROVED";
+const timeAndScheduleReady = (item) => item.internal_ijin_lintas
     ? item.internal_ijin_lintas.escort_date === siteToday
     : isEscortReady(item, now.value);
+const canStart = (item) => p2hReady(item) && timeAndScheduleReady(item);
+const availabilityLabel = (item) => {
+    if (item.p2h_photo_path && item.p2h_status === "REJECTED") return "P2H ditolak · menunggu upload ulang";
+    if (item.p2h_photo_path && item.p2h_status !== "APPROVED") return "Menunggu approval P2H";
+    if (!timeAndScheduleReady(item)) return item.internal_ijin_lintas ? "Menunggu tanggal escort" : "Menunggu 7 jam";
+    return "Siap di-escort";
+};
 const waiting = computed(() =>
     props.items.filter((x) => x.escort_status === "WAITING"),
 );
@@ -301,6 +309,9 @@ const submitClose = () =>
                         <span>{{ canStart(x) ? "Jadwal hari ini · Siap di-escort" : `Belum dapat di-escort · Jadwal ${x.internal_ijin_lintas.escort_date}` }}</span>
                     </div>
                     <EscortReadinessBadge v-else :item="x" class="mb-4" />
+                    <div v-if="x.p2h_photo_path && x.p2h_status !== 'APPROVED'" class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                        <b class="block">Status P2H</b><span>{{ availabilityLabel(x) }}</span>
+                    </div>
                     <div class="flex items-start justify-between gap-3">
                         <span class="status-badge bg-blue-50 text-blue-700"
                             >MENUNGGU DRIVER</span
@@ -347,7 +358,7 @@ const submitClose = () =>
                     </dl>
                     <a v-if="x.p5m_photo_path && (x.escort_driver_id === user.id || x.escort_closed_by === user.id)" :href="`/driver/escorts/${x.id}/p5m-photo`" target="_blank" class="mt-3 block text-sm font-semibold text-blue-700">Lihat Foto P5M</a>
                     <button class="btn-ghost mt-5 w-full" :disabled="!canStart(x)" @click="toggleSelection(x.id)">
-                        {{ !canStart(x) ? (x.internal_ijin_lintas ? "Menunggu Tanggal Escort" : "Menunggu 7 Jam") : selectedIds.includes(x.id) ? "Batalkan Pilihan" : "Pilih Unit Ini" }}
+                        {{ !canStart(x) ? availabilityLabel(x) : selectedIds.includes(x.id) ? "Batalkan Pilihan" : "Pilih Unit Ini" }}
                     </button>
                 </article>
                 <p

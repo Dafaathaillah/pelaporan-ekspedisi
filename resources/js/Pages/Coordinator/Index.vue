@@ -4,7 +4,7 @@ import DataTableFooter from "@/Components/DataTableFooter.vue";
 import EscortReadinessBadge from "@/Components/EscortReadinessBadge.vue";
 import Modal from "@/Components/Modal.vue";
 import SortButton from "@/Components/SortButton.vue";
-import { router } from "@inertiajs/vue3";
+import { router, useForm } from "@inertiajs/vue3";
 import { computed, reactive, ref } from "vue";
 const p = defineProps({
     reports: Object,
@@ -72,6 +72,18 @@ const busiest = computed(() =>
 const activePoint = ref(null);
 const selectedEscort = ref(null);
 const selectedP5m = ref(null);
+const selectedP2h = ref(null);
+const p2hAction = ref('APPROVED');
+const p2hForm = useForm({ status: 'APPROVED', reason: '' });
+const openP2hReview = (report, status) => {
+    selectedP2h.value = report;
+    p2hAction.value = status;
+    p2hForm.reset();
+    p2hForm.clearErrors();
+    p2hForm.status = status;
+};
+const closeP2hReview = () => { selectedP2h.value = null; p2hForm.reset(); p2hForm.clearErrors(); };
+const submitP2hReview = () => p2hForm.patch(`/coordinator/reports/${selectedP2h.value.id}/p2h`, { preserveScroll: true, onSuccess: closeP2hReview });
 const p5mUrl = (report, download = false) =>
     `/driver/escorts/${report.id}/p5m-photo${download ? "?download=1" : ""}`;
 const closeEscortDetail = () => {
@@ -610,6 +622,8 @@ const healthStatusClass = (status) =>
                                         class="font-bold text-red-600"
                                         >Tensi</a
                                     ><a v-if="x.p2h_photo_path" :href="`/coordinator/reports/${x.id}/photos/p2h`" target="_blank" class="font-bold text-red-600">P2H</a
+                                    ><span v-if="x.p2h_photo_path" class="basis-full text-[10px] font-bold" :class="x.p2h_status === 'APPROVED' ? 'text-emerald-700' : x.p2h_status === 'REJECTED' ? 'text-red-700' : 'text-amber-700'">{{ x.p2h_status === 'APPROVED' ? 'Disetujui' : x.p2h_status === 'REJECTED' ? 'Ditolak' : 'Menunggu Approval' }}</span
+                                    ><div v-if="x.p2h_photo_path && x.p2h_status !== 'APPROVED'" class="flex basis-full gap-2"><button type="button" class="text-[10px] font-bold text-emerald-700" @click="openP2hReview(x, 'APPROVED')">Setujui</button><button type="button" class="text-[10px] font-bold text-red-700" @click="openP2hReview(x, 'REJECTED')">Tolak</button></div
                                     ><span
                                         v-if="
                                             !x.arrival_photo_path &&
@@ -1208,6 +1222,16 @@ const healthStatusClass = (status) =>
                     Download P5M
                 </a>
             </div>
+        </Modal>
+        <Modal :show="Boolean(selectedP2h)" max-width="lg" @close="closeP2hReview">
+            <form v-if="selectedP2h" class="p-6" @submit.prevent="submitP2hReview">
+                <p class="text-[10px] font-bold uppercase tracking-[.18em]" :class="p2hAction === 'APPROVED' ? 'text-emerald-600' : 'text-red-600'">Review P2H Unit</p>
+                <h3 class="mt-1 text-xl font-bold text-slate-950">{{ p2hAction === 'APPROVED' ? 'Setujui P2H' : 'Tolak P2H' }} · {{ selectedP2h.vehicle_plate }}</h3>
+                <a :href="`/coordinator/reports/${selectedP2h.id}/photos/p2h`" target="_blank" class="mt-3 inline-flex text-sm font-bold text-red-600 hover:underline">Buka foto P2H</a>
+                <label v-if="p2hAction === 'REJECTED'" class="mt-5 block text-sm font-semibold text-slate-700">Alasan penolakan *<textarea v-model="p2hForm.reason" rows="4" maxlength="1000" class="field resize-y" placeholder="Jelaskan bagian P2H yang perlu diperbaiki"></textarea><span class="err">{{ p2hForm.errors.reason }}</span></label>
+                <p v-else class="mt-5 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">Pastikan foto dan kondisi unit pada P2H sudah sesuai sebelum disetujui.</p>
+                <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" class="btn-ghost" @click="closeP2hReview">Batal</button><button type="submit" class="btn" :disabled="p2hForm.processing || (p2hAction === 'REJECTED' && !p2hForm.reason.trim())">{{ p2hForm.processing ? 'MENYIMPAN...' : p2hAction === 'APPROVED' ? 'SETUJUI P2H' : 'TOLAK P2H' }}</button></div>
+            </form>
         </Modal>
     </AppShell>
 </template>

@@ -42,6 +42,7 @@ class DriverEscortController extends Controller
         DB::transaction(function () use ($request, $report, $photoResizer) {
             $item = ExpeditionReport::lockForUpdate()->findOrFail($report->id);
             abort_unless($item->site === $request->user()->site, 403);
+            $this->ensureP2hAndWaitingPeriodAreComplete($item);
             $this->ensureInternalEscortIsScheduledToday($item);
             $this->ensureExpeditionIsReady($item);
             abort_if($item->escort_status !== 'WAITING' || $item->escort_driver_id, 422, 'Unit ekspedisi sudah diambil driver escort lain.');
@@ -87,6 +88,7 @@ class DriverEscortController extends Controller
 
                 abort_if($items->count() !== $ids->count(), 422, 'Salah satu unit tidak ditemukan. Muat ulang daftar kendaraan.');
                 abort_if($items->contains(fn ($item) => $item->site !== $request->user()->site), 403);
+                $items->each(fn ($item) => $this->ensureP2hAndWaitingPeriodAreComplete($item));
                 $items->each(fn ($item) => $this->ensureInternalEscortIsScheduledToday($item));
                 $items->each(fn ($item) => $this->ensureExpeditionIsReady($item));
                 abort_if($items->contains(fn ($item) => $item->escort_status !== 'WAITING' || $item->escort_driver_id), 422, 'Salah satu unit sudah diambil driver escort lain. Muat ulang daftar kendaraan.');
@@ -268,6 +270,15 @@ class DriverEscortController extends Controller
         if (! $escortDate || ! Carbon::parse($escortDate)->isToday()) {
             throw ValidationException::withMessages([
                 'escort_date' => 'Izin internal hanya dapat di-escort tepat pada tanggal yang dijadwalkan.',
+            ]);
+        }
+    }
+
+    private function ensureP2hAndWaitingPeriodAreComplete(ExpeditionReport $report): void
+    {
+        if ($report->p2h_photo_path && $report->p2h_status !== 'APPROVED') {
+            throw ValidationException::withMessages([
+                'p2h_status' => 'Unit belum dapat di-escort karena P2H belum disetujui coordinator.',
             ]);
         }
     }
