@@ -15,7 +15,7 @@ class ExpeditionReport extends Model
 
     protected function casts(): array
     {
-        return ['arrived_at' => 'datetime', 'arrival_photo_captured_at' => 'datetime', 'blood_pressure_photo_captured_at' => 'datetime', 'escort_started_at' => 'datetime', 'escort_closed_at' => 'datetime', 'escort_close_photo_captured_at' => 'datetime', 'arrival_latitude' => 'decimal:7', 'arrival_longitude' => 'decimal:7', 'blood_pressure_latitude' => 'decimal:7', 'blood_pressure_longitude' => 'decimal:7', 'escort_close_latitude' => 'decimal:7', 'escort_close_longitude' => 'decimal:7'];
+        return ['arrived_at' => 'datetime', 'arrival_photo_captured_at' => 'datetime', 'blood_pressure_photo_captured_at' => 'datetime', 'p2h_reviewed_at' => 'datetime', 'p2h_review_history' => 'array', 'escort_started_at' => 'datetime', 'escort_closed_at' => 'datetime', 'escort_close_photo_captured_at' => 'datetime', 'arrival_latitude' => 'decimal:7', 'arrival_longitude' => 'decimal:7', 'blood_pressure_latitude' => 'decimal:7', 'blood_pressure_longitude' => 'decimal:7', 'escort_close_latitude' => 'decimal:7', 'escort_close_longitude' => 'decimal:7'];
     }
 
     public function creator()
@@ -41,5 +41,10 @@ class ExpeditionReport extends Model
     public function escortCloser()
     {
         return $this->belongsTo(User::class, 'escort_closed_by');
+    }
+
+    public function p2hReviewer()
+    {
+        return $this->belongsTo(User::class, 'p2h_reviewed_by');
     }
 }

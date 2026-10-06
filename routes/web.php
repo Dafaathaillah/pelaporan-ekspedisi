@@ -41,6 +41,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/reports', [ExpeditionController::class, 'store'])->name('expedition.store');
         Route::get('/reverse-geocode', [ExpeditionController::class, 'reverseGeocode'])->name('expedition.reverse-geocode');
         Route::get('/reports/{report}/photos/{kind}', [ExpeditionController::class, 'photo'])->name('expedition.photo');
+        Route::patch('/reports/{report}/p2h', [ExpeditionController::class, 'replaceP2h'])->name('expedition.p2h.replace');
         Route::get('/arrival-monitoring', [ExpeditionController::class, 'monitoring']);
         Route::get('/planning', [ExpeditionPlanningController::class, 'index'])->name('expedition.planning.index');
         Route::patch('/planning/{submission}', [ExpeditionPlanningController::class, 'update'])->name('expedition.planning.update');
@@ -90,6 +91,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/arrivals', [ExpeditionController::class, 'store']);
         Route::get('/arrivals/reverse-geocode', [ExpeditionController::class, 'reverseGeocode']);
         Route::get('/arrivals/{report}/photos/{kind}', [ExpeditionController::class, 'photo']);
+        Route::patch('/arrivals/{report}/p2h', [ExpeditionController::class, 'replaceP2h']);
         Route::get('/arrival-monitoring', [ExpeditionController::class, 'monitoring']);
         Route::patch('/planning-lintas/items/{planningItem}/reschedule', [VendorPlanningController::class, 'reschedule']);
         Route::get('/planning-lintas', [VendorPlanningController::class, 'index'])->name('vendor.planning-lintas');
@@ -101,6 +103,7 @@ Route::middleware('auth')->group(function () {
         Route::middleware('permission:coordinator.expedition')->group(function () {
             Route::get('/', [CoordinatorController::class, 'index'])->name('coordinator.index');
             Route::get('/export', [CoordinatorController::class, 'export'])->name('coordinator.export');
+            Route::patch('/reports/{report}/p2h', [CoordinatorController::class, 'reviewP2h'])->name('coordinator.reports.p2h');
         });
         Route::middleware('permission:coordinator.requests')->group(function () {
             Route::get('/expedition-requests', [ExpeditionRequestController::class, 'index'])->name('coordinator.expedition-requests.index');

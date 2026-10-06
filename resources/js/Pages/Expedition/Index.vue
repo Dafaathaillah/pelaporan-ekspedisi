@@ -218,6 +218,17 @@ const date = (value) =>
         timeStyle: "short",
     });
 const photoUrl = (row, kind) => `${props.reportBase}/${row.id}/photos/${kind}`;
+const replacingP2h = ref(null);
+const replaceP2h = (row, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    replacingP2h.value = row.id;
+    router.post(`${props.reportBase}/${row.id}/p2h`, { _method: 'PATCH', p2h_photo: file }, {
+        forceFormData: true,
+        preserveScroll: true,
+        onFinish: () => { replacingP2h.value = null; event.target.value = ''; },
+    });
+};
 onBeforeUnmount(clearPreviews);
 </script>
 
@@ -694,7 +705,7 @@ onBeforeUnmount(clearPreviews);
                                 <span v-else>-</span>
                             </td>
                             <td>
-                                <div class="flex gap-2">
+                                <div class="flex min-w-44 flex-wrap gap-2">
                                     <a
                                         v-if="row.arrival_photo_path"
                                         :href="photoUrl(row, 'arrival')"
@@ -715,6 +726,14 @@ onBeforeUnmount(clearPreviews);
                                         "
                                         >-</span
                                     >
+                                </div>
+                                <div v-if="row.p2h_photo_path" class="mt-2 rounded-xl p-2 text-xs" :class="row.p2h_status === 'APPROVED' ? 'bg-emerald-50 text-emerald-800' : row.p2h_status === 'REJECTED' ? 'bg-red-50 text-red-800' : 'bg-amber-50 text-amber-800'">
+                                    <b class="block">{{ row.p2h_status === 'APPROVED' ? 'P2H Disetujui' : row.p2h_status === 'REJECTED' ? 'P2H Ditolak' : 'Menunggu Approval P2H' }}</b>
+                                    <p v-if="row.p2h_rejection_reason" class="mt-1 whitespace-normal break-words">{{ row.p2h_rejection_reason }}</p>
+                                    <label v-if="row.p2h_status === 'REJECTED'" class="mt-2 inline-flex min-h-9 cursor-pointer items-center rounded-lg bg-white px-3 font-bold text-red-700 shadow-sm">
+                                        {{ replacingP2h === row.id ? 'Mengunggah...' : 'Upload Ulang P2H' }}
+                                        <input type="file" accept="image/*" capture="environment" class="hidden" :disabled="replacingP2h === row.id" @change="replaceP2h(row, $event)">
+                                    </label>
                                 </div>
                             </td>
                             <td>

@@ -25,6 +25,26 @@ use Inertia\Response;
 
 class CoordinatorController extends Controller
 {
+    public function reviewP2h(Request $request, ExpeditionReport $report)
+    {
+        abort_unless($report->site === $request->user()->site, 403);
+        $data = $request->validate([
+            'status' => ['required', 'in:APPROVED,REJECTED'],
+            'reason' => ['required_if:status,REJECTED', 'nullable', 'string', 'max:1000'],
+        ]);
+        $history = $report->p2h_review_history ?? [];
+        $history[] = ['status' => $data['status'], 'reason' => $data['reason'] ?? null, 'reviewed_by' => $request->user()->id, 'reviewed_at' => now()->toISOString()];
+        $report->update([
+            'p2h_status' => $data['status'],
+            'p2h_rejection_reason' => $data['status'] === 'REJECTED' ? $data['reason'] : null,
+            'p2h_reviewed_at' => now(),
+            'p2h_reviewed_by' => $request->user()->id,
+            'p2h_review_history' => $history,
+        ]);
+
+        return back()->with('success', $data['status'] === 'APPROVED' ? 'P2H unit disetujui.' : 'P2H unit ditolak dan dikembalikan untuk diperbaiki.');
+    }
+
     public function index(Request $r): Response
     {
         $site = $r->user()->site;

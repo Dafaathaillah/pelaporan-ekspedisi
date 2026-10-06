@@ -3,7 +3,7 @@ import AppShell from "@/Components/AppShell.vue";
 import Modal from "@/Components/Modal.vue";
 import P5mCameraCapture from "@/Components/P5mCameraCapture.vue";
 import { router, useForm, usePage } from "@inertiajs/vue3";
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { getPreciseLocation } from "@/lib/preciseLocation";
 const props = defineProps({ items: Array });
 const user = computed(() => usePage().props.auth.user),
@@ -20,8 +20,28 @@ const form = useForm({
     captured_at: "",
     escort_close_photo: null,
 });
+const nowMs = ref(Date.now());
+let countdownTimer;
+onMounted(() => countdownTimer = window.setInterval(() => nowMs.value = Date.now(), 1000));
+onBeforeUnmount(() => window.clearInterval(countdownTimer));
 const siteToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Makassar", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-const canStart = (item) => !item.internal_ijin_lintas || item.internal_ijin_lintas.escort_date === siteToday;
+const scheduledToday = (item) => !item.internal_ijin_lintas || item.internal_ijin_lintas.escort_date === siteToday;
+const waitFinished = (item) => new Date(item.escort_available_at).getTime() <= nowMs.value;
+const p2hReady = (item) => !item.p2h_photo_path || item.p2h_status === "APPROVED";
+const canStart = (item) => p2hReady(item) && waitFinished(item) && scheduledToday(item);
+const countdown = (item) => {
+    const seconds = Math.max(0, Math.ceil((new Date(item.escort_available_at).getTime() - nowMs.value) / 1000));
+    const hours = Math.floor(seconds / 3600).toString().padStart(2, "0");
+    const minutes = Math.floor((seconds % 3600) / 60).toString().padStart(2, "0");
+    return `${hours}:${minutes}:${(seconds % 60).toString().padStart(2, "0")}`;
+};
+const availabilityLabel = (item) => {
+    if (item.p2h_photo_path && item.p2h_status === "REJECTED") return "P2H ditolak · menunggu upload ulang";
+    if (item.p2h_photo_path && item.p2h_status !== "APPROVED") return "Menunggu approval P2H";
+    if (!waitFinished(item)) return `Dapat di-escort dalam ${countdown(item)}`;
+    if (!scheduledToday(item)) return "Menunggu tanggal escort";
+    return "Siap di-escort";
+};
 const waiting = computed(() =>
     props.items.filter((x) => x.escort_status === "WAITING"),
 );
@@ -286,6 +306,11 @@ const submitClose = () =>
                         <b class="block">Izin Lintas Internal · {{ x.internal_ijin_lintas.title }}</b>
                         <span>{{ canStart(x) ? "Jadwal hari ini · Siap di-escort" : `Belum dapat di-escort · Jadwal ${x.internal_ijin_lintas.escort_date}` }}</span>
                     </div>
+                    <div class="mb-4 rounded-xl border p-3 text-xs" :class="canStart(x) ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'">
+                        <b class="block">Status Kesiapan Escort</b>
+                        <span class="font-mono font-bold">{{ availabilityLabel(x) }}</span>
+                        <span v-if="p2hReady(x) && !waitFinished(x)" class="mt-1 block font-sans">Tersedia {{ dateTime(x.escort_available_at) }}</span>
+                    </div>
                     <div class="flex items-start justify-between gap-3">
                         <span class="status-badge bg-blue-50 text-blue-700"
                             >MENUNGGU DRIVER</span
@@ -332,7 +357,7 @@ const submitClose = () =>
                     </dl>
                     <a v-if="x.p5m_photo_path && (x.escort_driver_id === user.id || x.escort_closed_by === user.id)" :href="`/driver/escorts/${x.id}/p5m-photo`" target="_blank" class="mt-3 block text-sm font-semibold text-blue-700">Lihat Foto P5M</a>
                     <button class="btn-ghost mt-5 w-full" :disabled="!canStart(x)" @click="toggleSelection(x.id)">
-                        {{ !canStart(x) ? "Menunggu Tanggal Escort" : selectedIds.includes(x.id) ? "Batalkan Pilihan" : "Pilih Unit Ini" }}
+                        {{ !canStart(x) ? availabilityLabel(x) : selectedIds.includes(x.id) ? "Batalkan Pilihan" : "Pilih Unit Ini" }}
                     </button>
                 </article>
                 <p
