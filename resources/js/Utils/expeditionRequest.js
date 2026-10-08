@@ -14,3 +14,15 @@ export const expeditionVehicleLabel = (value) =>
         .replaceAll("_", " ")
         .toLocaleLowerCase("id-ID")
         .replace(/\b\w/g, (letter) => letter.toLocaleUpperCase("id-ID"));
+
+export const formatPlannedDate = (value) =>
+    value
+        ? new Date(`${String(value).slice(0, 10)}T00:00:00`).toLocaleDateString(
+              "id-ID",
+              {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+              },
+          )
+        : "-";

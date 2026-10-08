@@ -3,7 +3,10 @@ import AppShell from "@/Components/AppShell.vue";
 import DataTableFooter from "@/Components/DataTableFooter.vue";
 import SearchableSelect from "@/Components/SearchableSelect.vue";
 import SortButton from "@/Components/SortButton.vue";
-import { expeditionVehicleLabel } from "@/Utils/expeditionRequest";
+import {
+    expeditionVehicleLabel,
+    formatPlannedDate,
+} from "@/Utils/expeditionRequest";
 import { router } from "@inertiajs/vue3";
 import { reactive } from "vue";
 
@@ -169,7 +172,7 @@ const date = (value) =>
                                             :key="planning.id"
                                             class="rounded-lg bg-red-50 px-2 py-1 text-xs font-semibold text-red-700"
                                             >{{
-                                                formatDate(
+                                                formatPlannedDate(
                                                     planning.planned_date,
                                                 )
                                             }}</span
