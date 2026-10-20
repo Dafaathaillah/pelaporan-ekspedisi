@@ -7,7 +7,7 @@ import {
     expeditionVehicleLabel,
     formatPlannedDate,
 } from "@/Utils/expeditionRequest";
-import { router } from "@inertiajs/vue3";
+import { router, useForm } from "@inertiajs/vue3";
 import { reactive } from "vue";
 
 const props = defineProps({ items: Object, filters: Object });
@@ -28,6 +28,16 @@ const statusLabel = (status) =>
     ({ OPEN: "Menunggu Diproses", USED: "Sudah Diproses", CLOSED: "Selesai" })[
         status
     ] || status;
+const readinessForms = reactive({});
+const readinessForm = (item) =>
+    (readinessForms[item.id] ||= useForm({ readiness_status: '', readiness_reason: '' }));
+const saveReadiness = (item, status) => {
+    const form = readinessForm(item);
+    form.readiness_status = status;
+    form.patch(`/vendor/expedition-requests/${item.id}/readiness`, {
+        preserveScroll: true,
+    });
+};
 const load = () =>
     router.get("/vendor/expedition-requests", query, {
         preserveState: true,
@@ -89,7 +99,7 @@ const date = (value) =>
                 </form>
             </div>
             <div class="overflow-x-auto">
-                <table class="data-table min-w-[1180px]">
+                <table class="data-table min-w-[1400px]">
                     <thead>
                         <tr>
                             <th>No</th>
@@ -107,6 +117,7 @@ const date = (value) =>
                             <th>PO</th>
                             <th>Rute</th>
                             <th>Status</th>
+                            <th>Kesiapan Unit</th>
                             <th>Pengajuan</th>
                             <th>Tanggal Planning</th>
                         </tr>
@@ -153,6 +164,18 @@ const date = (value) =>
                                     >{{ statusLabel(item.status) }}</span
                                 >
                             </td>
+                            <td class="min-w-[230px]">
+                                <span class="status-badge" :class="item.readiness_status === 'READY' ? 'status-approved' : 'status-revision'">{{ item.readiness_status === 'READY' ? 'Ready' : item.readiness_status === 'NOT_READY' ? 'Tidak Ready' : 'Belum dijawab' }}</span>
+                                <template v-if="item.status === 'OPEN'">
+                                    <textarea v-model="readinessForm(item).readiness_reason" class="control mt-2 min-h-[62px] text-xs" placeholder="Alasan jika unit tidak ready"></textarea>
+                                    <div class="mt-2 flex gap-2">
+                                        <button type="button" class="btn btn-sm" :disabled="readinessForm(item).processing" @click="saveReadiness(item, 'READY')">Ready</button>
+                                        <button type="button" class="btn btn-sm btn-secondary" :disabled="readinessForm(item).processing" @click="saveReadiness(item, 'NOT_READY')">Tidak Ready</button>
+                                    </div>
+                                    <small v-if="readinessForm(item).errors.readiness_reason" class="text-red-600">{{ readinessForm(item).errors.readiness_reason }}</small>
+                                </template>
+                                <small v-else-if="item.readiness_reason">{{ item.readiness_reason }}</small>
+                            </td>
                             <td>
                                 <b>{{ item.submissions_count }}</b
                                 ><small>pengajuan Ijin Lintas</small>
@@ -196,7 +219,7 @@ const date = (value) =>
                         </tr>
                         <tr v-if="!items.data.length">
                             <td
-                                colspan="9"
+                                colspan="10"
                                 class="py-14 text-center text-slate-500"
                             >
                                 Belum ada request ekspedisi untuk perusahaan

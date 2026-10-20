@@ -2,6 +2,7 @@
 import AppShell from "@/Components/AppShell.vue";
 import DataTableFooter from "@/Components/DataTableFooter.vue";
 import EscortReadinessBadge from "@/Components/EscortReadinessBadge.vue";
+import ArrivalEscortTimer from "@/Components/ArrivalEscortTimer.vue";
 import Modal from "@/Components/Modal.vue";
 import SortButton from "@/Components/SortButton.vue";
 import { router, useForm } from "@inertiajs/vue3";
@@ -496,6 +497,7 @@ const healthStatusClass = (status) =>
                             <td>
                                 <b class="block whitespace-nowrap text-slate-800">{{ date(x.arrived_at) }}</b>
                                 <span class="mt-1 inline-flex whitespace-nowrap rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600">{{ time(x.arrived_at) }} WITA</span>
+                                <ArrivalEscortTimer :arrived-at="x.arrived_at" :escort-started-at="x.escort_started_at" class="mt-1" />
                             </td>
                             <td>
                                 <span class="plate-badge inline-flex whitespace-nowrap">{{ x.vehicle_plate }}</span>

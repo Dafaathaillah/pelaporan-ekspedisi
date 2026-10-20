@@ -40,9 +40,7 @@ const procurementDraft = (item) => {
     return procurementDrafts[item.id];
 };
 const saveProcurement = (item) => {
-    const base = isPurchasing.value
-        ? "/purchasing/requests"
-        : "/coordinator/expedition-requests";
+    const base = props.endpoint;
     router.patch(`${base}/${item.id}/procurement`, procurementDraft(item), {
         preserveScroll: true,
         preserveState: true,
@@ -237,6 +235,7 @@ const eyebrow = computed(() =>
                                 <th>Jenis Kendaraan</th>
                                 <th>Rute</th>
                                 <th>Status</th>
+                                <th>Kesiapan Unit Vendor</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -318,10 +317,11 @@ const eyebrow = computed(() =>
                                         pengajuan</small
                                     >
                                 </td>
+                                <td><span class="status-badge" :class="item.readiness_status === 'READY' ? 'status-approved' : 'status-revision'">{{ item.readiness_status === 'READY' ? 'Ready' : item.readiness_status === 'NOT_READY' ? 'Tidak Ready' : 'Belum dijawab' }}</span><small v-if="item.readiness_reason">{{ item.readiness_reason }}</small></td>
                             </tr>
                             <tr v-if="!items.data.length">
                                 <td
-                                    colspan="8"
+                                    colspan="9"
                                     class="py-14 text-center text-slate-500"
                                 >
                                     Belum ada request ekspedisi.

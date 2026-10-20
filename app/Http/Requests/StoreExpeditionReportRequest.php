@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\PlanningItem;
+use App\Models\VendorSubmissionUnit;
 use App\Services\ArrivalPlanningService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\ValidationException;
@@ -16,7 +17,7 @@ class StoreExpeditionReportRequest extends FormRequest
 
     public function rules(): array
     {
-        $rules = ['expedition_company' => ['required', 'string', 'max:150'], 'driver_name' => ['required', 'string', 'max:150'], 'driver_phone' => ['required', 'string', 'max:30'], 'vehicle_plate' => ['required', 'string', 'max:20'], 'vehicle_type' => ['required', 'in:Fuso,Colt Diesel,Trailer,Dump Truck,Pickup,Light Vehicle,Lainnya'], 'sender_vendor' => ['required', 'string', 'max:150'], 'destination' => ['required', 'string', 'max:150'], 'blood_pressure_systolic' => ['required', 'integer', 'between:60,250'], 'blood_pressure_diastolic' => ['required', 'integer', 'between:30,150', 'lt:blood_pressure_systolic'], 'arrival_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp'], 'blood_pressure_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp'], 'p2h_photo' => [$this->user()?->role->value === 'expedition' ? 'required' : 'nullable', 'image', 'mimes:jpg,jpeg,png,webp']];
+        $rules = ['expedition_company' => ['required', 'string', 'max:150'], 'driver_name' => ['required', 'string', 'max:150'], 'driver_phone' => ['required', 'string', 'max:30'], 'vehicle_plate' => ['required', 'string', 'max:20'], 'vehicle_type' => ['required', 'in:Fuso,Colt Diesel,Trailer,Dump Truck,Pickup,Light Vehicle,Lainnya'], 'sender_vendor' => ['required', 'string', 'max:150'], 'destination' => ['required', 'string', 'max:150'], 'blood_pressure_systolic' => ['required', 'integer', 'between:60,250'], 'blood_pressure_diastolic' => ['required', 'integer', 'between:30,150', 'lt:blood_pressure_systolic'], 'arrival_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp'], 'blood_pressure_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp']];
         foreach (['arrival', 'blood_pressure'] as $prefix) {
             $rules[$prefix.'_latitude'] = ['required', 'numeric', 'between:-90,90'];
             $rules[$prefix.'_longitude'] = ['required', 'numeric', 'between:-180,180'];
@@ -27,10 +28,8 @@ class StoreExpeditionReportRequest extends FormRequest
 
         $rules['planning_item_id'] = ['nullable', 'uuid', 'exists:planning_items,id'];
         $rules['vendor_submission_unit_id'] = ['nullable', 'uuid', 'exists:vendor_submission_units,id'];
-        if ($this->user()?->role->value === 'vendor' || $this->filled('planning_item_id') || $this->filled('vendor_submission_unit_id')) {
-            $rules['planning_item_id'][0] = 'required';
-            $rules['vendor_submission_unit_id'][0] = 'required';
-        }
+        $rules['planning_item_id'][0] = 'required';
+        $rules['vendor_submission_unit_id'][0] = 'required';
 
         return $rules;
     }
@@ -64,6 +63,10 @@ class StoreExpeditionReportRequest extends FormRequest
             }
             if (! $unit || $permit->status->value !== 'RELEASED' || ! $permit->release_expired_at || $permit->release_expired_at->isPast() || ! $planning->planned_date) {
                 throw ValidationException::withMessages(['vendor_submission_unit_id' => 'Pilih unit dengan izin Released yang masih berlaku dan memiliki planning.']);
+            }
+            $departure = VendorSubmissionUnit::find($unit->id)?->latestDepartureP2h;
+            if (! $departure || $departure->status !== 'APPROVED' || ! $departure->departed_at) {
+                throw ValidationException::withMessages(['vendor_submission_unit_id' => 'P2H unit harus disetujui vendor dan keberangkatan dikonfirmasi sebelum melapor kedatangan.']);
             }
             $this->merge(['expedition_company' => $this->user()->name, 'driver_name' => $unit->driver_name, 'driver_phone' => $unit->driver_phone, 'vehicle_plate' => $unit->plate_number, 'vehicle_type' => $unit->vehicle_type, 'sender_vendor' => $permit->vendor_name, 'destination' => $permit->destination]);
         }

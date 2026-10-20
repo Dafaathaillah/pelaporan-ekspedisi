@@ -6,6 +6,7 @@ use App\Enums\SubmissionStatus;
 use App\Enums\SubmissionType;
 use App\Enums\UserRole;
 use App\Http\Requests\StoreExpeditionReportRequest;
+use App\Models\DepartureP2h;
 use App\Models\ExpeditionReport;
 use App\Models\ExpeditionRequest;
 use App\Models\PlanningItem;
@@ -46,7 +47,12 @@ class OperationalWorkflowTest extends TestCase
     public function test_expedition_action_and_all_monitoring_filters_and_sorting_work(): void
     {
         Storage::fake('local');
-        $expedition = User::factory()->create(['name' => 'Zulu Logistik', 'role' => UserRole::EXPEDITION, 'permissions' => ['expedition.report']]);
+        $company = VendorCompany::create(['name' => 'Vendor Alpha', 'abbreviation' => 'VALPHA', 'category' => 'REGULAR']);
+        $vendor = User::factory()->create(['name' => 'Vendor Alpha', 'role' => UserRole::VENDOR, 'vendor_company_id' => $company->id]);
+        $expedition = User::factory()->create(['name' => 'Zulu Logistik', 'role' => UserRole::EXPEDITION, 'vendor_company_id' => $company->id, 'permissions' => ['expedition.report']]);
+        $permit = VendorSubmission::create(['submission_number' => 'OP-P2H', 'type' => SubmissionType::IJIN_LINTAS, 'vendor_name' => 'Vendor Alpha', 'applicant_name' => 'PIC', 'phone' => '081', 'status' => SubmissionStatus::RELEASED, 'submitted_at' => now(), 'released_at' => now(), 'release_expired_at' => now()->addWeek(), 'destination' => 'Workshop', 'created_by' => $vendor->id, 'site' => 'BIB']);
+        $unit = $permit->units()->create(['subject_type' => 'UNIT', 'plate_number' => 'DA 1234 XX', 'driver_name' => 'Budi Filter', 'driver_phone' => '08123456789', 'vehicle_type' => 'Fuso']);
+        $permit->planningItems()->create(['vendor_submission_unit_id' => $unit->id, 'planned_date' => today()]);
         $payload = [
             'expedition_company' => 'Zulu Logistik', 'driver_name' => 'Budi Filter', 'driver_phone' => '08123456789',
             'vehicle_plate' => 'da 1234 xx', 'vehicle_type' => 'Fuso', 'sender_vendor' => 'Vendor Alpha', 'destination' => 'Workshop',
@@ -56,15 +62,16 @@ class OperationalWorkflowTest extends TestCase
             'arrival_latitude' => -3.3212345, 'arrival_longitude' => 115.6123456, 'arrival_location_accuracy' => 87, 'arrival_location_name' => 'Site BIB, Kalimantan Selatan', 'arrival_photo_captured_at' => now()->toISOString(),
             'blood_pressure_latitude' => -3.3212345, 'blood_pressure_longitude' => 115.6123456, 'blood_pressure_location_accuracy' => 99, 'blood_pressure_location_name' => 'Site BIB, Kalimantan Selatan', 'blood_pressure_photo_captured_at' => now()->toISOString(),
         ];
-        $this->actingAs($expedition)->post('/expedition/reports', $payload)->assertSessionHasErrors('p2h_photo');
-        $payload['p2h_photo'] = UploadedFile::fake()->image('p2h-unit.jpg');
+        $payload['vendor_submission_unit_id'] = $unit->id;
+        $this->actingAs($expedition)->post('/expedition/reports', $payload)->assertSessionHasErrors('vendor_submission_unit_id');
+        DepartureP2h::create(['vendor_submission_unit_id' => $unit->id, 'revision' => 1, 'submitted_by' => $expedition->id, 'driver_name' => 'Budi Filter', 'vehicle_plate' => 'DA 1234 XX', 'vehicle_type' => 'Fuso', 'items' => [], 'tire_positions' => [1], 'decision' => 'LAIK', 'status' => 'APPROVED', 'reviewed_by' => $vendor->id, 'reviewed_at' => now(), 'departed_at' => now()]);
         $this->post('/expedition/reports', $payload)->assertSessionHasNoErrors();
         $this->assertDatabaseHas('expedition_reports', ['vehicle_plate' => 'DA 1234 XX', 'arrival_location_accuracy' => 87, 'blood_pressure_location_accuracy' => 99, 'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80, 'health_status' => 'FIT_WITH_NOTE', 'health_status_label' => 'Fit dengan Catatan Medis']);
 
         ExpeditionReport::create(['report_number' => 'EXP-ALPHA', 'expedition_company' => 'Alpha Logistik', 'driver_name' => 'Andi', 'driver_phone' => '0800', 'vehicle_plate' => 'DA 1 AA', 'vehicle_type' => 'Pickup', 'sender_vendor' => 'Vendor Beta', 'destination' => 'Office', 'arrived_at' => now()->subDay(), 'created_by' => $expedition->id, 'site' => 'BIB']);
         $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR, 'permissions' => ['coordinator.expedition']]);
         $report = ExpeditionReport::where('vehicle_plate', 'DA 1234 XX')->firstOrFail();
-        $this->actingAs($coordinator)->get('/coordinator/reports/'.$report->id.'/photos/p2h')->assertOk();
+        $this->actingAs($coordinator)->get('/coordinator/reports/'.$report->id.'/photos/p2h')->assertNotFound();
         $otherSite = User::factory()->create(['role' => UserRole::COORDINATOR, 'site' => 'OTHER', 'permissions' => ['coordinator.expedition']]);
         $this->actingAs($otherSite)->get('/coordinator/reports/'.$report->id.'/photos/p2h')->assertForbidden();
 
@@ -163,8 +170,8 @@ class OperationalWorkflowTest extends TestCase
         $company = VendorCompany::create(['name' => 'Vendor Incoming', 'abbreviation' => 'VI', 'category' => 'REGULAR', 'is_active' => true]);
         $vendor = User::factory()->create(['name' => $company->name, 'role' => UserRole::VENDOR, 'vendor_company_id' => $company->id, 'site' => 'BIB', 'permissions' => ['vendor.submission']]);
         $purchasing = User::factory()->create(['role' => UserRole::PURCHASING_ADMIN, 'site' => 'BIB', 'permissions' => ['purchasing.requests']]);
-        $incoming = ExpeditionRequest::create(['request_number' => 'REQ-INCOMING-1', 'vendor_company_id' => $company->id, 'expedition_type' => 'FUSO', 'route_from' => 'Warehouse', 'route_to' => 'Site', 'status' => 'OPEN', 'created_by' => $purchasing->id, 'site' => 'BIB']);
-        $documents = collect(['FOTO_UNIT_4_SISI', 'KTP', 'SIM', 'STNK', 'KIR', 'SURAT_SEHAT'])
+        $incoming = ExpeditionRequest::create(['request_number' => 'REQ-INCOMING-1', 'vendor_company_id' => $company->id, 'expedition_type' => 'FUSO', 'route_from' => 'Warehouse', 'route_to' => 'Site', 'status' => 'OPEN', 'readiness_status' => 'READY', 'created_by' => $purchasing->id, 'site' => 'BIB']);
+        $documents = collect(['FOTO_UNIT_4_SISI', 'FOTO_P2H', 'KTP', 'SIM', 'STNK', 'KIR', 'SURAT_SEHAT'])
             ->mapWithKeys(fn ($code) => [$code => UploadedFile::fake()->create(strtolower($code).'.pdf', 20, 'application/pdf')])->all();
 
         $this->actingAs($vendor)->get('/vendor')->assertInertia(fn (Assert $page) => $page
@@ -176,7 +183,7 @@ class OperationalWorkflowTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         $submission = VendorSubmission::firstOrFail();
-        $this->assertCount(6, $submission->documents);
+        $this->assertCount(7, $submission->documents);
         $this->assertSame('Budi', $submission->units->first()->driver_name);
         $this->assertSame('Fuso', $submission->units->first()->vehicle_type);
         $this->assertFalse($submission->documents()->where('document_code', 'SURAT_IJIN')->exists());

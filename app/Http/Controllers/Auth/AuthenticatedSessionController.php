@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Enums\UserRole;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,12 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        if ($request->user()->role === UserRole::COORDINATOR) {
+            $deviceToken = bin2hex(random_bytes(32));
+            $request->session()->put('coordinator_device_token', $deviceToken);
+            $request->user()->forceFill(['coordinator_session_hash' => hash('sha256', $deviceToken)])->save();
+        }
+
         return redirect()->intended($request->user()->homePath());
     }
 
@@ -39,6 +46,9 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        if ($request->user()?->role === UserRole::COORDINATOR && $request->session()->has('coordinator_device_token') && hash_equals($request->user()->coordinator_session_hash ?? '', hash('sha256', $request->session()->get('coordinator_device_token')))) {
+            $request->user()->forceFill(['coordinator_session_hash' => null])->save();
+        }
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

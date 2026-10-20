@@ -13,7 +13,9 @@ class ArrivalPlanningService
     {
         return VendorSubmission::query()->where('site', $user->site)->where('type', 'IJIN_LINTAS')
             ->when($user->role->value === 'vendor', fn ($q) => $q->where('created_by', $user->id))
-            ->when($user->role->value === 'expedition' && $user->vendor_company_id, fn ($q) => $q->whereHas('creator', fn ($creator) => $creator->where('vendor_company_id', $user->vendor_company_id)));
+            ->when($user->role->value === 'expedition', fn ($q) => $user->vendor_company_id
+                ? $q->whereHas('creator', fn ($creator) => $creator->where('vendor_company_id', $user->vendor_company_id))
+                : $q->whereRaw('1 = 0'));
     }
 
     public function progress(PlanningItem $item): array

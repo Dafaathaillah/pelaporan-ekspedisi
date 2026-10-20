@@ -41,6 +41,7 @@ const can = (permission) => {
             driver: "driver.escort",
             expedition: "expedition.report",
             purchasing_admin: "purchasing.requests",
+            finance: "finance.invoices",
         }[user.value.role]
     );
 };
@@ -59,8 +60,9 @@ const menus = computed(() => {
                 label: "Request Ekspedisi",
                 short: "Request",
                 icon: "route",
-                href: "/coordinator/expedition-requests",
+                href: "/developer/expedition-requests",
                 permission: "coordinator.requests",
+                developerOnly: true,
             },
             {
                 label: "Visitor",
@@ -125,9 +127,10 @@ const menus = computed(() => {
                 icon: "lock",
                 href: "/profile",
             },
-        ].filter((item) => !item.permission || can(item.permission));
+        ].filter((item) => (!item.developerOnly || user.value.role === "developer") && (!item.permission || can(item.permission)));
     if (user.value.role === "vendor")
         return [
+            { label: "Administrasi Escort", short: "Administrasi", icon: "document", href: "/vendor/escort-administration" },
             {
                 label: "Incoming Request",
                 short: "Incoming",
@@ -199,6 +202,11 @@ const menus = computed(() => {
                 icon: "lock",
                 href: "/profile",
             },
+        ];
+    if (user.value.role === "finance")
+        return [
+            { label: "Administrasi Escort", short: "Administrasi", icon: "document", href: "/finance/escort-administration" },
+            { label: "Ganti Password", short: "Password", icon: "lock", href: "/profile" },
         ];
     return [
         {

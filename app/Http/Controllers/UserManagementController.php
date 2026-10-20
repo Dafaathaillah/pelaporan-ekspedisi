@@ -35,7 +35,6 @@ class UserManagementController extends Controller
             'filters' => $request->only('search', 'role', 'status', 'sort', 'direction', 'per_page'),
             'permissionOptions' => [
                 ['value' => 'coordinator.expedition', 'label' => 'Monitoring Ekspedisi', 'description' => 'Dashboard kedatangan, detail escort, filter, dan ekspor data.'],
-                ['value' => 'coordinator.requests', 'label' => 'Request Ekspedisi', 'description' => 'Membuat dan memonitor request ekspedisi untuk vendor.'],
                 ['value' => 'coordinator.vendor', 'label' => 'Pengajuan Vendor', 'description' => 'Review Visitor, Waskat, Permit Non Simper, dan Ijin Lintas.'],
                 ['value' => 'coordinator.planning', 'label' => 'Planning Escort', 'description' => 'Mengatur agenda escort, tanggal, dan evidence planning.'],
                 ['value' => 'users.manage', 'label' => 'Manajemen Pengguna', 'description' => 'Membuat akun serta mengatur role dan akses modul.'],
@@ -92,6 +91,7 @@ class UserManagementController extends Controller
             UserRole::DRIVER->value => ['driver.escort'],
             UserRole::PURCHASING_ADMIN->value => ['purchasing.requests'],
             UserRole::VENDOR->value => ['vendor.submission'],
+            UserRole::FINANCE->value => ['finance.invoices'],
             default => array_values(array_unique($data['permissions'] ?? [])),
         };
 

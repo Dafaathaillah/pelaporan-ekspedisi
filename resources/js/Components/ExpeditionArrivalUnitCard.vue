@@ -16,18 +16,17 @@ const props = defineProps({
 });
 const emit = defineEmits(['update:selected']);
 
-const requiresP2h = computed(() => props.reportBase === '/expedition/reports');
 const completeIdentity = computed(() => props.unit.driver_name && props.unit.driver_phone && props.unit.plate_number && props.unit.vehicle_type && props.permit.destination);
-const blockedReason = computed(() => !props.planning ? 'Unit belum memiliki kartu planning yang terjadwal.' : !completeIdentity.value ? 'Data driver, nomor HP, kendaraan, atau tujuan pada izin belum lengkap.' : '');
-const inputs = { arrival: ref(null), pressure: ref(null), p2h: ref(null) };
-const previews = { arrival: ref(''), pressure: ref(''), p2h: ref('') };
+const blockedReason = computed(() => !props.planning ? 'Unit belum memiliki kartu planning yang terjadwal.' : !completeIdentity.value ? 'Data driver, nomor HP, kendaraan, atau tujuan pada izin belum lengkap.' : !props.unit.latest_departure_p2h?.departed_at ? 'P2H harus disetujui vendor dan keberangkatan dikonfirmasi terlebih dahulu.' : '');
+const inputs = { arrival: ref(null), pressure: ref(null) };
+const previews = { arrival: ref(''), pressure: ref('') };
 const locating = ref({ arrival: false, pressure: false });
 const locationError = ref({ arrival: '', pressure: '' });
 const submitting = ref(false);
 const form = useForm({
     vendor_submission_unit_id: props.unit.id,
     blood_pressure_systolic: '', blood_pressure_diastolic: '',
-    arrival_photo: null, blood_pressure_photo: null, p2h_photo: null,
+    arrival_photo: null, blood_pressure_photo: null,
     arrival_latitude: '', arrival_longitude: '', arrival_location_accuracy: '', arrival_location_name: '', arrival_photo_captured_at: '',
     blood_pressure_latitude: '', blood_pressure_longitude: '', blood_pressure_location_accuracy: '', blood_pressure_location_name: '', blood_pressure_photo_captured_at: '',
 });
@@ -64,8 +63,8 @@ const setPhoto = async (event, kind) => {
     const file = event.target.files?.[0]; if (!file) return;
     if (previews[kind].value) URL.revokeObjectURL(previews[kind].value);
     previews[kind].value = URL.createObjectURL(file);
-    form[{ arrival: 'arrival_photo', pressure: 'blood_pressure_photo', p2h: 'p2h_photo' }[kind]] = file;
-    if (kind !== 'p2h') await captureLocation(kind);
+    form[{ arrival: 'arrival_photo', pressure: 'blood_pressure_photo' }[kind]] = file;
+    await captureLocation(kind);
 };
 const send = async () => {
     form.clearErrors();
@@ -110,9 +109,9 @@ onBeforeUnmount(() => Object.values(previews).forEach(preview => preview.value &
                     <label class="text-sm font-semibold">Diastolik / tekanan bawah *<input v-model="form.blood_pressure_diastolic" type="number" min="30" max="150" class="field" placeholder="Contoh: 80"><p class="err">{{ form.errors.blood_pressure_diastolic }}</p></label>
                 </div>
                 <div v-if="assessment" class="mt-4 rounded-2xl border p-4" :class="assessmentClass"><b>{{ assessment.label }}</b><p class="text-sm">{{ assessment.reason }}</p></div>
-                <div class="mt-5 grid gap-4" :class="requiresP2h ? 'md:grid-cols-3' : 'md:grid-cols-2'">
-                    <div v-for="kind in (requiresP2h ? ['arrival', 'pressure', 'p2h'] : ['arrival', 'pressure'])" :key="kind">
-                        <p class="mb-2 text-sm font-semibold">{{ kind === 'arrival' ? 'Foto Kedatangan' : kind === 'pressure' ? 'Foto Hasil Tensi' : 'Foto P2H Unit' }} *</p>
+                <div class="mt-5 grid gap-4 md:grid-cols-2">
+                    <div v-for="kind in ['arrival', 'pressure']" :key="kind">
+                        <p class="mb-2 text-sm font-semibold">{{ kind === 'arrival' ? 'Foto Kedatangan' : 'Foto Hasil Tensi' }} *</p>
                         <input :ref="el => inputs[kind].value = el" type="file" accept="image/*" capture="environment" class="hidden" @change="setPhoto($event, kind)">
                         <button type="button" class="relative flex min-h-44 w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50" @click="inputs[kind].value?.click()">
                             <img v-if="previews[kind].value" :src="previews[kind].value" class="absolute inset-0 h-full w-full object-cover" alt="Preview foto"><span class="relative m-auto rounded-xl bg-white/90 px-4 py-2 text-sm font-bold text-red-600">{{ previews[kind].value ? 'Ambil Ulang Foto' : 'Buka Kamera' }}</span>

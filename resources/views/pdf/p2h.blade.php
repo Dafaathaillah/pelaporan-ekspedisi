@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><style>
+body{font-family:DejaVu Sans,sans-serif;font-size:9px;color:#111;margin:0}h1{text-align:center;background:#ddd;font-size:15px;padding:8px;margin:0 0 5px}.intro{text-align:center;font-style:italic;margin-bottom:12px}.grid,.checklist{border-collapse:collapse;width:100%}.grid td,.checklist th,.checklist td{border:1px solid #777;padding:5px;vertical-align:top}.checklist th{background:#ddd;text-align:center}.small{font-size:8px}.section{background:#ddd;font-weight:bold;text-align:center;padding:5px}.stamp{display:inline-block;border:4px double #08752c;border-radius:50%;color:#08752c;font-weight:bold;font-size:10px;line-height:1.1;width:78px;height:62px;padding-top:16px;text-align:center;transform:rotate(-8deg);margin:6px}.stamp .check{font-size:30px;line-height:1}.rejected{border-color:#b91c1c;color:#b91c1c}.muted{color:#555}.signatures td{height:90px;vertical-align:top}
+</style></head><body>
+<h1>FORM PEMERIKSAAN PERAWATAN HARIAN (P2H)</h1>
+<div class="intro">Digunakan untuk pemeriksaan unit sebelum kegiatan pengawalan dilakukan.</div>
+<table class="grid"><tr><td><b>Departemen/Divisi</b><br>Ekspedisi</td><td><b>Jenis Kendaraan</b><br>{{ $p2h->vehicle_type }}</td></tr><tr><td><b>Perusahaan</b><br>{{ $submission->vendor_name }}</td><td><b>Model Kendaraan</b><br>{{ $p2h->vehicle_type }}</td></tr><tr><td><b>Supplier Unit</b><br>{{ $submission->vendor_name }}</td><td><b>Nomor Kendaraan</b><br>{{ $p2h->vehicle_plate }}</td></tr></table>
+<br><table class="checklist"><thead><tr><th width="5%">NO</th><th width="49%">ITEM YANG DIPERIKSA</th><th width="8%">BAIK</th><th width="8%">RUSAK</th><th width="8%">NIHIL</th><th width="22%">KETERANGAN</th></tr></thead><tbody>
+@foreach($checklist as $index => $label)
+<tr><td style="text-align:center">{{ $index + 1 }}</td><td>{{ $label }}</td><td style="text-align:center">{{ ($p2h->items[$index]['condition'] ?? '') === 'BAIK' ? '✓' : '' }}</td><td style="text-align:center">{{ ($p2h->items[$index]['condition'] ?? '') === 'RUSAK' ? '✓' : '' }}</td><td style="text-align:center">{{ ($p2h->items[$index]['condition'] ?? '') === 'NIHIL' ? '✓' : '' }}</td><td>{{ $p2h->items[$index]['note'] ?? '' }}</td></tr>
+@endforeach
+</tbody></table>
+<p><b>Ban/track diperiksa:</b> @foreach($p2h->tire_positions as $position) Ban no. {{ $position }}{{ !$loop->last ? ', ' : '' }} @endforeach</p>
+<div class="section">Berdasarkan hasil pemeriksaan, unit/alat dinyatakan: {{ $p2h->decision === 'LAIK' ? 'LAIK' : 'TIDAK LAIK' }}</div>
+<p><b>Catatan:</b> {{ $p2h->notes ?: '-' }}</p>
+<table class="grid signatures"><tr><td width="50%"><b>Diserahkan oleh Driver</b><br>{{ $p2h->driver_name }}<br><span class="stamp"><span class="check">✓</span><br>APPROVED</span><br><span class="small muted">Dikirim {{ $p2h->created_at->format('d/m/Y H:i') }} · Revisi {{ $p2h->revision }}</span></td><td width="50%"><b>Diketahui oleh Vendor</b><br>{{ $p2h->reviewer?->name ?: 'Menunggu persetujuan' }}<br>@if($p2h->status === 'APPROVED')<span class="stamp"><span class="check">✓</span><br>APPROVED</span>@elseif($p2h->status === 'REJECTED')<span class="stamp rejected">REJECTED</span>@endif<br><span class="small muted">{{ $p2h->reviewed_at?->format('d/m/Y H:i') }}</span></td></tr></table>
+@if($p2h->rejection_reason)<p><b>Alasan penolakan:</b> {{ $p2h->rejection_reason }}</p>@endif
+<p class="small">Status: {{ $p2h->status }} · Keberangkatan: {{ $p2h->departed_at?->format('d/m/Y H:i') ?: 'Belum dikonfirmasi' }}</p>
+</body></html>

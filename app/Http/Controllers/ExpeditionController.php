@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\ArrivalPlanningService;
 use App\Services\PrivatePhotoResizer;
 use App\Support\BloodPressureAssessment;
+use App\Support\P2hChecklist;
 use App\Support\SafeBroadcast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,9 +31,9 @@ class ExpeditionController extends Controller
         $reports = ExpeditionReport::where('created_by', $request->user()->id)->where('site', $request->user()->site)
             ->latest('arrived_at')->paginate($perPage)->withQueryString();
 
-        $permits = app(ArrivalPlanningService::class)->permits($request->user())->where('status', 'RELEASED')->where('release_expired_at', '>=', now())->with(['units', 'planningItems' => fn ($q) => $q->whereNotNull('planned_date')->with('reports:id,planning_item_id,vendor_submission_unit_id,arrived_at')])->latest('released_at')->get();
+        $permits = app(ArrivalPlanningService::class)->permits($request->user())->where('status', 'RELEASED')->where('release_expired_at', '>=', now())->with(['units.latestDepartureP2h', 'planningItems' => fn ($q) => $q->whereNotNull('planned_date')->with('reports:id,planning_item_id,vendor_submission_unit_id,arrived_at')])->latest('released_at')->get();
 
-        return Inertia::render('Expedition/Index', ['vehicleTypes' => ['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya'], 'expeditionCompany' => $request->user()->name, 'reports' => $reports, 'permits' => $permits, 'reportBase' => $request->user()->role->value === 'vendor' ? '/vendor/arrivals' : '/expedition/reports']);
+        return Inertia::render('Expedition/Index', ['vehicleTypes' => ['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya'], 'expeditionCompany' => $request->user()->name, 'reports' => $reports, 'permits' => $permits, 'p2hChecklist' => P2hChecklist::ITEMS, 'reportBase' => $request->user()->role->value === 'vendor' ? '/vendor/arrivals' : '/expedition/reports']);
     }
 
     public function store(StoreExpeditionReportRequest $request, PrivatePhotoResizer $photoResizer): RedirectResponse
@@ -52,9 +53,8 @@ class ExpeditionController extends Controller
             try {
                 $arrivalPath = $photoResizer->store($request->file('arrival_photo'), $directory, 'arrival');
                 $pressurePath = $photoResizer->store($request->file('blood_pressure_photo'), $directory, 'blood_pressure');
-                $p2hPath = $request->file('p2h_photo') ? $photoResizer->store($request->file('p2h_photo'), $directory, 'p2h') : null;
                 $assessment = BloodPressureAssessment::assess((int) $request->blood_pressure_systolic, (int) $request->blood_pressure_diastolic);
-                $report = ExpeditionReport::create([...$request->safe()->except(['arrival_photo', 'blood_pressure_photo', 'p2h_photo']), 'health_status' => $assessment['status'], 'health_status_label' => $assessment['label'], 'health_status_reason' => $assessment['reason'], 'expedition_company' => $request->user()->name, 'arrival_photo_path' => $arrivalPath, 'blood_pressure_photo_path' => $pressurePath, 'p2h_photo_path' => $p2hPath, 'vendor_user_id' => $vendorUser?->id, 'report_number' => $number, 'arrived_at' => $now, 'created_by' => $request->user()->id, 'site' => $request->user()->site]);
+                $report = ExpeditionReport::create([...$request->safe()->except(['arrival_photo', 'blood_pressure_photo']), 'health_status' => $assessment['status'], 'health_status_label' => $assessment['label'], 'health_status_reason' => $assessment['reason'], 'expedition_company' => $request->user()->name, 'arrival_photo_path' => $arrivalPath, 'blood_pressure_photo_path' => $pressurePath, 'vendor_user_id' => $vendorUser?->id, 'report_number' => $number, 'arrived_at' => $now, 'created_by' => $request->user()->id, 'site' => $request->user()->site]);
             } catch (\Throwable $error) {
                 Storage::disk('local')->deleteDirectory($directory);
                 throw $error;
@@ -68,7 +68,7 @@ class ExpeditionController extends Controller
     public function monitoring(Request $request): Response
     {
         $service = app(ArrivalPlanningService::class);
-        $items = PlanningItem::with(['submission.units', 'reports:id,planning_item_id,vendor_submission_unit_id,internal_ijin_lintas_id,vehicle_plate,driver_name,vehicle_type,arrived_at,escort_status'])
+        $items = PlanningItem::with(['submission.units.latestDepartureP2h', 'reports:id,planning_item_id,vendor_submission_unit_id,internal_ijin_lintas_id,vehicle_plate,driver_name,vehicle_type,arrived_at,escort_started_at,escort_status'])
             ->whereIn('vendor_submission_id', $service->permits($request->user())->select('id'))
             ->whereNotNull('planned_date')->orderByDesc('planned_date')->get()
             ->map(fn ($item) => [...$item->toArray(), ...$service->progress($item)]);

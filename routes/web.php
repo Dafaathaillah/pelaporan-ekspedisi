@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\CoordinatorController;
+use App\Http\Controllers\DepartureP2hController;
 use App\Http\Controllers\DirectPlanningController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DriverEscortController;
 use App\Http\Controllers\ExpeditionController;
+use App\Http\Controllers\EscortAdministrationController;
 use App\Http\Controllers\ExpeditionPlanningController;
 use App\Http\Controllers\ExpeditionRequestController;
 use App\Http\Controllers\HistoricalManagementController;
@@ -34,6 +36,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/push/subscriptions', [PushSubscriptionController::class, 'destroy'])->name('push.subscriptions.destroy');
     Route::post('/push/test', [PushSubscriptionController::class, 'test'])->name('push.test');
     Route::get('/dashboard', fn () => redirect(request()->user()->homePath()))->name('dashboard');
+    Route::get('/departure-p2h/{unit}/download', [DepartureP2hController::class, 'download'])->name('departure-p2h.download');
+    Route::get('/escort-administration/{report}/{kind}', [EscortAdministrationController::class, 'download'])->name('escort-administration.download');
+    Route::middleware('role:finance')->get('/finance/escort-administration', [EscortAdministrationController::class, 'financeIndex'])->name('finance.escort-administration');
     Route::get('/historical-management', [HistoricalManagementController::class, 'index'])->name('historical-management.index');
     Route::get('/historical-management/{report}/photos/{kind}', [HistoricalManagementController::class, 'photo'])->name('historical-management.photo');
     Route::middleware(['role:expedition', 'permission:expedition.report'])->prefix('expedition')->group(function () {
@@ -44,6 +49,8 @@ Route::middleware('auth')->group(function () {
         Route::patch('/reports/{report}/p2h', [ExpeditionController::class, 'replaceP2h'])->name('expedition.p2h.replace');
         Route::get('/arrival-monitoring', [ExpeditionController::class, 'monitoring']);
         Route::get('/planning', [ExpeditionPlanningController::class, 'index'])->name('expedition.planning.index');
+        Route::post('/departures/{unit}/p2h', [DepartureP2hController::class, 'store'])->name('expedition.departures.p2h');
+        Route::post('/departures/{unit}/confirm', [DepartureP2hController::class, 'confirm'])->name('expedition.departures.confirm');
         Route::patch('/planning/{submission}', [ExpeditionPlanningController::class, 'update'])->name('expedition.planning.update');
     });
     Route::middleware(['role:driver', 'permission:driver.escort'])->prefix('driver')->group(function () {
@@ -83,8 +90,12 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['role:vendor', 'permission:vendor.submission'])->prefix('vendor')->group(function () {
         Route::get('/', [VendorController::class, 'index'])->name('vendor.index');
         Route::get('/expedition-requests', [VendorController::class, 'expeditionRequests'])->name('vendor.expedition-requests');
+        Route::get('/escort-administration', [EscortAdministrationController::class, 'vendorIndex'])->name('vendor.escort-administration');
+        Route::post('/escort-administration/{report}/{kind}', [EscortAdministrationController::class, 'upload'])->name('vendor.escort-administration.upload');
+        Route::patch('/expedition-requests/{expeditionRequest}/readiness', [ExpeditionRequestController::class, 'updateReadiness'])->name('vendor.expedition-requests.readiness');
         Route::post('/submissions', [VendorController::class, 'store'])->name('vendor.store');
         Route::get('/submissions/{submission}', [VendorController::class, 'show'])->name('vendor.show');
+        Route::patch('/departures/{unit}/review', [DepartureP2hController::class, 'review'])->name('vendor.departures.review');
         Route::patch('/units/{unit}/details', [VendorController::class, 'updateUnitDetails']);
         Route::get('/monitoring-sarana', [VendorController::class, 'monitoringSarana'])->name('vendor.monitoring-sarana');
         Route::get('/arrivals', [ExpeditionController::class, 'index']);
@@ -104,11 +115,6 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [CoordinatorController::class, 'index'])->name('coordinator.index');
             Route::get('/export', [CoordinatorController::class, 'export'])->name('coordinator.export');
             Route::patch('/reports/{report}/p2h', [CoordinatorController::class, 'reviewP2h'])->name('coordinator.reports.p2h');
-        });
-        Route::middleware('permission:coordinator.requests')->group(function () {
-            Route::get('/expedition-requests', [ExpeditionRequestController::class, 'index'])->name('coordinator.expedition-requests.index');
-            Route::post('/expedition-requests', [ExpeditionRequestController::class, 'store'])->name('coordinator.expedition-requests.store');
-            Route::patch('/expedition-requests/{expeditionRequest}/procurement', [ExpeditionRequestController::class, 'updateProcurement'])->name('coordinator.expedition-requests.procurement');
         });
         Route::middleware('permission:coordinator.planning')->group(function () {
             Route::get('/arrival-monitoring', [ExpeditionController::class, 'monitoring']);
@@ -144,6 +150,11 @@ Route::middleware('auth')->group(function () {
             Route::post('/users', [UserManagementController::class, 'store'])->name('coordinator.users.store');
             Route::patch('/users/{managedUser}', [UserManagementController::class, 'update'])->name('coordinator.users.update');
         });
+    });
+    Route::middleware('role:developer')->prefix('developer')->group(function () {
+        Route::get('/expedition-requests', [ExpeditionRequestController::class, 'index'])->name('developer.expedition-requests.index');
+        Route::post('/expedition-requests', [ExpeditionRequestController::class, 'store'])->name('developer.expedition-requests.store');
+        Route::patch('/expedition-requests/{expeditionRequest}/procurement', [ExpeditionRequestController::class, 'updateProcurement'])->name('developer.expedition-requests.procurement');
     });
     Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
     Route::get('/driver/escorts/{report}/p5m-photo', [DriverEscortController::class, 'p5mPhoto'])->name('driver.escorts.p5m-photo');

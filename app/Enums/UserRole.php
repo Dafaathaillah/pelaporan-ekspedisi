@@ -10,4 +10,5 @@ enum UserRole: string
     case PURCHASING_ADMIN = 'purchasing_admin';
     case VENDOR = 'vendor';
     case COORDINATOR = 'coordinator';
+    case FINANCE = 'finance';
 }

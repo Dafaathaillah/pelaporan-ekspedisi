@@ -9,6 +9,8 @@ use App\Models\VendorCompany;
 use App\Support\SafeBroadcast;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class ExpeditionRequestController extends Controller
@@ -35,9 +37,9 @@ class ExpeditionRequestController extends Controller
             'items' => $items,
             'vendors' => VendorCompany::where('is_active', true)->orderBy('name')->get(['id', 'name', 'abbreviation']),
             'filters' => $request->only(['search', 'status', 'sort', 'direction', 'per_page']),
-            'canCreate' => in_array($role, ['purchasing_admin', 'coordinator', 'developer'], true),
+            'canCreate' => in_array($role, ['purchasing_admin', 'developer'], true),
             'pageRole' => $role,
-            'endpoint' => $isPurchasing ? '/purchasing/requests' : '/coordinator/expedition-requests',
+            'endpoint' => $isPurchasing ? '/purchasing/requests' : '/developer/expedition-requests',
         ]);
     }
 
@@ -77,6 +79,28 @@ class ExpeditionRequestController extends Controller
         SafeBroadcast::dispatch(new ExpeditionRequestUpdated($expeditionRequest->fresh('vendorCompany')));
 
         return back()->with('success', 'Nomor PR dan PO berhasil diperbarui.');
+    }
+
+    public function updateReadiness(Request $request, ExpeditionRequest $expeditionRequest)
+    {
+        $user = $request->user();
+        abort_unless($user->vendor_company_id && $expeditionRequest->site === $user->site && $expeditionRequest->vendor_company_id === $user->vendor_company_id, 403);
+        if ($expeditionRequest->status !== 'OPEN') {
+            throw ValidationException::withMessages(['readiness_status' => 'Request yang sudah diproses tidak dapat diubah.']);
+        }
+        $data = $request->validate([
+            'readiness_status' => ['required', Rule::in(['READY', 'NOT_READY'])],
+            'readiness_reason' => ['required_if:readiness_status,NOT_READY', 'nullable', 'string', 'max:1000'],
+        ]);
+        $expeditionRequest->update([
+            'readiness_status' => $data['readiness_status'],
+            'readiness_reason' => $data['readiness_status'] === 'NOT_READY' ? $data['readiness_reason'] : null,
+            'readiness_by' => $user->id,
+            'readiness_at' => now(),
+        ]);
+        SafeBroadcast::dispatch(new ExpeditionRequestUpdated($expeditionRequest->fresh('vendorCompany')));
+
+        return back()->with('success', 'Kesiapan unit untuk request berhasil diperbarui.');
     }
 
     public function evidence(Request $request, ExpeditionRequest $expeditionRequest)

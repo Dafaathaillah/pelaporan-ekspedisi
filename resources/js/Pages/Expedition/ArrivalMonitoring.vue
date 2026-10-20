@@ -1,6 +1,7 @@
 <script setup>
 import AppShell from '@/Components/AppShell.vue';
 import EscortReadinessBadge from '@/Components/EscortReadinessBadge.vue';
+import ArrivalEscortTimer from '@/Components/ArrivalEscortTimer.vue';
 import { useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 const props = defineProps({ items: Array, isVendor: Boolean });
@@ -33,12 +34,15 @@ const reschedule = item => form.patch(`/vendor/planning-lintas/items/${item.id}/
                     <div v-for="unit in item.pending_units" :key="unit.id" class="rounded-xl border border-slate-200 p-3 text-sm">
                         <b>{{ unit.plate_number }}</b><p class="break-words text-slate-600">{{ unit.driver_name || 'Nama driver belum diisi' }} · {{ unit.driver_phone || '-' }} · {{ unit.vehicle_type || '-' }}</p>
                     </div>
+                    <div v-for="unit in item.pending_units" :key="`p2h-${unit.id}`" class="text-xs text-slate-600"><b>{{ unit.plate_number }}</b> · P2H: {{ unit.latest_departure_p2h?.departed_at ? 'Sudah berangkat' : unit.latest_departure_p2h?.status || 'Belum diisi' }} <a v-if="unit.latest_departure_p2h" :href="`/departure-p2h/${unit.id}/download`" class="font-bold text-red-700 underline">Download P2H</a></div>
                     <p v-if="!item.pending_units.length" class="text-sm text-emerald-700">Semua unit sudah datang.</p>
                 </div>
                 <details v-if="item.arrived_units.length" class="mt-4 text-sm">
                     <summary class="cursor-pointer font-semibold text-emerald-700">Sudah Datang ({{ item.completed }})</summary>
                     <div v-for="report in item.arrived_units" :key="report.id" class="mt-2 rounded-xl border border-slate-200 p-3">
                         <p class="break-words">{{ report.vehicle_plate }} · {{ report.driver_name }} · {{ date(report.arrived_at) }}</p>
+                        <ArrivalEscortTimer :arrived-at="report.arrived_at" :escort-started-at="report.escort_started_at" class="mt-1" />
+                        <a v-if="report.vendor_submission_unit_id" :href="`/departure-p2h/${report.vendor_submission_unit_id}/download`" class="mt-1 inline-block font-bold text-red-700 underline">Download P2H Unit</a>
                         <EscortReadinessBadge :item="report" class="mt-2" />
                     </div>
                 </details>

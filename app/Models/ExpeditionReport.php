@@ -14,7 +14,12 @@ class ExpeditionReport extends Model
 
     protected $with = ['escortCloser:id,name,hull_number'];
 
-    protected $appends = ['ready_escort_at', 'is_ready_for_escort'];
+    protected $appends = ['ready_escort_at', 'is_ready_for_escort', 'administration_status'];
+
+    protected function administrationStatus(): Attribute
+    {
+        return Attribute::get(fn () => $this->escort_status === 'CLOSED' && $this->invoice_scan_path && $this->spb_scan_path ? 'CLOSE' : 'BELUM_CLOSE');
+    }
 
     protected function casts(): array
     {

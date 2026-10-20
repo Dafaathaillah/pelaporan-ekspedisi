@@ -58,7 +58,7 @@ const selectedRequest = computed(() =>
     ),
 );
 const requiresIncomingRequest = computed(() =>
-    ["DAILY", "WEEKLY"].includes(form.planning_frequency),
+    ["DAILY", "WEEKLY", "NON_REGULAR"].includes(form.planning_frequency),
 );
 const shownDocs = computed(() =>
     source.value
@@ -309,12 +309,6 @@ const validity = (x) =>
                             form.errors.planning_frequency
                         }}</span></label
                     >
-                    <p
-                        v-if="type === 'IJIN_LINTAS' && !source && form.planning_frequency === 'NON_REGULAR'"
-                        class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800"
-                    >
-                        Pengajuan Non-Reguler dapat dikirim langsung tanpa Incoming Request, PR, atau PO.
-                    </p>
                     <div class="mt-4 grid gap-4 md:grid-cols-2">
                         <label
                             >Nama Vendor<input
@@ -472,7 +466,7 @@ const validity = (x) =>
                                         ><span v-else>-</span>
                                     </td>
                                     <td>{{ x.units_count }} unit</td>
-                                    <td>{{ x.status }}</td>
+                                    <td>{{ x.status }}<span v-if="x.units?.some(unit => unit.latest_departure_p2h?.status === 'PENDING')" class="mt-1 block rounded-lg bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">P2H menunggu approval</span></td>
                                     <td>
                                         <b>{{ validity(x) }}</b
                                         ><small

@@ -32,13 +32,13 @@ class VendorController extends Controller
         $sort = in_array($request->sort, $allowedSort, true) ? $request->sort : 'submitted_at';
         $direction = $request->direction === 'asc' ? 'asc' : 'desc';
         $perPage = in_array((int) $request->per_page, [10, 25, 50, 100], true) ? (int) $request->per_page : 10;
-        $items = VendorSubmission::with('units:id,vendor_submission_id,plate_number,unit_order,driver_name,driver_phone,vehicle_type', 'expeditionRequest:id,request_number')->withCount(['documents', 'resubmissions', 'units'])->where('created_by', $u->id)->where('site', $u->site)
+        $items = VendorSubmission::with('units:id,vendor_submission_id,plate_number,unit_order,driver_name,driver_phone,vehicle_type', 'units.latestDepartureP2h', 'expeditionRequest:id,request_number')->withCount(['documents', 'resubmissions', 'units'])->where('created_by', $u->id)->where('site', $u->site)
             ->when($request->search, fn ($q, $v) => $q->where(fn ($x) => $x->where('submission_number', 'like', '%'.$v.'%')->orWhere('vendor_name', 'like', '%'.$v.'%')->orWhere('applicant_name', 'like', '%'.$v.'%')))
             ->when($request->history_type, fn ($q, $v) => $q->where('type', $v))->when($request->status, fn ($q, $v) => $q->where('status', $v))
             ->orderBy($sort, $direction)->paginate($perPage)->withQueryString();
 
         $expeditionRequests = ExpeditionRequest::where('site', $u->site)->where('vendor_company_id', $u->vendor_company_id)
-            ->where('status', 'OPEN')->latest()->get(['id', 'request_number', 'pr_number', 'po_number', 'expedition_type', 'route_from', 'route_to', 'description', 'created_at']);
+            ->where('status', 'OPEN')->where('readiness_status', 'READY')->latest()->get(['id', 'request_number', 'pr_number', 'po_number', 'expedition_type', 'route_from', 'route_to', 'description', 'created_at']);
 
         return Inertia::render('Vendor/Index', ['requirements' => $service->all(), 'submissions' => $items, 'vendorIdentity' => $u->vendorCompany?->name ?? $u->name, 'expeditionRequests' => $expeditionRequests, 'tableFilters' => $request->only(['search', 'history_type', 'status', 'sort', 'direction', 'per_page'])]);
     }
@@ -48,7 +48,7 @@ class VendorController extends Controller
         $u = request()->user();
         abort_unless($submission->created_by === $u->id && $submission->site === $u->site, 403);
 
-        return Inertia::render('Vendor/Show', ['submission' => $submission->load('documents', 'units.documents', 'expeditionRequest.vendorCompany')]);
+        return Inertia::render('Vendor/Show', ['submission' => $submission->load('documents', 'units.documents', 'units.latestDepartureP2h.reviewer', 'units.departureP2hs', 'expeditionRequest.vendorCompany')]);
     }
 
     public function updateUnitDetails(Request $request, VendorSubmissionUnit $unit): RedirectResponse
@@ -62,6 +62,9 @@ class VendorController extends Controller
             'driver_phone' => ['required', 'string', 'max:30'],
             'vehicle_type' => ['required', 'in:Fuso,Colt Diesel,Trailer,Dump Truck,Pickup,Light Vehicle,Lainnya'],
         ]);
+        if ($unit->departureP2hs()->exists() && ($data['driver_name'] !== $unit->driver_name || $data['driver_phone'] !== $unit->driver_phone || $data['vehicle_type'] !== $unit->vehicle_type)) {
+            throw ValidationException::withMessages(['driver_name' => 'Identitas driver dan unit tidak dapat diubah setelah P2H dikirim.']);
+        }
         $unit->update($data);
         foreach ($submission->planningItems as $item) {
             SafeBroadcast::dispatch(new PlanningUpdated($item->load('submission')));
@@ -153,17 +156,13 @@ class VendorController extends Controller
             if (! in_array($request->planning_frequency, ['DAILY', 'WEEKLY', 'NON_REGULAR'], true)) {
                 throw ValidationException::withMessages(['planning_frequency' => 'Pilih frekuensi planning Ijin Lintas.']);
             }
-            $isNonRegular = $request->planning_frequency === 'NON_REGULAR';
-            if (! $isNonRegular) {
-                $expeditionRequest = ExpeditionRequest::where('id', $request->expedition_request_id)
-                    ->where('site', $request->user()->site)
-                    ->where('vendor_company_id', $request->user()->vendor_company_id)
-                    ->where('status', 'OPEN')->first();
-                if (! $expeditionRequest) {
-                    throw ValidationException::withMessages(['expedition_request_id' => 'Pilih request ekspedisi aktif yang ditujukan untuk perusahaan Anda.']);
-                }
+            $expeditionRequest = ExpeditionRequest::where('id', $request->expedition_request_id)
+                ->where('site', $request->user()->site)
+                ->where('vendor_company_id', $request->user()->vendor_company_id)
+                ->where('status', 'OPEN')->where('readiness_status', 'READY')->first();
+            if (! $expeditionRequest) {
+                throw ValidationException::withMessages(['expedition_request_id' => 'Pilih request ekspedisi aktif yang sudah ditandai Ready untuk perusahaan Anda.']);
             }
-            $request->merge(['expedition_request_id' => $isNonRegular ? null : $request->expedition_request_id]);
             $request->merge(['service_category' => $request->planning_frequency === 'NON_REGULAR' ? 'NON_REGULAR' : 'REGULAR']);
         }
         foreach ($units as $i => $unit) {

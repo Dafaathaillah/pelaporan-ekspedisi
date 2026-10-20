@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Models\DepartureP2h;
 use App\Models\User;
 use App\Models\VendorSubmission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,6 +25,11 @@ class ArrivalPlanningTest extends TestCase
     private function permit(User $vendor): VendorSubmission
     {
         return VendorSubmission::create(['submission_number' => 'VND-'.$vendor->id, 'type' => 'IJIN_LINTAS', 'vendor_name' => $vendor->name, 'applicant_name' => 'PIC', 'phone' => '081', 'status' => 'RELEASED', 'submitted_at' => now(), 'released_at' => now(), 'release_expired_at' => now()->addWeek(), 'created_by' => $vendor->id, 'site' => 'BIB']);
+    }
+
+    private function departedUnit($unit, User $vendor): void
+    {
+        DepartureP2h::create(['vendor_submission_unit_id' => $unit->id, 'revision' => 1, 'submitted_by' => $vendor->id, 'driver_name' => $unit->driver_name, 'vehicle_plate' => $unit->plate_number, 'vehicle_type' => $unit->vehicle_type, 'items' => [], 'tire_positions' => [1], 'decision' => 'LAIK', 'status' => 'APPROVED', 'reviewed_by' => $vendor->id, 'reviewed_at' => now(), 'departed_at' => now()]);
     }
 
     public function test_vendor_can_complete_legacy_unit_details_but_not_another_vendors_unit(): void
@@ -71,6 +77,7 @@ class ArrivalPlanningTest extends TestCase
         $unit = $permit->units()->create(['subject_type' => 'UNIT', 'plate_number' => 'DA 123 XX', 'driver_name' => 'Budi', 'driver_phone' => '08123', 'vehicle_type' => 'Fuso']);
         $permit->units()->create(['subject_type' => 'UNIT', 'plate_number' => 'DA 456 XX']);
         $item = $permit->planningItems()->create(['planned_date' => today()]);
+        $this->departedUnit($unit, $vendor);
         $payload = ['planning_item_id' => $item->id, 'vendor_submission_unit_id' => $unit->id, 'driver_name' => 'Forged', 'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80, 'arrival_photo' => UploadedFile::fake()->image('arrival.jpg'), 'blood_pressure_photo' => UploadedFile::fake()->image('pressure.jpg')];
         foreach (['arrival', 'blood_pressure'] as $prefix) {
             $payload += [$prefix.'_latitude' => -3.5, $prefix.'_longitude' => 115.6, $prefix.'_location_accuracy' => 5, $prefix.'_photo_captured_at' => now()->toISOString()];
@@ -112,6 +119,7 @@ class ArrivalPlanningTest extends TestCase
         $second = $permit->units()->create(['subject_type' => 'UNIT', 'plate_number' => 'DA 2 AB', 'driver_name' => 'Driver Dua', 'driver_phone' => '0822', 'vehicle_type' => 'Trailer']);
         $firstPlanning = $permit->planningItems()->create(['vendor_submission_unit_id' => $first->id, 'planned_date' => today()]);
         $permit->planningItems()->create(['vendor_submission_unit_id' => $second->id, 'planned_date' => today()->addDay()]);
+        $this->departedUnit($first, $vendor);
 
         $payload = ['vendor_submission_unit_id' => $first->id, 'driver_name' => 'Data palsu', 'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80, 'arrival_photo' => UploadedFile::fake()->image('arrival.jpg'), 'blood_pressure_photo' => UploadedFile::fake()->image('pressure.jpg')];
         foreach (['arrival', 'blood_pressure'] as $prefix) {

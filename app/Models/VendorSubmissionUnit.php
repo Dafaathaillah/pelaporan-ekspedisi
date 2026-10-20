@@ -20,4 +20,14 @@ class VendorSubmissionUnit extends Model
     {
         return $this->hasMany(VendorDocument::class);
     }
+
+    public function departureP2hs()
+    {
+        return $this->hasMany(DepartureP2h::class)->orderByDesc('revision');
+    }
+
+    public function latestDepartureP2h()
+    {
+        return $this->hasOne(DepartureP2h::class)->ofMany('revision', 'max');
+    }
 }

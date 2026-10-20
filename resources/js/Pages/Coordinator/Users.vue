@@ -52,6 +52,7 @@ const roleOptions = [
     { value: "expedition", label: "Ekspedisi" },
     { value: "driver", label: "Driver Escort" },
     { value: "purchasing_admin", label: "Admin Purchasing" },
+    { value: "finance", label: "Tim Finance" },
 ];
 const editableRoleOptions = roleOptions.slice(1);
 if (props.canManageDevelopers) {
@@ -87,6 +88,7 @@ const roleLabel = (role) =>
         expedition: "Ekspedisi",
         driver: "Driver Escort",
         purchasing_admin: "Admin Purchasing",
+        finance: "Tim Finance",
     })[role] || role;
 const applyFilters = () =>
     router.get("/coordinator/users", query.value, {

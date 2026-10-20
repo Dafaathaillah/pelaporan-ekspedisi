@@ -31,6 +31,7 @@ class User extends Authenticatable
         'hull_number',
         'is_active',
         'permissions',
+        'coordinator_session_hash',
     ];
 
     /**
@@ -41,6 +42,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'coordinator_session_hash',
     ];
 
     /**
@@ -70,11 +72,12 @@ class User extends Authenticatable
         if ($permissions === null) {
             $permissions = match ($this->role) {
                 UserRole::DEVELOPER => ['*'],
-                UserRole::COORDINATOR => ['coordinator.expedition', 'coordinator.requests', 'coordinator.vendor', 'coordinator.planning', 'users.manage', 'vendors.manage'],
+                UserRole::COORDINATOR => ['coordinator.expedition', 'coordinator.vendor', 'coordinator.planning', 'users.manage', 'vendors.manage'],
                 UserRole::VENDOR => ['vendor.submission'],
                 UserRole::EXPEDITION => ['expedition.report'],
                 UserRole::DRIVER => ['driver.escort'],
                 UserRole::PURCHASING_ADMIN => ['purchasing.requests'],
+                UserRole::FINANCE => ['finance.invoices'],
             };
         }
 
@@ -90,8 +93,8 @@ class User extends Authenticatable
             if ($this->hasPermission('coordinator.vendor')) {
                 return '/coordinator/submissions/VISITOR';
             }
-            if ($this->hasPermission('coordinator.requests')) {
-                return '/coordinator/expedition-requests';
+            if ($this->role === UserRole::DEVELOPER && $this->hasPermission('coordinator.requests')) {
+                return '/developer/expedition-requests';
             }
             if ($this->hasPermission('coordinator.planning')) {
                 return '/coordinator/planning';
@@ -108,6 +111,7 @@ class User extends Authenticatable
             UserRole::VENDOR => '/vendor',
             UserRole::DRIVER => '/driver/escorts',
             UserRole::PURCHASING_ADMIN => '/purchasing/requests',
+            UserRole::FINANCE => '/finance/escort-administration',
             default => '/expedition',
         };
     }

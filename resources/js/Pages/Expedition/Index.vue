@@ -2,6 +2,8 @@
 import AppShell from "@/Components/AppShell.vue";
 import DataTableFooter from "@/Components/DataTableFooter.vue";
 import ExpeditionArrivalUnitCard from "@/Components/ExpeditionArrivalUnitCard.vue";
+import DepartureP2hCard from "@/Components/DepartureP2hCard.vue";
+import ArrivalEscortTimer from "@/Components/ArrivalEscortTimer.vue";
 import { router, useForm } from "@inertiajs/vue3";
 import { computed, nextTick, onBeforeUnmount, ref } from "vue";
 import axios from "axios";
@@ -12,14 +14,13 @@ const props = defineProps({
     expeditionCompany: String,
     reports: Object,
     permits: { type: Array, default: () => [] },
+    p2hChecklist: { type: Array, default: () => [] },
     reportBase: { type: String, default: "/expedition/reports" },
 });
 const arrivalInput = ref(null),
     pressureInput = ref(null),
-    p2hInput = ref(null),
     arrivalPreview = ref(""),
-    pressurePreview = ref(""),
-    p2hPreview = ref("");
+    pressurePreview = ref("");
 const locating = ref({ arrival: false, pressure: false });
 const locationError = ref({ arrival: "", pressure: "" });
 const form = useForm({
@@ -35,7 +36,6 @@ const form = useForm({
     blood_pressure_diastolic: "",
     arrival_photo: null,
     blood_pressure_photo: null,
-    p2h_photo: null,
     arrival_latitude: "",
     arrival_longitude: "",
     arrival_location_accuracy: "",
@@ -144,7 +144,7 @@ const healthClass = (status) =>
         INVALID: "border-red-300 bg-red-50 text-red-800",
     })[status] || "border-slate-200 bg-slate-50 text-slate-700";
 const pickPhoto = (kind) =>
-    ({ arrival: arrivalInput.value, pressure: pressureInput.value, p2h: p2hInput.value })[kind]?.click();
+    ({ arrival: arrivalInput.value, pressure: pressureInput.value })[kind]?.click();
 const captureLocation = async (kind) => {
     locating.value[kind] = true;
     locationError.value[kind] = "";
@@ -181,20 +181,19 @@ const captureLocation = async (kind) => {
 const setPhoto = async (event, kind) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const preview = { arrival: arrivalPreview, pressure: pressurePreview, p2h: p2hPreview }[kind];
+    const preview = { arrival: arrivalPreview, pressure: pressurePreview }[kind];
     if (preview.value) URL.revokeObjectURL(preview.value);
     preview.value = URL.createObjectURL(file);
-    form[{ arrival: "arrival_photo", pressure: "blood_pressure_photo", p2h: "p2h_photo" }[kind]] = file;
-    if (kind !== "p2h") await captureLocation(kind);
+    form[{ arrival: "arrival_photo", pressure: "blood_pressure_photo" }[kind]] = file;
+    await captureLocation(kind);
 };
 const clearPreviews = () => {
-    [arrivalPreview, pressurePreview, p2hPreview].forEach((preview) => {
+    [arrivalPreview, pressurePreview].forEach((preview) => {
         if (preview.value) URL.revokeObjectURL(preview.value);
         preview.value = "";
     });
     if (arrivalInput.value) arrivalInput.value.value = "";
     if (pressureInput.value) pressureInput.value.value = "";
-    if (p2hInput.value) p2hInput.value.value = "";
     locating.value = { arrival: false, pressure: false };
     locationError.value = { arrival: "", pressure: "" };
 };
@@ -248,6 +247,7 @@ onBeforeUnmount(clearPreviews);
             <p v-else-if="!selectedPermit" class="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Pilih izin untuk menampilkan seluruh unit dan status kedatangannya.</p>
             <div v-else class="mt-6 space-y-5">
                 <div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-black text-slate-900">{{ selectedPermit.vendor_name }}</h3><p class="text-sm text-slate-500">{{ unitCards.length }} unit pada izin {{ selectedPermit.submission_number }}</p></div><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{{ unitCards.filter(card => card.completedReport).length }}/{{ unitCards.length }} sudah datang</span></div>
+                <section v-if="reportBase === '/expedition/reports'" class="space-y-3"><h3 class="text-lg font-black text-slate-900">P2H &amp; Keberangkatan per Unit</h3><p class="text-sm text-slate-600">Isi P2H, tunggu persetujuan vendor, kemudian konfirmasi keberangkatan setiap unit.</p><DepartureP2hCard v-for="unit in selectedPermit.units" :key="unit.id" :unit="unit" :permit="selectedPermit" :checklist="p2hChecklist" /></section>
                 <ExpeditionArrivalUnitCard v-for="card in unitCards" :key="card.unit.id" :ref="instance => setCardRef(card.unit.id, instance)" :number="card.number" :permit="selectedPermit" :unit="card.unit" :planning="card.planning" :completed-report="card.completedReport" :expedition-company="expeditionCompany" :report-base="reportBase" :selected="selectedUnitIds.includes(card.unit.id)" @update:selected="toggleUnit(card.unit.id, $event)" />
                 <div class="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur sm:bottom-28 lg:bottom-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><b>{{ selectedUnitIds.length }} unit dipilih</b><p class="text-sm text-slate-500">Unit yang tidak dicentang tetap berstatus Menunggu Driver.</p></div><button type="button" class="btn" :disabled="!selectedUnitIds.length || batchSubmitting" @click="sendSelected">{{ batchSubmitting ? 'MENGIRIM KEDATANGAN...' : 'KIRIM KEDATANGAN UNIT TERPILIH' }}</button></div><p v-if="batchMessage" class="mt-3 text-sm font-semibold" :class="batchMessage.includes('perlu') ? 'text-amber-700' : 'text-emerald-700'">{{ batchMessage }}</p></div>
             </div>
@@ -608,15 +608,6 @@ onBeforeUnmount(clearPreviews);
                         }}
                     </p>
                 </div>
-                <div v-if="reportBase === '/expedition/reports'">
-                    <p class="mb-2 text-sm font-semibold text-slate-700">Foto P2H Unit <span class="text-red-600">*</span></p>
-                    <input ref="p2hInput" type="file" accept="image/*" capture="environment" class="hidden" @change="setPhoto($event, 'p2h')" />
-                    <button type="button" class="group relative flex min-h-52 w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition hover:border-red-300 hover:bg-red-50/40" @click="pickPhoto('p2h')">
-                        <img v-if="p2hPreview" :src="p2hPreview" class="absolute inset-0 h-full w-full object-cover" alt="Preview foto P2H unit" /><span v-if="p2hPreview" class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></span>
-                        <span class="relative m-auto flex flex-col items-center px-5 text-center" :class="p2hPreview ? 'self-end pb-4 text-white' : 'text-slate-600'"><span class="grid h-12 w-12 place-items-center rounded-2xl bg-white text-red-600 shadow-sm"><svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h3l2-2h6l2 2h3v12H4z"/><circle cx="12" cy="13" r="3"/></svg></span><b class="mt-3">{{ p2hPreview ? 'Ambil Ulang Foto' : 'Buka Kamera P2H Unit' }}</b><small class="mt-1">Pastikan hasil pemeriksaan unit terlihat jelas</small></span>
-                    </button>
-                    <p class="err">{{ form.errors.p2h_photo }}</p>
-                </div>
             </div>
             <p class="mt-5 text-center text-[11px] text-slate-400">
                 Nama daerah menggunakan data © OpenStreetMap contributors.
@@ -670,7 +661,7 @@ onBeforeUnmount(clearPreviews);
                     <tbody>
                         <tr v-for="(row, index) in reports.data" :key="row.id">
                             <td>{{ reports.from + index }}</td>
-                            <td>{{ date(row.arrived_at) }}</td>
+                            <td>{{ date(row.arrived_at) }}<ArrivalEscortTimer :arrived-at="row.arrived_at" :escort-started-at="row.escort_started_at" class="mt-1" /></td>
                             <td>{{ row.driver_name }}</td>
                             <td>
                                 <b>{{ row.vehicle_plate }}</b>

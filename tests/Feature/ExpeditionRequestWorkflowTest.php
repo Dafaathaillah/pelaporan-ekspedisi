@@ -145,7 +145,7 @@ class ExpeditionRequestWorkflowTest extends TestCase
         $purchasing = User::factory()->create(['role' => UserRole::PURCHASING_ADMIN, 'site' => 'BIB']);
         $vendor = User::factory()->create(['name' => $company->name, 'role' => UserRole::VENDOR, 'vendor_company_id' => $company->id, 'site' => 'BIB', 'permissions' => ['vendor.submission']]);
         $foreignRequest = ExpeditionRequest::create(['request_number' => 'REQ-FOREIGN', 'vendor_company_id' => $otherCompany->id, 'expedition_type' => 'FUSO', 'route_from' => 'A', 'route_to' => 'B', 'status' => 'OPEN', 'created_by' => $purchasing->id, 'site' => 'BIB']);
-        $documents = collect(['FOTO_UNIT_4_SISI', 'KTP', 'SIM', 'STNK', 'KIR', 'SURAT_SEHAT'])
+        $documents = collect(['FOTO_UNIT_4_SISI', 'FOTO_P2H', 'KTP', 'SIM', 'STNK', 'KIR', 'SURAT_SEHAT'])
             ->mapWithKeys(fn ($code) => [$code => UploadedFile::fake()->create(strtolower($code).'.pdf', 20, 'application/pdf')])->all();
 
         $this->actingAs($vendor)->post('/vendor/submissions', [
