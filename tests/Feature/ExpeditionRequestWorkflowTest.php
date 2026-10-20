@@ -20,7 +20,7 @@ class ExpeditionRequestWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_purchasing_request_is_only_offered_to_the_target_vendor_and_visible_to_coordinator(): void
+    public function test_purchasing_request_is_only_offered_to_target_vendor_and_coordinator_cannot_create_it(): void
     {
         $target = VendorCompany::create(['name' => 'Vendor Target', 'abbreviation' => 'VT', 'category' => 'REGULAR', 'is_active' => true]);
         $other = VendorCompany::create(['name' => 'Vendor Lain', 'abbreviation' => 'VL', 'category' => 'REGULAR', 'is_active' => true]);
@@ -41,14 +41,12 @@ class ExpeditionRequestWorkflowTest extends TestCase
         $request = ExpeditionRequest::firstOrFail();
         $this->assertMatchesRegularExpression('/^REQ-EXP-\d{8}-[A-F0-9]{6}$/', $request->request_number);
 
-        $this->actingAs($coordinator)->get('/coordinator/expedition-requests')
-            ->assertInertia(fn (Assert $page) => $page->component('Purchasing/Requests')
-                ->where('canCreate', true)->where('pageRole', 'coordinator')->has('items.data', 1)
-                ->where('items.data.0.request_number', $request->request_number));
-        $this->actingAs($developer)->get('/coordinator/expedition-requests')
+        $this->actingAs($coordinator)->get('/coordinator/expedition-requests')->assertNotFound();
+        $this->actingAs($developer)->get('/developer/expedition-requests')
             ->assertInertia(fn (Assert $page) => $page->component('Purchasing/Requests')
                 ->where('canCreate', true)->where('pageRole', 'developer')->has('items.data', 1));
 
+        $this->actingAs($vendor)->patch('/vendor/expedition-requests/'.$request->id.'/readiness', ['readiness_status' => 'READY'])->assertSessionHasNoErrors();
         $this->actingAs($vendor)->get('/vendor')->assertInertia(fn (Assert $page) => $page
             ->component('Vendor/Index')->has('expeditionRequests', 1)
             ->where('expeditionRequests.0.request_number', $request->request_number));
@@ -60,7 +58,7 @@ class ExpeditionRequestWorkflowTest extends TestCase
         $this->actingAs($otherVendor)->get('/vendor/expedition-requests')->assertInertia(fn (Assert $page) => $page
             ->component('Vendor/ExpeditionRequests')->has('items.data', 0));
 
-        $this->actingAs($coordinator)->patch('/coordinator/expedition-requests/'.$request->id.'/procurement', [
+        $this->actingAs($purchasing)->patch('/purchasing/requests/'.$request->id.'/procurement', [
             'pr_number' => 'PR-2026-001',
             'po_number' => 'PO-2026-001',
         ])->assertRedirect();
@@ -76,15 +74,15 @@ class ExpeditionRequestWorkflowTest extends TestCase
             'route_from' => 'Site BIB',
             'route_to' => 'Warehouse Banjarmasin',
             'description' => 'Request dibuat oleh koordinator.',
-        ])->assertRedirect();
-        $this->actingAs($developer)->post('/coordinator/expedition-requests', [
+        ])->assertNotFound();
+        $this->actingAs($developer)->post('/developer/expedition-requests', [
             'vendor_company_id' => $other->id,
             'expedition_type' => 'PICKUP',
             'route_from' => 'Pelabuhan',
             'route_to' => 'Site BIB',
             'description' => 'Request dibuat oleh developer.',
         ])->assertRedirect();
-        $this->assertDatabaseCount('expedition_requests', 3);
+        $this->assertDatabaseCount('expedition_requests', 2);
 
         $submission = VendorSubmission::create([
             'submission_number' => 'VND-REQUEST-TEST',
@@ -137,7 +135,7 @@ class ExpeditionRequestWorkflowTest extends TestCase
                 ->where('items.data.0.submissions.0.planning_items.0.planned_date', $plannedDate));
     }
 
-    public function test_non_regular_ijin_lintas_can_be_submitted_directly_without_incoming_request(): void
+    public function test_non_regular_ijin_lintas_requires_ready_incoming_request(): void
     {
         Storage::fake('local');
         $company = VendorCompany::create(['name' => 'Vendor Direct', 'abbreviation' => 'VD', 'category' => 'NON_REGULAR', 'is_active' => true]);
@@ -152,10 +150,17 @@ class ExpeditionRequestWorkflowTest extends TestCase
             'type' => 'IJIN_LINTAS', 'planning_frequency' => 'NON_REGULAR', 'expedition_request_id' => $foreignRequest->id,
             'vendor_name' => $company->name, 'applicant_name' => 'PIC Direct', 'phone' => '0812',
             'units' => [['driver_name' => 'Budi', 'driver_phone' => '08123', 'vehicle_type' => 'Fuso', 'plate_number' => 'DA 1111 VD', 'documents' => $documents]],
+        ])->assertSessionHasErrors('expedition_request_id');
+
+        $ownRequest = ExpeditionRequest::create(['request_number' => 'REQ-OWN', 'vendor_company_id' => $company->id, 'expedition_type' => 'FUSO', 'route_from' => 'A', 'route_to' => 'B', 'status' => 'OPEN', 'readiness_status' => 'READY', 'created_by' => $purchasing->id, 'site' => 'BIB']);
+        $this->actingAs($vendor)->post('/vendor/submissions', [
+            'type' => 'IJIN_LINTAS', 'planning_frequency' => 'NON_REGULAR', 'expedition_request_id' => $ownRequest->id,
+            'vendor_name' => $company->name, 'applicant_name' => 'PIC Direct', 'phone' => '0812',
+            'units' => [['driver_name' => 'Budi', 'driver_phone' => '08123', 'vehicle_type' => 'Fuso', 'plate_number' => 'DA 1111 VD', 'documents' => $documents]],
         ])->assertSessionHasNoErrors();
 
         $submission = VendorSubmission::firstOrFail();
-        $this->assertNull($submission->expedition_request_id);
+        $this->assertSame($ownRequest->id, $submission->expedition_request_id);
         $this->assertSame('NON_REGULAR', $submission->service_category);
         $this->assertSame('OPEN', $foreignRequest->fresh()->status);
 
