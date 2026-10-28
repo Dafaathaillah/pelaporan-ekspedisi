@@ -5,8 +5,8 @@ use App\Http\Controllers\DepartureP2hController;
 use App\Http\Controllers\DirectPlanningController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DriverEscortController;
-use App\Http\Controllers\ExpeditionController;
 use App\Http\Controllers\EscortAdministrationController;
+use App\Http\Controllers\ExpeditionController;
 use App\Http\Controllers\ExpeditionPlanningController;
 use App\Http\Controllers\ExpeditionRequestController;
 use App\Http\Controllers\HistoricalManagementController;
@@ -135,6 +135,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/submissions/{type}', [CoordinatorController::class, 'submissions'])->name('coordinator.submissions');
             Route::get('/submissions/{type}/export', [CoordinatorController::class, 'exportSubmissions'])->name('coordinator.submissions.export');
             Route::get('/submission/{submission}', [CoordinatorController::class, 'showSubmission'])->name('coordinator.show');
+            Route::patch('/submission/{submission}/expedition-account', [CoordinatorController::class, 'linkExpeditionAccount'])->middleware('permission:users.manage')->name('coordinator.submission.expedition-account');
             Route::patch('/submission/{submission}/status', [CoordinatorController::class, 'updateStatus'])->name('coordinator.status');
             Route::patch('/submission/{submission}/release-details', [CoordinatorController::class, 'updateReleaseDetails']);
             Route::post('/submission/{submission}/request-resubmission', [CoordinatorController::class, 'requestResubmission'])->name('coordinator.request-resubmission');

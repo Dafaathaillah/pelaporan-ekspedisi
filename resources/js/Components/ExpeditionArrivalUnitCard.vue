@@ -1,5 +1,5 @@
 <script setup>
-import { useForm } from '@inertiajs/vue3';
+import { Link, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { getPreciseLocation } from '@/lib/preciseLocation';
@@ -103,6 +103,11 @@ onBeforeUnmount(() => Object.values(previews).forEach(preview => preview.value &
                 <div v-for="([label, value]) in [['Nama Driver', unit.driver_name], ['Nomor HP', unit.driver_phone], ['Jenis Kendaraan', unit.vehicle_type], ['Vendor/Pengirim', permit.vendor_name], ['Tujuan', permit.destination]]" :key="label" class="rounded-2xl bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ label }}</p><p class="mt-1 font-semibold text-slate-800">{{ value || '-' }}</p></div>
             </div>
             <p v-if="blockedReason && !completedReport" class="mt-4 rounded-2xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">{{ blockedReason }}</p>
+            <div v-if="reportBase === '/vendor/arrivals' && !completedReport && !unit.latest_departure_p2h?.departed_at" class="mt-3 text-sm text-slate-600">
+                <template v-if="unit.latest_departure_p2h?.status === 'PENDING'"><p>P2H sudah dikirim oleh ekspedisi dan menunggu keputusan vendor.</p><Link :href="`/vendor/submissions/${permit.id}`" class="mt-2 inline-block font-bold text-red-700 underline">Buka Detail Izin untuk Approve / Reject P2H</Link></template>
+                <p v-else-if="unit.latest_departure_p2h?.status === 'APPROVED'">P2H sudah disetujui. Akun ekspedisi perlu mengonfirmasi keberangkatan pada menu P2H &amp; Kedatangan.</p>
+                <p v-else>Form P2H diisi oleh akun ekspedisi dari menu P2H &amp; Kedatangan. Jika izin tidak muncul di akun tersebut, koordinator perlu menghubungkan perusahaan akun ekspedisi melalui monitoring Ijin Lintas atau Manajemen Pengguna.</p>
+            </div>
             <form v-if="!completedReport && selected" class="mt-5" @submit.prevent>
                 <div class="grid gap-4 sm:grid-cols-2">
                     <label class="text-sm font-semibold">Sistolik / tekanan atas *<input v-model="form.blood_pressure_systolic" type="number" min="60" max="250" class="field" placeholder="Contoh: 120"><p class="err">{{ form.errors.blood_pressure_systolic }}</p></label>

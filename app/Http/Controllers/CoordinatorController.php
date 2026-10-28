@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\SubmissionStatus;
 use App\Enums\SubmissionType;
+use App\Enums\UserRole;
 use App\Events\PlanningUpdated;
 use App\Events\VendorResubmissionRequested;
 use App\Events\VendorSubmissionCreated;
@@ -11,8 +12,10 @@ use App\Events\VendorSubmissionStatusChanged;
 use App\Http\Requests\UpdateSubmissionStatusRequest;
 use App\Models\ExpeditionReport;
 use App\Models\InternalIjinLintas;
+use App\Models\User;
 use App\Models\VendorDocument;
 use App\Models\VendorSubmission;
+use App\Services\IjinLintasP2hFollowUp;
 use App\Services\PlanningService;
 use App\Support\SafeBroadcast;
 use Illuminate\Http\Request;
@@ -129,7 +132,31 @@ class CoordinatorController extends Controller
             ? InternalIjinLintas::with('escortReports:id,internal_ijin_lintas_id,escort_status')->where('site', $r->user()->site)->latest()->get()->each(fn ($item) => $item->append('operational_status'))
             : collect();
 
-        return Inertia::render('Coordinator/Submissions', ['type' => $type->value, 'items' => $items, 'stats' => $stats, 'internalItems' => $internalItems, 'filters' => $r->only(['search', 'status', 'date_from', 'date_to', 'sort', 'direction', 'per_page']), 'reviewBase' => $this->reviewBase($r), 'pageRole' => $r->user()->role->value]);
+        $followUp = app(IjinLintasP2hFollowUp::class)->forPage($items->getCollection(), $r->user());
+
+        return Inertia::render('Coordinator/Submissions', ['type' => $type->value, 'items' => $items, 'stats' => $stats, 'internalItems' => $internalItems, 'filters' => $r->only(['search', 'status', 'date_from', 'date_to', 'sort', 'direction', 'per_page']), 'reviewBase' => $this->reviewBase($r), 'pageRole' => $r->user()->role->value, ...$followUp]);
+    }
+
+    public function linkExpeditionAccount(Request $request, VendorSubmission $submission)
+    {
+        $this->authorizeSubmissionReview($request, $submission);
+        abort_unless($request->user()->hasPermission('users.manage'), 403);
+        abort_unless($submission->type === SubmissionType::IJIN_LINTAS && $submission->status === SubmissionStatus::RELEASED, 422);
+        $data = $request->validate(['expedition_user_id' => ['required', 'integer', 'exists:users,id']]);
+        $company = $submission->creator?->vendorCompany;
+        if (! $company?->is_active) {
+            throw ValidationException::withMessages(['expedition_user_id' => 'Perusahaan pemilik izin belum terhubung atau tidak aktif. Perbaiki akun vendor pada Manajemen Pengguna terlebih dahulu.']);
+        }
+        DB::transaction(function () use ($data, $submission, $company) {
+            $account = User::lockForUpdate()->findOrFail($data['expedition_user_id']);
+            abort_unless($account->role === UserRole::EXPEDITION && $account->site === $submission->site && $account->is_active && $account->hasPermission('expedition.report'), 403);
+            if ($account->vendor_company_id && $account->vendor_company_id !== $company->id) {
+                throw ValidationException::withMessages(['expedition_user_id' => 'Akun ini sudah terhubung ke perusahaan lain. Pengaitan tidak diubah.']);
+            }
+            $account->update(['vendor_company_id' => $company->id]);
+        });
+
+        return back()->with('success', 'Akun ekspedisi terhubung. Buka ulang menu P2H & Kedatangan pada akun ekspedisi untuk memilih izin ini.');
     }
 
     public function exportSubmissions(Request $r, SubmissionType $type)
