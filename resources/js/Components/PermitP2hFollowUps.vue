@@ -1,13 +1,9 @@
 <script setup>
-import { Link, useForm } from '@inertiajs/vue3';
-import { reactive } from 'vue';
+import { Link } from '@inertiajs/vue3';
 import P2hJourney from '@/Components/P2hJourney.vue';
 import { unitP2hStage } from '@/lib/p2hFollowUp';
 
-const props = defineProps({ permits: Array, accounts: Array, canLink: Boolean, reviewBase: String });
-const forms = reactive({});
-const formFor = permit => forms[permit.id] ||= useForm({ expedition_user_id: '' });
-const linkAccount = permit => formFor(permit).patch(`/coordinator/submission/${permit.id}/expedition-account`, { preserveScroll: true, onSuccess: () => formFor(permit).reset() });
+const props = defineProps({ permits: Array, reviewBase: String });
 const detailUrl = permit => props.reviewBase === '/purchasing' ? `/purchasing/vendor-submission/${permit.id}` : `/coordinator/submission/${permit.id}`;
 const stages = {
     AWAITING_P2H: ['Menunggu P2H ekspedisi', 'Ekspedisi membuka P2H & Kedatangan, memilih izin ini, lalu klik Isi Form P2H.'],
@@ -33,20 +29,10 @@ const stages = {
                 <p v-if="permit.is_expired" class="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Masa berlaku izin belum diisi atau sudah berakhir. Reviewer perlu memeriksa detail izin sebelum ekspedisi dapat melanjutkan P2H.</p>
                 <div v-if="!permit.company || !permit.company.is_active" class="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Akun vendor pemilik izin belum terhubung ke perusahaan aktif. Perbaiki perusahaan akun vendor melalui Manajemen Pengguna terlebih dahulu.</div>
                 <div v-else-if="!permit.expedition_accounts.length" class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                    <p class="font-bold">Belum ada akun ekspedisi aktif yang terhubung ke {{ permit.company.name }} pada site ini.</p>
-                    <p class="mt-1">Inilah penyebab izin tidak muncul di akun ekspedisi. Hubungkan akun yang benar, lalu muat ulang halaman P2H &amp; Kedatangan pada akun tersebut.</p>
-                    <p v-if="canLink && !accounts.length" class="mt-2">Tidak ada akun ekspedisi aktif tanpa perusahaan pada site ini. Periksa atau buat akun melalui Manajemen Pengguna.</p>
-                    <p v-if="!canLink" class="mt-2">Minta koordinator dengan akses Manajemen Pengguna menghubungkan akun ekspedisi.</p>
+                    <p class="font-bold">Belum ditemukan akun ekspedisi aktif untuk {{ permit.company.name }} pada site ini.</p>
+                    <p class="mt-1">Perusahaan akun ekspedisi dikenali otomatis dari username sesuai singkatan atau nama master vendor. Pastikan akun memiliki username yang sesuai, aktif, dan berada pada site yang sama.</p>
                 </div>
                 <p v-else class="mt-3 text-sm text-slate-600">Akun ekspedisi terkait: <b>{{ permit.expedition_accounts.map(account => account.name).join(', ') }}</b>. Akun ini mengisi P2H dari menu P2H &amp; Kedatangan.</p>
-                <form v-if="canLink && permit.company?.is_active && accounts.length && !permit.is_expired" class="mt-3 rounded-xl bg-slate-50 p-3" @submit.prevent="linkAccount(permit)">
-                    <p v-if="permit.expedition_accounts.length" class="mb-2 text-xs text-slate-600">Masih ada akun ekspedisi lama yang belum terhubung? Pilih akun yang benar untuk ditambahkan ke perusahaan ini.</p>
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
-                        <label class="min-w-0 flex-1 text-xs font-bold">Pilih akun ekspedisi yang belum terhubung<select v-model="formFor(permit).expedition_user_id" class="field mt-1" required><option value="">Pilih akun yang sesuai dengan perusahaan ini</option><option v-for="account in accounts" :key="account.id" :value="account.id">{{ account.name }} ({{ account.username }})</option></select></label>
-                        <button type="submit" class="btn shrink-0" :disabled="formFor(permit).processing || !formFor(permit).expedition_user_id">{{ formFor(permit).processing ? 'Menghubungkan...' : `Hubungkan ke ${permit.company.name}` }}</button>
-                    </div>
-                    <p v-if="forms[permit.id]?.errors.expedition_user_id" class="err mt-2">{{ forms[permit.id].errors.expedition_user_id }}</p>
-                </form>
                 <div class="mt-4 grid gap-3 xl:grid-cols-2">
                     <div v-for="unit in permit.units" :key="unit.id" class="rounded-xl border border-slate-200 p-3 text-sm">
                         <p class="font-bold text-slate-900">{{ unit.plate_number }} · {{ unit.driver_name || 'Driver belum diisi' }}</p>

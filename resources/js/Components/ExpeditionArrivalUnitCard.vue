@@ -106,7 +106,7 @@ onBeforeUnmount(() => Object.values(previews).forEach(preview => preview.value &
             <div v-if="reportBase === '/vendor/arrivals' && !completedReport && !unit.latest_departure_p2h?.departed_at" class="mt-3 text-sm text-slate-600">
                 <template v-if="unit.latest_departure_p2h?.status === 'PENDING'"><p>P2H sudah dikirim oleh ekspedisi dan menunggu keputusan vendor.</p><Link :href="`/vendor/submissions/${permit.id}`" class="mt-2 inline-block font-bold text-red-700 underline">Buka Detail Izin untuk Approve / Reject P2H</Link></template>
                 <p v-else-if="unit.latest_departure_p2h?.status === 'APPROVED'">P2H sudah disetujui. Akun ekspedisi perlu mengonfirmasi keberangkatan pada menu P2H &amp; Kedatangan.</p>
-                <p v-else>Form P2H diisi oleh akun ekspedisi dari menu P2H &amp; Kedatangan. Jika izin tidak muncul di akun tersebut, koordinator perlu menghubungkan perusahaan akun ekspedisi melalui monitoring Ijin Lintas atau Manajemen Pengguna.</p>
+                <p v-else>Form P2H diisi oleh akun ekspedisi dari menu P2H &amp; Kedatangan. Perusahaan ekspedisi dikenali otomatis dari username akun. Pastikan site sesuai dan izin masih berlaku.</p>
             </div>
             <form v-if="!completedReport && selected" class="mt-5" @submit.prevent>
                 <div class="grid gap-4 sm:grid-cols-2">

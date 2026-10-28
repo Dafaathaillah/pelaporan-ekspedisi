@@ -25,7 +25,7 @@ class UserManagementTest extends TestCase
         $this->assertSame('Ekspedisi BAS', $expedition->name);
 
         $this->patch('/coordinator/users/'.$expedition->id, [...$payload, 'password' => '', 'vendor_company_id' => $other->id])->assertSessionHasNoErrors();
-        $this->assertSame($other->id, $expedition->fresh()->vendor_company_id);
+        $this->assertSame($bas->id, $expedition->fresh()->vendor_company_id);
     }
 
     public function test_expedition_account_requires_a_vendor_company(): void

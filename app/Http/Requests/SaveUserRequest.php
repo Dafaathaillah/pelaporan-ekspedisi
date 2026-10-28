@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\UserRole;
+use App\Services\ExpeditionCompanyResolver;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -46,6 +47,11 @@ class SaveUserRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        if ($this->input('role') === UserRole::EXPEDITION->value) {
+            $companyId = $this->route('managedUser')?->vendor_company_id
+                ?? app(ExpeditionCompanyResolver::class)->companyForUsername((string) $this->input('username'))?->id;
+            $this->merge(['vendor_company_id' => $companyId]);
+        }
         if ($this->input('role') === UserRole::DEVELOPER->value || $this->input('role') !== UserRole::COORDINATOR->value) {
             $this->merge(['permissions' => []]);
         }
@@ -62,7 +68,7 @@ class SaveUserRequest extends FormRequest
             'email.unique' => 'Email sudah digunakan oleh pengguna lain.',
             'password.min' => 'Password minimal harus terdiri dari 8 karakter.',
             'hull_number.required_if' => 'Nomor lambung wajib diisi untuk akun driver.',
-            'vendor_company_id.required_if' => 'Pilih perusahaan vendor untuk menghubungkan akun dengan izin lintas dan P2H.',
+            'vendor_company_id.required_if' => $this->input('role') === 'expedition' ? 'Username ekspedisi harus cocok dengan satu singkatan atau nama perusahaan aktif pada master vendor.' : 'Pilih perusahaan vendor untuk akun ini.',
             'permissions.*.in' => 'Pilihan akses modul tidak valid.',
         ];
     }

@@ -154,6 +154,7 @@ const confirmEdit = () => {
     if (user) openEdit(user);
 };
 const save = () => {
+    if (form.role === 'expedition') form.vendor_company_id = '';
     if (editing.value && !passwordTouched.value) form.password = "";
     const options = {
         preserveScroll: true,
@@ -507,7 +508,7 @@ const save = () => {
                                 placeholder="Username login"
                             /><span class="err">{{
                                 form.errors.username
-                            }}</span></label
+                            }}</span><template v-if="form.role === 'expedition'"><p class="mt-2 text-xs font-normal text-slate-500">Perusahaan dikenali otomatis dari username sesuai singkatan atau nama master vendor, misalnya bas untuk BAS.</p><span class="err">{{ form.errors.vendor_company_id }}</span></template></label
                         >
                         <label class="text-xs font-bold"
                             >Email
@@ -556,7 +557,7 @@ const save = () => {
                                 placeholder="BIB"
                         /></label>
                         <div
-                            v-if="['vendor', 'expedition'].includes(form.role)"
+                            v-if="form.role === 'vendor'"
                             class="text-xs font-bold sm:col-span-2"
                         >
                             Perusahaan dari Master Vendor
@@ -571,7 +572,6 @@ const save = () => {
                             <span class="err">{{
                                 form.errors.vendor_company_id
                             }}</span>
-                            <p v-if="form.role === 'expedition'" class="mt-2 text-xs font-normal text-slate-500">Akun ekspedisi hanya dapat memilih izin lintas dan mengisi P2H milik perusahaan ini pada site yang sama.</p>
                         </div>
                         <label
                             v-if="form.role === 'driver'"

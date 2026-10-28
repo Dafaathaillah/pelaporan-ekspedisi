@@ -15,8 +15,6 @@ const p = defineProps({
     pageRole: { type: String, default: "coordinator" },
     internalItems: { type: Array, default: () => [] },
     p2hFollowUps: { type: Array, default: () => [] },
-    unlinkedExpeditions: { type: Array, default: () => [] },
-    canLinkExpedition: { type: Boolean, default: false },
 });
 const listUrl = computed(() =>
     p.reviewBase === "/purchasing"
@@ -187,7 +185,7 @@ const requestAgain = (x) =>
                 ><span>Menunggu perbaikan vendor</span>
             </article>
         </section>
-        <PermitP2hFollowUps v-if="type === 'IJIN_LINTAS'" :permits="p2hFollowUps" :accounts="unlinkedExpeditions" :can-link="canLinkExpedition" :review-base="reviewBase" />
+        <PermitP2hFollowUps v-if="type === 'IJIN_LINTAS'" :permits="p2hFollowUps" :review-base="reviewBase" />
         <section v-if="type === 'IJIN_LINTAS'" class="panel my-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div><h2 class="panel-title">Izin Lintas Internal</h2><p class="panel-copy">Buat izin internal dan jadwalkan satu card untuk seluruh unit.</p></div>
             <button type="button" class="btn shrink-0" @click="internalDialog = true">Buat Izin Lintas</button>
