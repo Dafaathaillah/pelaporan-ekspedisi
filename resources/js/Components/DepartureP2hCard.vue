@@ -1,8 +1,9 @@
 <script setup>
 import { useForm, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import P2hJourney from '@/Components/P2hJourney.vue';
 
-const props = defineProps({ unit: Object, permit: Object, checklist: Array });
+const props = defineProps({ unit: Object, permit: Object, checklist: Array, arrivedAt: String });
 const expanded = ref(false);
 const latest = computed(() => props.unit.latest_departure_p2h);
 const form = useForm({
@@ -22,6 +23,8 @@ const status = computed(() => latest.value?.departed_at ? 'Sudah Berangkat' : la
             <div class="flex flex-wrap gap-2"><a v-if="latest" :href="`/departure-p2h/${unit.id}/download`" class="btn-ghost">Download P2H</a><button v-if="!latest || latest.status === 'REJECTED'" type="button" class="btn" @click="expanded = !expanded">{{ latest ? 'Perbaiki P2H' : 'Isi Form P2H' }}</button><button v-if="latest?.status === 'APPROVED' && !latest.departed_at" type="button" class="btn" :disabled="confirmForm.processing" @click="confirm">{{ confirmForm.processing ? 'Menyimpan...' : 'Konfirmasi Keberangkatan' }}</button></div>
         </div>
         <p v-if="confirmForm.errors.departure" class="err mt-2">{{ confirmForm.errors.departure }}</p>
+        <P2hJourney :p2h="latest" :arrived-at="arrivedAt" />
+        <p v-if="latest?.status === 'PENDING'" class="mt-3 text-sm text-amber-800">P2H sudah dikirim. Vendor dapat membuka Detail Pengajuan izin {{ permit.submission_number }} untuk memeriksa hasil dan memilih Approve atau Reject P2H.</p>
         <form v-if="expanded" class="mt-5 border-t border-slate-200 pt-5" @submit.prevent="submit">
             <p class="mb-4 text-sm text-slate-600">Periksa kondisi unit sebelum berangkat. Nama driver dan identitas unit diambil dari izin lintas.</p>
             <div class="space-y-3"><div v-for="(label, index) in checklist" :key="index" class="grid gap-2 rounded-xl border border-slate-200 p-3 md:grid-cols-[minmax(0,1fr)_220px_220px]"><label class="text-sm font-semibold text-slate-800">{{ index + 1 }}. {{ label }}</label><select v-model="form.items[index].condition" class="field" required><option value="">Pilih kondisi</option><option>BAIK</option><option>RUSAK</option><option>NIHIL</option></select><input v-model="form.items[index].note" class="field" maxlength="500" placeholder="Keterangan (opsional)"><p v-if="form.errors[`items.${index}.condition`]" class="err md:col-span-3">{{ form.errors[`items.${index}.condition`] }}</p></div></div>

@@ -158,7 +158,7 @@ class CoordinatorController extends Controller
             $submission->update(['coordinator_opened_at' => now()]);
         }
 
-        return Inertia::render('Coordinator/Show', ['submission' => $submission->load('documents', 'units.documents', 'creator', 'resubmissions:id,parent_submission_id,resubmission_subject_ids', 'expeditionRequest.vendorCompany', 'expeditionRequest.creator:id,name'), 'reviewBase' => $this->reviewBase(request()), 'pageRole' => request()->user()->role->value]);
+        return Inertia::render('Coordinator/Show', ['submission' => $submission->load('documents', 'units.documents', 'units.latestDepartureP2h.reviewer', 'units.latestArrivalReport', 'creator', 'resubmissions:id,parent_submission_id,resubmission_subject_ids', 'expeditionRequest.vendorCompany', 'expeditionRequest.creator:id,name'), 'reviewBase' => $this->reviewBase(request()), 'pageRole' => request()->user()->role->value]);
     }
 
     public function updateStatus(UpdateSubmissionStatusRequest $r, VendorSubmission $submission)

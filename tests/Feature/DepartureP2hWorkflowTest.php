@@ -9,6 +9,7 @@ use App\Models\VendorSubmission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class DepartureP2hWorkflowTest extends TestCase
@@ -32,6 +33,46 @@ class DepartureP2hWorkflowTest extends TestCase
         return ['driver_name' => 'Nama Palsu', 'decision' => 'TIDAK_LAIK', 'items' => array_fill(0, 13, ['condition' => $condition, 'note' => 'Diperiksa']), 'tire_positions' => [1, 2, 3, 4], 'notes' => 'Catatan'];
     }
 
+    public function test_expedition_without_company_gets_an_explanation_and_no_permits(): void
+    {
+        $this->fixture();
+        $expedition = User::factory()->create(['role' => UserRole::EXPEDITION, 'site' => 'BIB', 'vendor_company_id' => null]);
+        $this->actingAs($expedition)->get('/expedition')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('permits', 0)->where('requiresVendorCompany', true));
+    }
+
+    public function test_released_permits_are_visible_to_the_linked_expedition_only(): void
+    {
+        extract($this->fixture());
+        $otherCompany = VendorCompany::create(['name' => 'Vendor Lain', 'abbreviation' => 'VLAIN', 'category' => 'REGULAR']);
+        $otherVendor = User::factory()->create(['role' => UserRole::VENDOR, 'site' => 'BIB', 'vendor_company_id' => $otherCompany->id]);
+        $permit->replicate()->fill(['submission_number' => 'OTHER-COMPANY', 'created_by' => $otherVendor->id])->save();
+        $permit->replicate()->fill(['submission_number' => 'OTHER-SITE', 'site' => 'OTHER'])->save();
+        $permit->replicate()->fill(['submission_number' => 'EXPIRED', 'release_expired_at' => now()->subDay()])->save();
+
+        $this->actingAs($expedition)->get('/expedition')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('permits', 1)->where('permits.0.id', $permit->id)->has('permits.0.units', 1)
+            ->where('permits.0.units.0.id', $unit->id)->where('requiresVendorCompany', false));
+    }
+
+    public function test_reviewers_can_find_the_latest_p2h_and_its_timestamps_on_the_permit(): void
+    {
+        extract($this->fixture());
+        $this->actingAs($expedition)->post('/expedition/departures/'.$unit->id.'/p2h', $this->inspection())->assertSessionHasNoErrors();
+        $this->actingAs($vendor)->patch('/vendor/departures/'.$unit->id.'/review', ['status' => 'APPROVED'])->assertSessionHasNoErrors();
+        $this->actingAs($expedition)->post('/expedition/departures/'.$unit->id.'/confirm')->assertSessionHasNoErrors();
+
+        foreach ([['coordinator', '/coordinator/submission/'], ['purchasing_admin', '/purchasing/vendor-submission/']] as [$role, $url]) {
+            $reviewer = User::factory()->create(['role' => $role, 'site' => 'BIB']);
+            $this->actingAs($reviewer)->get($url.$permit->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+                ->where('submission.units.0.latest_departure_p2h.status', 'APPROVED')
+                ->where('submission.units.0.latest_departure_p2h.reviewer.id', $vendor->id)
+                ->where('submission.units.0.latest_departure_p2h.created_at', fn ($value) => is_string($value))
+                ->where('submission.units.0.latest_departure_p2h.reviewed_at', fn ($value) => is_string($value))
+                ->where('submission.units.0.latest_departure_p2h.departed_at', fn ($value) => is_string($value)));
+        }
+    }
+
     public function test_arrival_requires_approved_and_confirmed_departure_per_unit(): void
     {
         Storage::fake('local');
@@ -48,6 +89,21 @@ class DepartureP2hWorkflowTest extends TestCase
         $this->post('/expedition/departures/'.$unit->id.'/confirm')->assertSessionHasNoErrors();
         $this->post('/expedition/reports', $payload)->assertSessionHasNoErrors();
         $this->assertDatabaseHas('expedition_reports', ['vendor_submission_unit_id' => $unit->id, 'p2h_photo_path' => null]);
+
+        foreach ([$vendor, User::factory()->create(['role' => UserRole::COORDINATOR, 'site' => 'BIB']), User::factory()->create(['role' => UserRole::PURCHASING_ADMIN, 'site' => 'BIB'])] as $viewer) {
+            $url = match ($viewer->role) {
+                UserRole::VENDOR => '/vendor/submissions/',
+                UserRole::PURCHASING_ADMIN => '/purchasing/vendor-submission/',
+                default => '/coordinator/submission/',
+            };
+            $this->actingAs($viewer)->get($url.$permit->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+                ->where('submission.units.0.latest_arrival_report.arrived_at', fn ($value) => is_string($value))
+                ->where('submission.units.0.latest_departure_p2h.status', 'APPROVED'));
+        }
+        $this->actingAs($expedition)->get('/expedition/arrival-monitoring')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('items.0.completed', 1)
+            ->where('items.0.submission.units.0.latest_departure_p2h.status', 'APPROVED')
+            ->where('items.0.arrived_units.0.arrived_at', fn ($value) => is_string($value)));
     }
 
     public function test_rejected_inspection_can_be_revised_but_only_own_vendor_can_review(): void

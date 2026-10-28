@@ -35,7 +35,7 @@ class SaveUserRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:150', Rule::unique('users')->ignore($managedUser)],
             'password' => [$managedUser ? 'nullable' : 'required', 'string', 'min:8'],
             'role' => ['required', Rule::enum(UserRole::class)],
-            'vendor_company_id' => ['nullable', 'required_if:role,vendor', 'integer', 'exists:vendor_companies,id'],
+            'vendor_company_id' => ['nullable', 'required_if:role,vendor,expedition', 'integer', 'exists:vendor_companies,id'],
             'hull_number' => ['nullable', 'required_if:role,driver', 'string', 'max:30'],
             'site' => ['required', 'string', 'max:30'],
             'is_active' => ['required', 'boolean'],
@@ -62,6 +62,7 @@ class SaveUserRequest extends FormRequest
             'email.unique' => 'Email sudah digunakan oleh pengguna lain.',
             'password.min' => 'Password minimal harus terdiri dari 8 karakter.',
             'hull_number.required_if' => 'Nomor lambung wajib diisi untuk akun driver.',
+            'vendor_company_id.required_if' => 'Pilih perusahaan vendor untuk menghubungkan akun dengan izin lintas dan P2H.',
             'permissions.*.in' => 'Pilihan akses modul tidak valid.',
         ];
     }

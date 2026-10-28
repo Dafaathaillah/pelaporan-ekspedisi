@@ -48,7 +48,7 @@ class VendorController extends Controller
         $u = request()->user();
         abort_unless($submission->created_by === $u->id && $submission->site === $u->site, 403);
 
-        return Inertia::render('Vendor/Show', ['submission' => $submission->load('documents', 'units.documents', 'units.latestDepartureP2h.reviewer', 'units.departureP2hs', 'expeditionRequest.vendorCompany')]);
+        return Inertia::render('Vendor/Show', ['submission' => $submission->load('documents', 'units.documents', 'units.latestDepartureP2h.reviewer', 'units.latestArrivalReport', 'units.departureP2hs', 'expeditionRequest.vendorCompany')]);
     }
 
     public function updateUnitDetails(Request $request, VendorSubmissionUnit $unit): RedirectResponse

@@ -79,7 +79,7 @@ class UserManagementController extends Controller
         if ($data['role'] === UserRole::VENDOR->value) {
             $company = VendorCompany::findOrFail($data['vendor_company_id']);
             $data['name'] = $company->name;
-        } else {
+        } elseif ($data['role'] !== UserRole::EXPEDITION->value) {
             $data['vendor_company_id'] = null;
         }
         if ($data['role'] !== UserRole::DRIVER->value) {

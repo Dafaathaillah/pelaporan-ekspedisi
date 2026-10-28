@@ -99,6 +99,7 @@ class DepartureP2hController extends Controller
         $expedition = $user->role === UserRole::EXPEDITION && $user->vendor_company_id && $submission->creator?->vendor_company_id === $user->vendor_company_id;
         abort_unless($reviewer || $purchasing || $expedition || $submission->created_by === $user->id, 403);
         $p2h = $unit->departureP2hs()->with('reviewer')->firstOrFail();
+        $unit->load('latestArrivalReport');
         $pdf = app(P2hPdf::class)->render($submission, $unit, $p2h);
         $filename = 'P2H-'.preg_replace('/[^A-Za-z0-9-]/', '-', $unit->plate_number).'-R'.$p2h->revision.'.pdf';
 

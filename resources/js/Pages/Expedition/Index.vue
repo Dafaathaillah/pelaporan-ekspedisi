@@ -14,6 +14,7 @@ const props = defineProps({
     expeditionCompany: String,
     reports: Object,
     permits: { type: Array, default: () => [] },
+    requiresVendorCompany: { type: Boolean, default: false },
     p2hChecklist: { type: Array, default: () => [] },
     reportBase: { type: String, default: "/expedition/reports" },
 });
@@ -233,21 +234,23 @@ onBeforeUnmount(clearPreviews);
 
 <template>
     <AppShell
-        title="Pelaporan Kedatangan"
-        subtitle="Isi data setelah kendaraan tiba di Underpass."
+        :title="reportBase === '/expedition/reports' ? 'P2H, Keberangkatan & Kedatangan' : 'Pelaporan Kedatangan'"
+        :subtitle="reportBase === '/expedition/reports' ? 'Setelah izin Released: isi P2H, tunggu approval vendor, lalu konfirmasi berangkat. Laporkan kedatangan setelah tiba di Underpass.' : 'Isi data setelah kendaraan tiba di Underpass.'"
         :eyebrow="reportBase === '/vendor/arrivals' ? 'Akun Vendor' : 'Akun Ekspedisi'"
     >
         <section class="panel p-5 sm:p-6">
             <div class="mb-5 flex items-start gap-3">
                 <span class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-red-50 text-red-600">🚚</span>
-                <div><h2 class="font-black text-slate-900">Laporan Kedatangan · WITA</h2><p class="mt-1 text-sm text-slate-500">Pilih izin Released, centang unit yang sudah tiba, lalu kirim kedatangannya.</p></div>
+                <div><h2 class="font-black text-slate-900">{{ reportBase === '/expedition/reports' ? 'P2H & Perjalanan Unit' : 'Laporan Kedatangan' }} · WITA</h2><p class="mt-1 text-sm text-slate-500">{{ reportBase === '/expedition/reports' ? 'Pilih izin Released untuk membuka form P2H per unit sebelum berangkat. Foto tensi dan foto kedatangan tetap diisi pada laporan kedatangan.' : 'Pilih izin Released, centang unit yang sudah tiba, lalu kirim kedatangannya.' }}</p></div>
             </div>
             <label class="block max-w-2xl text-sm font-semibold">Izin / Vendor<select v-model="permitId" class="field" @change="changePermit"><option value="">Pilih izin Released</option><option v-for="permit in permits" :key="permit.id" :value="permit.id">{{ permit.vendor_name }} · {{ permit.submission_number }}</option></select></label>
-            <p v-if="!permits.length" class="mt-4 text-sm text-slate-500">Belum ada izin Released yang masih berlaku.</p>
+            <p v-if="requiresVendorCompany" role="alert" class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Akun ekspedisi ini belum terhubung ke perusahaan vendor. Minta koordinator membuka Manajemen Pengguna, edit akun ini, pilih perusahaan vendor yang sesuai (misalnya BAS), lalu simpan. Izin lintas dan form P2H akan muncul setelah perusahaan terhubung, site sesuai, dan izin sudah Released serta masih berlaku.</p>
+            <p v-else-if="!permits.length" class="mt-4 text-sm text-slate-500">Belum ada izin Released yang masih berlaku untuk perusahaan dan site akun ini. Pastikan izin tidak kedaluwarsa dan perusahaan vendor pada akun ekspedisi sudah sesuai.</p>
             <p v-else-if="!selectedPermit" class="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Pilih izin untuk menampilkan seluruh unit dan status kedatangannya.</p>
             <div v-else class="mt-6 space-y-5">
                 <div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-black text-slate-900">{{ selectedPermit.vendor_name }}</h3><p class="text-sm text-slate-500">{{ unitCards.length }} unit pada izin {{ selectedPermit.submission_number }}</p></div><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{{ unitCards.filter(card => card.completedReport).length }}/{{ unitCards.length }} sudah datang</span></div>
-                <section v-if="reportBase === '/expedition/reports'" class="space-y-3"><h3 class="text-lg font-black text-slate-900">P2H &amp; Keberangkatan per Unit</h3><p class="text-sm text-slate-600">Isi P2H, tunggu persetujuan vendor, kemudian konfirmasi keberangkatan setiap unit.</p><DepartureP2hCard v-for="unit in selectedPermit.units" :key="unit.id" :unit="unit" :permit="selectedPermit" :checklist="p2hChecklist" /></section>
+                <section v-if="reportBase === '/expedition/reports'" class="space-y-3"><h3 class="text-lg font-black text-slate-900">1. P2H &amp; Keberangkatan per Unit</h3><p class="text-sm text-slate-600">Klik Isi Form P2H, periksa unit, lalu kirim ke vendor. Vendor membuka Detail Pengajuan izin ini untuk Approve/Reject P2H. Setelah disetujui, konfirmasi keberangkatan di sini.</p><DepartureP2hCard v-for="card in unitCards" :key="card.unit.id" :unit="card.unit" :permit="selectedPermit" :checklist="p2hChecklist" :arrived-at="card.completedReport?.arrived_at" /></section>
+                <h3 v-if="reportBase === '/expedition/reports'" class="text-lg font-black text-slate-900">2. Laporan Kedatangan di Underpass</h3>
                 <ExpeditionArrivalUnitCard v-for="card in unitCards" :key="card.unit.id" :ref="instance => setCardRef(card.unit.id, instance)" :number="card.number" :permit="selectedPermit" :unit="card.unit" :planning="card.planning" :completed-report="card.completedReport" :expedition-company="expeditionCompany" :report-base="reportBase" :selected="selectedUnitIds.includes(card.unit.id)" @update:selected="toggleUnit(card.unit.id, $event)" />
                 <div class="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur sm:bottom-28 lg:bottom-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><b>{{ selectedUnitIds.length }} unit dipilih</b><p class="text-sm text-slate-500">Unit yang tidak dicentang tetap berstatus Menunggu Driver.</p></div><button type="button" class="btn" :disabled="!selectedUnitIds.length || batchSubmitting" @click="sendSelected">{{ batchSubmitting ? 'MENGIRIM KEDATANGAN...' : 'KIRIM KEDATANGAN UNIT TERPILIH' }}</button></div><p v-if="batchMessage" class="mt-3 text-sm font-semibold" :class="batchMessage.includes('perlu') ? 'text-amber-700' : 'text-emerald-700'">{{ batchMessage }}</p></div>
             </div>

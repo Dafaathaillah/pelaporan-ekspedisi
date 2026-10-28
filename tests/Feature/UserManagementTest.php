@@ -12,6 +12,29 @@ class UserManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_expedition_company_is_retained_on_create_and_update(): void
+    {
+        $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR, 'permissions' => ['users.manage']]);
+        $bas = VendorCompany::create(['name' => 'BANUA ALAM SEMESTA', 'abbreviation' => 'BAS', 'category' => 'REGULAR', 'is_active' => true]);
+        $other = VendorCompany::create(['name' => 'Vendor Lain', 'abbreviation' => 'VL', 'category' => 'REGULAR', 'is_active' => true]);
+        $payload = ['name' => 'Ekspedisi BAS', 'username' => 'expedition_bas', 'password' => 'password123', 'role' => 'expedition', 'vendor_company_id' => $bas->id, 'site' => 'BIB', 'is_active' => true, 'permissions' => []];
+
+        $this->actingAs($coordinator)->post('/coordinator/users', $payload)->assertSessionHasNoErrors();
+        $expedition = User::where('username', 'expedition_bas')->firstOrFail();
+        $this->assertSame($bas->id, $expedition->vendor_company_id);
+        $this->assertSame('Ekspedisi BAS', $expedition->name);
+
+        $this->patch('/coordinator/users/'.$expedition->id, [...$payload, 'password' => '', 'vendor_company_id' => $other->id])->assertSessionHasNoErrors();
+        $this->assertSame($other->id, $expedition->fresh()->vendor_company_id);
+    }
+
+    public function test_expedition_account_requires_a_vendor_company(): void
+    {
+        $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR, 'permissions' => ['users.manage']]);
+        $this->actingAs($coordinator)->post('/coordinator/users', ['name' => 'Ekspedisi BAS', 'username' => 'expedition_bas', 'password' => 'password123', 'role' => 'expedition', 'site' => 'BIB', 'is_active' => true])->assertSessionHasErrors('vendor_company_id');
+        $this->assertDatabaseMissing('users', ['username' => 'expedition_bas']);
+    }
+
     public function test_authorized_coordinator_can_open_user_management_and_create_user(): void
     {
         $coordinator = User::factory()->create([

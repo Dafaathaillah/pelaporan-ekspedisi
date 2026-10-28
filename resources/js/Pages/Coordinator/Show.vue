@@ -1,6 +1,7 @@
 <script setup>
 import AppShell from "@/Components/AppShell.vue";
 import FileDropInput from "@/Components/FileDropInput.vue";
+import P2hJourney from '@/Components/P2hJourney.vue';
 import { expeditionVehicleLabel } from "@/Utils/expeditionRequest";
 import { useForm, Link, router } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
@@ -275,7 +276,14 @@ const date = (v) => (v ? new Date(v).toLocaleDateString("id-ID") : "-");
                             >Sudah diajukan ulang</small
                         ></label
                     >
-                    <p v-if="unit.subject_type === 'UNIT'" class="mt-2 text-sm text-slate-600">Driver: {{ unit.driver_name || '-' }} &middot; {{ unit.driver_phone || '-' }} &middot; {{ unit.vehicle_type || 'Tipe belum diisi' }}</p><div class="mt-3 grid gap-3 md:grid-cols-2">
+                    <p v-if="unit.subject_type === 'UNIT'" class="mt-2 text-sm text-slate-600">Driver: {{ unit.driver_name || '-' }} &middot; {{ unit.driver_phone || '-' }} &middot; {{ unit.vehicle_type || 'Tipe belum diisi' }}</p>
+                    <section v-if="unit.latest_departure_p2h" class="mt-3 rounded-xl border border-slate-200 p-3 text-sm">
+                        <div class="flex flex-wrap items-center justify-between gap-3"><div><b>P2H Keberangkatan · Revisi {{ unit.latest_departure_p2h.revision }}</b><p>Status: {{ unit.latest_departure_p2h.status }} · {{ unit.latest_departure_p2h.decision === 'LAIK' ? 'Laik' : 'Tidak Laik' }}</p></div><a :href="`/departure-p2h/${unit.id}/download`" class="btn-ghost">Download PDF P2H</a></div>
+                        <p v-if="unit.latest_departure_p2h.rejection_reason" class="mt-2 text-red-700">Alasan penolakan: {{ unit.latest_departure_p2h.rejection_reason }}</p>
+                        <P2hJourney :p2h="unit.latest_departure_p2h" :arrived-at="unit.latest_arrival_report?.arrived_at" />
+                    </section>
+                    <p v-else-if="unit.subject_type === 'UNIT' && submission.status === 'RELEASED'" class="mt-3 text-sm text-amber-800">P2H belum diisi oleh ekspedisi perusahaan terkait. Form tersedia di menu P2H &amp; Kedatangan setelah akun ekspedisi terhubung ke perusahaan vendor.</p>
+                    <div class="mt-3 grid gap-3 md:grid-cols-2">
                         <div
                             v-for="d in unit.documents"
                             :key="d.id"

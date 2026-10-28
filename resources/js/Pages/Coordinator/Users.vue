@@ -73,6 +73,7 @@ const vendorOptions = computed(() => [
     })),
 ]);
 const vendorChanged = (value) => {
+    if (form.role !== 'vendor') return;
     form.name =
         props.vendorCompanies.find((company) => company.id == value)?.name ||
         "";
@@ -555,7 +556,7 @@ const save = () => {
                                 placeholder="BIB"
                         /></label>
                         <div
-                            v-if="form.role === 'vendor'"
+                            v-if="['vendor', 'expedition'].includes(form.role)"
                             class="text-xs font-bold sm:col-span-2"
                         >
                             Perusahaan dari Master Vendor
@@ -570,6 +571,7 @@ const save = () => {
                             <span class="err">{{
                                 form.errors.vendor_company_id
                             }}</span>
+                            <p v-if="form.role === 'expedition'" class="mt-2 text-xs font-normal text-slate-500">Akun ekspedisi hanya dapat memilih izin lintas dan mengisi P2H milik perusahaan ini pada site yang sama.</p>
                         </div>
                         <label
                             v-if="form.role === 'driver'"

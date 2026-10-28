@@ -210,8 +210,8 @@ const menus = computed(() => {
         ];
     return [
         {
-            label: "Laporan Kedatangan",
-            short: "Laporan",
+            label: "P2H & Kedatangan",
+            short: "P2H / Tiba",
             icon: "truck",
             href: "/expedition",
             exact: true,
