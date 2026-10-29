@@ -68,6 +68,9 @@ class StoreExpeditionReportRequest extends FormRequest
             if (! $departure || $departure->status !== 'APPROVED' || ! $departure->departed_at) {
                 throw ValidationException::withMessages(['vendor_submission_unit_id' => 'P2H unit harus disetujui vendor dan keberangkatan dikonfirmasi sebelum melapor kedatangan.']);
             }
+            if ($unit->latestArrivalP2h?->status !== 'APPROVED') {
+                throw ValidationException::withMessages(['vendor_submission_unit_id' => 'P2H kedatangan unit harus disetujui Coordinator sebelum mengisi form kedatangan.']);
+            }
             $this->merge(['expedition_company' => $this->user()->name, 'driver_name' => $unit->driver_name, 'driver_phone' => $unit->driver_phone, 'vehicle_plate' => $unit->plate_number, 'vehicle_type' => $unit->vehicle_type, 'sender_vendor' => $permit->vendor_name, 'destination' => $permit->destination]);
         }
         $this->merge(['vehicle_plate' => strtoupper(trim((string) $this->vehicle_plate))]);

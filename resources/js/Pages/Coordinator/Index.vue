@@ -5,7 +5,8 @@ import EscortReadinessBadge from "@/Components/EscortReadinessBadge.vue";
 import ArrivalEscortTimer from "@/Components/ArrivalEscortTimer.vue";
 import Modal from "@/Components/Modal.vue";
 import SortButton from "@/Components/SortButton.vue";
-import { router, useForm } from "@inertiajs/vue3";
+import ArrivalP2hReviewCard from "@/Components/ArrivalP2hReviewCard.vue";
+import { Link, router, useForm } from "@inertiajs/vue3";
 import { computed, reactive, ref } from "vue";
 const p = defineProps({
     reports: Object,
@@ -13,6 +14,8 @@ const p = defineProps({
     hourly: Array,
     filters: Object,
     options: Object,
+    arrivalP2hs: Object,
+    p2hChecklist: Array,
 });
 const f = reactive({
     search: "",
@@ -102,7 +105,7 @@ const reset = () =>
     router.get("/coordinator", {}, { preserveScroll: true, replace: true });
 const reload = () =>
     router.reload({
-        only: ["reports", "summary", "hourly", "options"],
+        only: ["reports", "summary", "hourly", "options", "arrivalP2hs"],
         preserveScroll: true,
     });
 const sort = (column) => {
@@ -165,6 +168,12 @@ const healthStatusClass = (status) =>
         ><template #hero-copy
             >Informasi laporan kedatangan ekspedisi di Underpass.</template
         >
+        <section class="panel space-y-4 p-5 sm:p-6">
+            <div><h3 class="text-lg font-black text-slate-900">Persetujuan P2H Kedatangan</h3><p class="mt-1 text-sm text-slate-600">Periksa P2H sebelum ekspedisi mengisi laporan kedatangan. Pemeriksaan yang menunggu persetujuan ditampilkan terlebih dahulu.</p></div>
+            <p v-if="!arrivalP2hs?.data?.length" class="text-sm text-slate-500">Belum ada P2H kedatangan.</p>
+            <ArrivalP2hReviewCard v-for="p2h in arrivalP2hs?.data || []" :key="p2h.id" :p2h="p2h" :checklist="p2hChecklist" />
+            <nav v-if="arrivalP2hs?.last_page > 1" aria-label="Halaman P2H kedatangan" class="flex flex-wrap gap-2"><Link v-for="link in arrivalP2hs.links" :key="link.label" :href="link.url || ''" preserve-scroll preserve-state class="pagination" :class="{ 'pagination-active': link.active, 'pointer-events-none opacity-40': !link.url }" v-html="link.label" /></nav>
+        </section>
         <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <article v-for="x in cards" :key="x[0]" class="metric-card">
                 <p>{{ x[0] }}</p>
@@ -567,6 +576,7 @@ const healthStatusClass = (status) =>
                                         >-</span
                                     >
                                 </div>
+                                <a v-if="x.arrival_p2h_id" :href="`/arrival-p2h/${x.arrival_p2h_id}/download`" class="mt-3 block rounded-xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">P2H Kedatangan Disetujui · Download PDF</a>
                                 <div v-if="x.p2h_photo_path" class="mt-3 rounded-xl border p-3" :class="x.p2h_status === 'APPROVED' ? 'border-emerald-200 bg-emerald-50' : x.p2h_status === 'REJECTED' ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'">
                                     <span class="block text-[10px] font-black uppercase tracking-wide" :class="x.p2h_status === 'APPROVED' ? 'text-emerald-700' : x.p2h_status === 'REJECTED' ? 'text-red-700' : 'text-amber-700'">{{ x.p2h_status === 'APPROVED' ? 'P2H Disetujui' : x.p2h_status === 'REJECTED' ? 'P2H Ditolak' : 'Menunggu Approval' }}</span>
                                     <p v-if="x.p2h_rejection_reason" class="mt-1 whitespace-normal break-words text-[11px] text-red-700">{{ x.p2h_rejection_reason }}</p>

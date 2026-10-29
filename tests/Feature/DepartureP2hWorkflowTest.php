@@ -87,7 +87,11 @@ class DepartureP2hWorkflowTest extends TestCase
         $this->actingAs($vendor)->patch('/vendor/departures/'.$unit->id.'/review', ['status' => 'APPROVED'])->assertSessionHasNoErrors();
         $this->actingAs($expedition)->post('/expedition/reports', $payload)->assertSessionHasErrors('vendor_submission_unit_id');
         $this->post('/expedition/departures/'.$unit->id.'/confirm')->assertSessionHasNoErrors();
-        $this->post('/expedition/reports', $payload)->assertSessionHasNoErrors();
+        $this->post('/expedition/reports', $payload)->assertSessionHasErrors('vendor_submission_unit_id');
+        $this->post('/expedition/arrivals/'.$unit->id.'/p2h', $this->inspection())->assertSessionHasNoErrors();
+        $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR, 'site' => 'BIB']);
+        $this->actingAs($coordinator)->patch('/coordinator/arrival-p2h/'.$unit->fresh()->latestArrivalP2h->id.'/review', ['status' => 'APPROVED'])->assertSessionHasNoErrors();
+        $this->actingAs($expedition)->post('/expedition/reports', $payload)->assertSessionHasNoErrors();
         $this->assertDatabaseHas('expedition_reports', ['vendor_submission_unit_id' => $unit->id, 'p2h_photo_path' => null]);
 
         foreach ([$vendor, User::factory()->create(['role' => UserRole::COORDINATOR, 'site' => 'BIB']), User::factory()->create(['role' => UserRole::PURCHASING_ADMIN, 'site' => 'BIB'])] as $viewer) {

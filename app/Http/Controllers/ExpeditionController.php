@@ -8,6 +8,7 @@ use App\Http\Requests\StoreExpeditionReportRequest;
 use App\Models\ExpeditionReport;
 use App\Models\PlanningItem;
 use App\Models\User;
+use App\Models\VendorSubmissionUnit;
 use App\Services\ArrivalPlanningService;
 use App\Services\PrivatePhotoResizer;
 use App\Support\BloodPressureAssessment;
@@ -31,7 +32,7 @@ class ExpeditionController extends Controller
         $reports = ExpeditionReport::where('created_by', $request->user()->id)->where('site', $request->user()->site)
             ->latest('arrived_at')->paginate($perPage)->withQueryString();
 
-        $permits = app(ArrivalPlanningService::class)->permits($request->user())->where('status', 'RELEASED')->where('release_expired_at', '>=', now())->with(['units.latestDepartureP2h', 'planningItems' => fn ($q) => $q->whereNotNull('planned_date')->with('reports:id,planning_item_id,vendor_submission_unit_id,arrived_at')])->latest('released_at')->get();
+        $permits = app(ArrivalPlanningService::class)->permits($request->user())->where('status', 'RELEASED')->where('release_expired_at', '>=', now())->with(['units.latestDepartureP2h', 'units.latestArrivalP2h.reviewer:id,name', 'planningItems' => fn ($q) => $q->whereNotNull('planned_date')->with('reports:id,planning_item_id,vendor_submission_unit_id,arrived_at')])->latest('released_at')->get();
 
         return Inertia::render('Expedition/Index', ['vehicleTypes' => ['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya'], 'expeditionCompany' => $request->user()->name, 'reports' => $reports, 'permits' => $permits, 'requiresVendorCompany' => $request->user()->role === UserRole::EXPEDITION && ! $request->user()->vendor_company_id, 'p2hChecklist' => P2hChecklist::ITEMS, 'reportBase' => $request->user()->role->value === 'vendor' ? '/vendor/arrivals' : '/expedition/reports']);
     }
@@ -39,6 +40,11 @@ class ExpeditionController extends Controller
     public function store(StoreExpeditionReportRequest $request, PrivatePhotoResizer $photoResizer): RedirectResponse
     {
         return DB::transaction(function () use ($request, $photoResizer) {
+            $unit = VendorSubmissionUnit::lockForUpdate()->findOrFail($request->vendor_submission_unit_id);
+            $p2h = $unit->latestArrivalP2h;
+            if (! $p2h || $p2h->status !== 'APPROVED') {
+                throw ValidationException::withMessages(['vendor_submission_unit_id' => 'P2H kedatangan unit harus disetujui Coordinator sebelum mengisi form kedatangan.']);
+            }
             $planning = $request->planning_item_id ? PlanningItem::lockForUpdate()->findOrFail($request->planning_item_id) : null;
             if ($planning && $planning->reports()->where('vendor_submission_unit_id', $request->vendor_submission_unit_id)->exists()) {
                 throw ValidationException::withMessages(['vendor_submission_unit_id' => 'Unit ini sudah dilaporkan datang pada planning tersebut.']);
@@ -54,7 +60,7 @@ class ExpeditionController extends Controller
                 $arrivalPath = $photoResizer->store($request->file('arrival_photo'), $directory, 'arrival');
                 $pressurePath = $photoResizer->store($request->file('blood_pressure_photo'), $directory, 'blood_pressure');
                 $assessment = BloodPressureAssessment::assess((int) $request->blood_pressure_systolic, (int) $request->blood_pressure_diastolic);
-                $report = ExpeditionReport::create([...$request->safe()->except(['arrival_photo', 'blood_pressure_photo']), 'health_status' => $assessment['status'], 'health_status_label' => $assessment['label'], 'health_status_reason' => $assessment['reason'], 'expedition_company' => $request->user()->name, 'arrival_photo_path' => $arrivalPath, 'blood_pressure_photo_path' => $pressurePath, 'vendor_user_id' => $vendorUser?->id, 'report_number' => $number, 'arrived_at' => $now, 'created_by' => $request->user()->id, 'site' => $request->user()->site]);
+                $report = ExpeditionReport::create([...$request->safe()->except(['arrival_photo', 'blood_pressure_photo']), 'arrival_p2h_id' => $p2h->id, 'p2h_status' => 'APPROVED', 'p2h_reviewed_by' => $p2h->reviewed_by, 'p2h_reviewed_at' => $p2h->reviewed_at, 'health_status' => $assessment['status'], 'health_status_label' => $assessment['label'], 'health_status_reason' => $assessment['reason'], 'expedition_company' => $request->user()->name, 'arrival_photo_path' => $arrivalPath, 'blood_pressure_photo_path' => $pressurePath, 'vendor_user_id' => $vendorUser?->id, 'report_number' => $number, 'arrived_at' => $now, 'created_by' => $request->user()->id, 'site' => $request->user()->site]);
             } catch (\Throwable $error) {
                 Storage::disk('local')->deleteDirectory($directory);
                 throw $error;

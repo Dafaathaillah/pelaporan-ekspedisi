@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Models\ArrivalP2h;
 use App\Models\DepartureP2h;
 use App\Models\User;
 use App\Models\VendorSubmission;
@@ -30,6 +31,8 @@ class ArrivalPlanningTest extends TestCase
     private function departedUnit($unit, User $vendor): void
     {
         DepartureP2h::create(['vendor_submission_unit_id' => $unit->id, 'revision' => 1, 'submitted_by' => $vendor->id, 'driver_name' => $unit->driver_name, 'vehicle_plate' => $unit->plate_number, 'vehicle_type' => $unit->vehicle_type, 'items' => [], 'tire_positions' => [1], 'decision' => 'LAIK', 'status' => 'APPROVED', 'reviewed_by' => $vendor->id, 'reviewed_at' => now(), 'departed_at' => now()]);
+        $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR]);
+        ArrivalP2h::create(['vendor_submission_unit_id' => $unit->id, 'revision' => 1, 'submitted_by' => $vendor->id, 'driver_name' => $unit->driver_name, 'vehicle_plate' => $unit->plate_number, 'vehicle_type' => $unit->vehicle_type, 'items' => [], 'tire_positions' => [1], 'decision' => 'LAIK', 'status' => 'APPROVED', 'reviewed_by' => $coordinator->id, 'reviewed_at' => now()]);
     }
 
     public function test_vendor_can_complete_legacy_unit_details_but_not_another_vendors_unit(): void

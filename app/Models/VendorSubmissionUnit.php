@@ -37,4 +37,14 @@ class VendorSubmissionUnit extends Model
             ->select('expedition_reports.id', 'expedition_reports.vendor_submission_unit_id', 'expedition_reports.arrived_at')
             ->latestOfMany('arrived_at');
     }
+
+    public function arrivalP2hs()
+    {
+        return $this->hasMany(ArrivalP2h::class)->orderByDesc('revision');
+    }
+
+    public function latestArrivalP2h()
+    {
+        return $this->hasOne(ArrivalP2h::class)->ofMany('revision', 'max');
+    }
 }

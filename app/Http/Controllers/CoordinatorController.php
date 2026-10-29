@@ -9,12 +9,14 @@ use App\Events\VendorResubmissionRequested;
 use App\Events\VendorSubmissionCreated;
 use App\Events\VendorSubmissionStatusChanged;
 use App\Http\Requests\UpdateSubmissionStatusRequest;
+use App\Models\ArrivalP2h;
 use App\Models\ExpeditionReport;
 use App\Models\InternalIjinLintas;
 use App\Models\VendorDocument;
 use App\Models\VendorSubmission;
 use App\Services\IjinLintasP2hFollowUp;
 use App\Services\PlanningService;
+use App\Support\P2hChecklist;
 use App\Support\SafeBroadcast;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -29,6 +31,9 @@ class CoordinatorController extends Controller
     public function reviewP2h(Request $request, ExpeditionReport $report)
     {
         abort_unless($report->site === $request->user()->site, 403);
+        if ($report->arrival_p2h_id) {
+            throw ValidationException::withMessages(['status' => 'P2H kedatangan terstruktur sudah diperiksa sebelum pelaporan dan tidak dapat diubah melalui review foto lama.']);
+        }
         $data = $request->validate([
             'status' => ['required', 'in:APPROVED,REJECTED'],
             'reason' => ['required_if:status,REJECTED', 'nullable', 'string', 'max:1000'],
@@ -86,6 +91,11 @@ class CoordinatorController extends Controller
         });
 
         return Inertia::render('Coordinator/Index', [
+            'arrivalP2hs' => ArrivalP2h::with(['unit.submission:id,submission_number,vendor_name,site', 'reviewer:id,name'])
+                ->whereHas('unit.submission', fn ($q) => $q->where('site', $site))
+                ->orderByRaw("CASE WHEN status = 'PENDING' THEN 0 ELSE 1 END")
+                ->latest()->paginate(10, ['*'], 'p2h_page')->withQueryString(),
+            'p2hChecklist' => P2hChecklist::ITEMS,
             'reports' => $reports,
             'summary' => $summary,
             'hourly' => $hourly,

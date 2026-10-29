@@ -68,4 +68,9 @@ class ExpeditionReport extends Model
     {
         return $this->belongsTo(User::class, 'p2h_reviewed_by');
     }
+
+    public function arrivalP2h()
+    {
+        return $this->belongsTo(ArrivalP2h::class);
+    }
 }

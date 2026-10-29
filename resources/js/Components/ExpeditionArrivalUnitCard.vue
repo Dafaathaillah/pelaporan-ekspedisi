@@ -3,6 +3,7 @@ import { Link, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { getPreciseLocation } from '@/lib/preciseLocation';
+import ArrivalP2hCard from '@/Components/ArrivalP2hCard.vue';
 
 const props = defineProps({
     number: Number,
@@ -13,11 +14,13 @@ const props = defineProps({
     expeditionCompany: String,
     reportBase: String,
     selected: Boolean,
+    checklist: Array,
 });
 const emit = defineEmits(['update:selected']);
 
 const completeIdentity = computed(() => props.unit.driver_name && props.unit.driver_phone && props.unit.plate_number && props.unit.vehicle_type && props.permit.destination);
-const blockedReason = computed(() => !props.planning ? 'Unit belum memiliki kartu planning yang terjadwal.' : !completeIdentity.value ? 'Data driver, nomor HP, kendaraan, atau tujuan pada izin belum lengkap.' : !props.unit.latest_departure_p2h?.departed_at ? 'P2H harus disetujui vendor dan keberangkatan dikonfirmasi terlebih dahulu.' : '');
+const canSubmitP2h = computed(() => !!props.planning && !!completeIdentity.value && props.unit.latest_departure_p2h?.status === 'APPROVED' && !!props.unit.latest_departure_p2h?.departed_at);
+const blockedReason = computed(() => !props.planning ? 'Unit belum memiliki kartu planning yang terjadwal.' : !completeIdentity.value ? 'Data driver, nomor HP, kendaraan, atau tujuan pada izin belum lengkap.' : !canSubmitP2h.value ? 'P2H harus disetujui vendor dan keberangkatan dikonfirmasi terlebih dahulu.' : props.unit.latest_arrival_p2h?.status !== 'APPROVED' ? 'Isi P2H kedatangan dan tunggu persetujuan Coordinator sebelum mengisi form kedatangan.' : '');
 const inputs = { arrival: ref(null), pressure: ref(null) };
 const previews = { arrival: ref(''), pressure: ref('') };
 const locating = ref({ arrival: false, pressure: false });
@@ -108,7 +111,8 @@ onBeforeUnmount(() => Object.values(previews).forEach(preview => preview.value &
                 <p v-else-if="unit.latest_departure_p2h?.status === 'APPROVED'">P2H sudah disetujui. Akun ekspedisi perlu mengonfirmasi keberangkatan pada menu P2H &amp; Kedatangan.</p>
                 <p v-else>Form P2H diisi oleh akun ekspedisi dari menu P2H &amp; Kedatangan. Perusahaan ekspedisi dikenali otomatis dari username akun. Pastikan site sesuai dan izin masih berlaku.</p>
             </div>
-            <form v-if="!completedReport && selected" class="mt-5" @submit.prevent>
+            <ArrivalP2hCard v-if="!completedReport || unit.latest_arrival_p2h" :unit="unit" :checklist="checklist" :report-base="reportBase" :can-submit="canSubmitP2h && !completedReport" />
+            <form v-if="!completedReport && selected && !blockedReason" class="mt-5" @submit.prevent>
                 <div class="grid gap-4 sm:grid-cols-2">
                     <label class="text-sm font-semibold">Sistolik / tekanan atas *<input v-model="form.blood_pressure_systolic" type="number" min="60" max="250" class="field" placeholder="Contoh: 120"><p class="err">{{ form.errors.blood_pressure_systolic }}</p></label>
                     <label class="text-sm font-semibold">Diastolik / tekanan bawah *<input v-model="form.blood_pressure_diastolic" type="number" min="30" max="150" class="field" placeholder="Contoh: 80"><p class="err">{{ form.errors.blood_pressure_diastolic }}</p></label>

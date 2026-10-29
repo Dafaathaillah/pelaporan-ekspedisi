@@ -6,6 +6,7 @@ use App\Enums\SubmissionStatus;
 use App\Enums\SubmissionType;
 use App\Enums\UserRole;
 use App\Http\Requests\StoreExpeditionReportRequest;
+use App\Models\ArrivalP2h;
 use App\Models\DepartureP2h;
 use App\Models\ExpeditionReport;
 use App\Models\ExpeditionRequest;
@@ -65,6 +66,8 @@ class OperationalWorkflowTest extends TestCase
         $payload['vendor_submission_unit_id'] = $unit->id;
         $this->actingAs($expedition)->post('/expedition/reports', $payload)->assertSessionHasErrors('vendor_submission_unit_id');
         DepartureP2h::create(['vendor_submission_unit_id' => $unit->id, 'revision' => 1, 'submitted_by' => $expedition->id, 'driver_name' => 'Budi Filter', 'vehicle_plate' => 'DA 1234 XX', 'vehicle_type' => 'Fuso', 'items' => [], 'tire_positions' => [1], 'decision' => 'LAIK', 'status' => 'APPROVED', 'reviewed_by' => $vendor->id, 'reviewed_at' => now(), 'departed_at' => now()]);
+        $coordinator = User::factory()->create(['role' => UserRole::COORDINATOR]);
+        ArrivalP2h::create(['vendor_submission_unit_id' => $unit->id, 'revision' => 1, 'submitted_by' => $vendor->id, 'driver_name' => $unit->driver_name, 'vehicle_plate' => $unit->plate_number, 'vehicle_type' => $unit->vehicle_type, 'items' => [], 'tire_positions' => [1], 'decision' => 'LAIK', 'status' => 'APPROVED', 'reviewed_by' => $coordinator->id, 'reviewed_at' => now()]);
         $this->post('/expedition/reports', $payload)->assertSessionHasNoErrors();
         $this->assertDatabaseHas('expedition_reports', ['vehicle_plate' => 'DA 1234 XX', 'arrival_location_accuracy' => 87, 'blood_pressure_location_accuracy' => 99, 'blood_pressure_systolic' => 120, 'blood_pressure_diastolic' => 80, 'health_status' => 'FIT_WITH_NOTE', 'health_status_label' => 'Fit dengan Catatan Medis']);
 

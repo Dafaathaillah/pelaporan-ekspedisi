@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ArrivalP2hController;
 use App\Http\Controllers\CoordinatorController;
 use App\Http\Controllers\DepartureP2hController;
 use App\Http\Controllers\DirectPlanningController;
@@ -37,6 +38,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/push/test', [PushSubscriptionController::class, 'test'])->name('push.test');
     Route::get('/dashboard', fn () => redirect(request()->user()->homePath()))->name('dashboard');
     Route::get('/departure-p2h/{unit}/download', [DepartureP2hController::class, 'download'])->name('departure-p2h.download');
+    Route::get('/arrival-p2h/{p2h}/download', [ArrivalP2hController::class, 'download'])->name('arrival-p2h.download');
     Route::get('/escort-administration/{report}/{kind}', [EscortAdministrationController::class, 'download'])->name('escort-administration.download');
     Route::middleware('role:finance')->get('/finance/escort-administration', [EscortAdministrationController::class, 'financeIndex'])->name('finance.escort-administration');
     Route::get('/historical-management', [HistoricalManagementController::class, 'index'])->name('historical-management.index');
@@ -44,6 +46,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['role:expedition', 'permission:expedition.report'])->prefix('expedition')->group(function () {
         Route::get('/', [ExpeditionController::class, 'index'])->name('expedition.index');
         Route::post('/reports', [ExpeditionController::class, 'store'])->name('expedition.store');
+        Route::post('/arrivals/{unit}/p2h', [ArrivalP2hController::class, 'store'])->name('expedition.arrivals.p2h');
         Route::get('/reverse-geocode', [ExpeditionController::class, 'reverseGeocode'])->name('expedition.reverse-geocode');
         Route::get('/reports/{report}/photos/{kind}', [ExpeditionController::class, 'photo'])->name('expedition.photo');
         Route::patch('/reports/{report}/p2h', [ExpeditionController::class, 'replaceP2h'])->name('expedition.p2h.replace');
@@ -100,6 +103,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/monitoring-sarana', [VendorController::class, 'monitoringSarana'])->name('vendor.monitoring-sarana');
         Route::get('/arrivals', [ExpeditionController::class, 'index']);
         Route::post('/arrivals', [ExpeditionController::class, 'store']);
+        Route::post('/arrivals/{unit}/p2h', [ArrivalP2hController::class, 'store'])->name('vendor.arrivals.p2h');
         Route::get('/arrivals/reverse-geocode', [ExpeditionController::class, 'reverseGeocode']);
         Route::get('/arrivals/{report}/photos/{kind}', [ExpeditionController::class, 'photo']);
         Route::patch('/arrivals/{report}/p2h', [ExpeditionController::class, 'replaceP2h']);
@@ -113,6 +117,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:coordinator')->prefix('coordinator')->group(function () {
         Route::middleware('permission:coordinator.expedition')->group(function () {
             Route::get('/', [CoordinatorController::class, 'index'])->name('coordinator.index');
+            Route::patch('/arrival-p2h/{p2h}/review', [ArrivalP2hController::class, 'review'])->name('coordinator.arrival-p2h.review');
             Route::get('/export', [CoordinatorController::class, 'export'])->name('coordinator.export');
             Route::patch('/reports/{report}/p2h', [CoordinatorController::class, 'reviewP2h'])->name('coordinator.reports.p2h');
         });
