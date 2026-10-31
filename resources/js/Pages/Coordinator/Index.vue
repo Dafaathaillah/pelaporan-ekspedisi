@@ -1204,6 +1204,20 @@ const healthStatusClass = (status) =>
 </template>
 
 <style scoped>
+/* Keep this scrolling data surface opaque instead of compositing glass layers. */
+.app-shell .arrival-monitoring {
+    background-color: #fff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+.app-shell .arrival-monitoring .data-table thead,
+.app-shell .arrival-monitoring .data-table .bg-white {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+.app-shell .arrival-monitoring .data-table thead {
+    background: #f8fafc;
+}
 .arrival-monitoring .data-table {
     --table-cell-inline-space: 1rem;
     --table-cell-block-space: 1rem;
@@ -1256,8 +1270,7 @@ const healthStatusClass = (status) =>
 }
 
 .arrival-monitoring .arrival-table-scroll {
-    max-height: 72vh;
-    overflow: auto;
+    overflow-x: auto;
     overscroll-behavior-inline: contain;
     scrollbar-color: #cbd5e1 #f8fafc;
 }
@@ -1266,9 +1279,6 @@ const healthStatusClass = (status) =>
     outline-offset: -2px;
 }
 .arrival-monitoring .data-table th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
     background: #f8fafc;
     box-shadow: 0 1px 0 #e2e8f0;
 }
