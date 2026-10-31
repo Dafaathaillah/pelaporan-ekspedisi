@@ -169,4 +169,18 @@ class ArrivalP2hWorkflowTest extends TestCase
         $this->post("/expedition/arrivals/{$unit->id}/p2h", $this->inspection())->assertForbidden();
         $this->assertDatabaseCount('arrival_p2hs', 0);
     }
+
+    public function test_ajax_arrival_returns_saved_report_without_following_a_page_redirect(): void
+    {
+        Storage::fake('local');
+        extract($this->fixture());
+        $this->actingAs($expedition)->post("/expedition/arrivals/{$unit->id}/p2h", $this->inspection());
+        $p2h = ArrivalP2h::sole();
+        $this->actingAs($coordinator)->patch("/coordinator/arrival-p2h/{$p2h->id}/review", ['status' => 'APPROVED']);
+        $response = $this->actingAs($expedition)->withHeader('Accept', 'application/json')->post('/expedition/reports', $this->arrivalPayload($unit));
+        $response->assertCreated()->assertJsonPath('success', true);
+        $this->assertSame(ExpeditionReport::sole()->id, $response->json('report.id'));
+        $this->post('/expedition/reports', $this->arrivalPayload($unit))->assertUnprocessable()->assertJsonValidationErrors('vendor_submission_unit_id');
+        $this->assertDatabaseCount('expedition_reports', 1);
+    }
 }

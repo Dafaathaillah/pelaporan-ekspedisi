@@ -16,6 +16,7 @@ import PermitP2hFollowUps from '/resources/js/Components/PermitP2hFollowUps.vue'
 import Coordinator from '/resources/js/Pages/Coordinator/Index.vue';
 import ArrivalMonitoring from '/resources/js/Pages/Expedition/ArrivalMonitoring.vue';
 import VendorShow from '/resources/js/Pages/Vendor/Show.vue';
+import ExpeditionIndex from '/resources/js/Pages/Expedition/Index.vue';
 import GoNoGo from '/resources/js/Pages/Coordinator/GoNoGo.vue';
 import GoNoGoForm from '/resources/js/Components/GoNoGoForm.vue';
 import '/resources/css/app.css';
@@ -49,6 +50,10 @@ if (view === 'go-review') {
 if (view === 'go-form') {
  component = { render: () => h(AppShell, { title:'GO NO GO' }, {default:()=>h(GoNoGoForm, {units:Array.from({length:4},(_,i)=>({id:'u-'+i,vehicle_plate:'DA '+(i+1)+' AB',driver_name:longName})),checklist:Array.from({length:11},(_,i)=>'Pemeriksaan '+(i+1))})}) }; props = {};
 }
+if (view === 'arrival-submit') {
+ component = ExpeditionIndex;
+ props = {vehicleTypes:['Fuso'], expeditionCompany:longName, reports:paginate([]), p2hChecklist:[], permits:[{...submission, units:[{...unit, latest_departure_p2h:{...inspection,status:'APPROVED',departed_at:report.arrived_at},latest_arrival_p2h:{...inspection,status:'APPROVED'}}],planning_items:[{id:'p-1',vendor_submission_unit_id:unit.id,planned_date:'2026-10-31',reports:[]}]}]};
+}
 const app = createApp(component, props);
 app.config.errorHandler = error => window.__uiErrors.push(String(error));
 app.mount('#app');
@@ -59,13 +64,13 @@ import { reactive, h } from 'vue';
 export const usePage = () => ({ url: '/coordinator', props: { auth: { user: { name: 'Browser fixture', site: 'BIB', role: 'developer' } }, notificationCounts: {} } });
 export const router = { get() {}, post() {}, reload() {} };
 export const Link = { props: ['href'], setup: (p, { slots }) => () => h('a', { href: p.href }, slots.default?.()) };
-export const useForm = data => reactive({ ...structuredClone(data), errors: {}, processing: false, reset() {}, clearErrors() {}, post() {}, patch() { this.errors = { planned_date: 'Tanggal tidak valid' }; window.__refreshMonitoringItems?.(); }, setError() {}, data() { return data; } });
+export const useForm = data => reactive({ ...structuredClone(data), errors: {}, processing: false, reset() {}, clearErrors() {}, post() {}, patch() { this.errors = { planned_date: 'Tanggal tidak valid' }; window.__refreshMonitoringItems?.(); }, setError(field, message) { this.errors[field] = message; }, data() { return data; } });
 `;
 const browser = process.env.BROWSER_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const artifactDir = await mkdtemp(path.join(os.tmpdir(), 'monitoring-browser-'));
 let child, socket, server;
 try {
-    server = await createServer({ configFile: false, plugins: [{ name: 'isolated-monitoring-fixture', enforce: 'pre', resolveId(id) { if (id === '@inertiajs/vue3') return '/__mock_inertia.js'; if (id === '/__monitoring_fixture.js') return id; }, load(id) { if (id === '/__mock_inertia.js') return inertia; if (id === '/__monitoring_fixture.js') return fixture; }, configureServer(s) { s.middlewares.use('/__monitoring-smoke', (_req, res) => { res.setHeader('Content-Type', 'text/html'); res.end('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="app"></div><script type="module" src="/__monitoring_fixture.js"></script></body></html>'); }); } }, vue()], resolve: { alias: { '@': path.resolve('resources/js') }, dedupe: ['vue'] }, server: { host: '127.0.0.1', port: 0, hmr: false }, optimizeDeps: { exclude: ['@inertiajs/vue3'] }, logLevel: 'error' });
+    server = await createServer({ configFile: false, plugins: [{ name: 'isolated-monitoring-fixture', enforce: 'pre', resolveId(id) { if (id === '@inertiajs/vue3') return '/__mock_inertia.js'; if (id === '/__monitoring_fixture.js') return id; }, load(id) { if (id === '/__mock_inertia.js') return inertia; if (id === '/__monitoring_fixture.js') return fixture; }, configureServer(s) { s.middlewares.use('/expedition/reports', (_req,res) => { res.statusCode=422; res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({errors:{arrival_latitude:['Lokasi kedatangan wajib diisi'],planning_item_id:['Planning tidak valid']}})); }); s.middlewares.use('/__monitoring-smoke', (_req, res) => { res.setHeader('Content-Type', 'text/html'); res.end('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="app"></div><script type="module" src="/__monitoring_fixture.js"></script></body></html>'); }); } }, vue()], resolve: { alias: { '@': path.resolve('resources/js') }, dedupe: ['vue'] }, server: { host: '127.0.0.1', port: 0, hmr: false }, optimizeDeps: { exclude: ['@inertiajs/vue3'] }, logLevel: 'error' });
     await server.listen();
     child = spawn(browser, ['--headless=new', '--disable-gpu', '--no-first-run', '--remote-debugging-port=0', '--remote-allow-origins=*', '--user-data-dir=' + path.join(artifactDir, 'profile'), 'about:blank'], { windowsHide: true, stdio: 'ignore' });
     child.on('error', error => { console.error(error.message); });
@@ -214,6 +219,17 @@ try {
                 await evaluate('condition.value = "TIDAK_SESUAI"; condition.dispatchEvent(new Event("change", { bubbles: true }))');
                 await delay(50);
                 assert.equal(await evaluate('document.querySelectorAll("fieldset input")[1].value'), 'pengecekan kembali');
+            }
+            if (view === 'arrival-submit') {
+                await evaluate('var permit = document.querySelector("main select"); permit.value = "permit-1"; permit.dispatchEvent(new Event("change",{bubbles:true}))');
+                await delay(100);
+                await evaluate('document.querySelector("article input[type=checkbox]").click()');
+                await delay(100);
+                await evaluate('document.querySelectorAll("article input[type=number]").forEach((field,index)=>{field.value=index?"70":"110";field.dispatchEvent(new Event("input",{bubbles:true}))}); Array.from(document.querySelectorAll("button")).find(button=>button.textContent.includes("KIRIM KEDATANGAN UNIT TERPILIH")).click()');
+                await delay(250);
+                assert.ok(await evaluate('Array.from(document.querySelectorAll("[role=alert]")).some(alert=>alert.textContent.includes("Lokasi kedatangan wajib diisi") && alert.textContent.includes("Planning tidak valid"))'), 'GPS and planning failure reasons are visible');
+                assert.ok(await evaluate('document.body.textContent.includes("0 unit berhasil dikirim, 1 unit gagal")'), 'failed requests are never counted as sent');
+                assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth + 1'),true);
             }
             if (view === 'go-review') {
                 assert.ok(await evaluate('document.querySelector(".go-no-go-menu") !== null'), 'Coordinator menu is available');

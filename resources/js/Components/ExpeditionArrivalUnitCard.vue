@@ -3,6 +3,7 @@ import { Link, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { getPreciseLocation } from '@/lib/preciseLocation';
+import { arrivalErrorMessage } from '@/lib/arrivalSubmission';
 import ArrivalP2hCard from '@/Components/ArrivalP2hCard.vue';
 
 const props = defineProps({
@@ -82,12 +83,17 @@ const send = async () => {
     });
     submitting.value = true;
     try {
-        await axios.post(props.reportBase, payload, { headers: { Accept: 'application/json' } });
+        const response = await axios.post(props.reportBase, payload, { headers: { Accept: 'application/json' } });
+        if (response.data?.success !== true || !response.data?.report?.id) {
+            throw new Error('Server belum mengonfirmasi penyimpanan unit. Periksa sesi login dan riwayat kedatangan.');
+        }
         return true;
     } catch (error) {
         const errors = error.response?.data?.errors || {};
         Object.entries(errors).forEach(([field, messages]) => form.setError(field, Array.isArray(messages) ? messages[0] : messages));
-        throw error;
+        const message = arrivalErrorMessage(error);
+        form.setError('submission', message);
+        throw new Error(message);
     } finally { submitting.value = false; }
 };
 defineExpose({ send });
@@ -134,6 +140,7 @@ onBeforeUnmount(() => Object.values(previews).forEach(preview => preview.value &
                 <p v-if="form.errors.vendor_submission_unit_id" class="err text-center">{{ form.errors.vendor_submission_unit_id }}</p>
             </form>
             <p v-else-if="!completedReport && !blockedReason" class="mt-4 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">Centang unit ini jika driver dan kendaraannya sudah tiba.</p>
+            <div v-if="Object.keys(form.errors).length" role="alert" class="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><b>Kedatangan belum terkirim:</b><ul class="mt-2 list-disc space-y-1 pl-5"><li v-for="message in [...new Set(Object.values(form.errors))]" :key="message">{{ message }}</li></ul></div>
             <p v-if="submitting" class="mt-4 text-center text-sm font-bold text-red-600">Mengirim kedatangan Unit {{ number }}...</p>
         </div>
     </article>

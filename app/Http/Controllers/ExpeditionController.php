@@ -14,6 +14,7 @@ use App\Services\PrivatePhotoResizer;
 use App\Support\BloodPressureAssessment;
 use App\Support\P2hChecklist;
 use App\Support\SafeBroadcast;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -37,7 +38,7 @@ class ExpeditionController extends Controller
         return Inertia::render('Expedition/Index', ['vehicleTypes' => ['Fuso', 'Colt Diesel', 'Trailer', 'Dump Truck', 'Pickup', 'Light Vehicle', 'Lainnya'], 'expeditionCompany' => $request->user()->name, 'reports' => $reports, 'permits' => $permits, 'requiresVendorCompany' => $request->user()->role === UserRole::EXPEDITION && ! $request->user()->vendor_company_id, 'p2hChecklist' => P2hChecklist::ITEMS, 'reportBase' => $request->user()->role->value === 'vendor' ? '/vendor/arrivals' : '/expedition/reports']);
     }
 
-    public function store(StoreExpeditionReportRequest $request, PrivatePhotoResizer $photoResizer): RedirectResponse
+    public function store(StoreExpeditionReportRequest $request, PrivatePhotoResizer $photoResizer): RedirectResponse|JsonResponse
     {
         return DB::transaction(function () use ($request, $photoResizer) {
             $unit = VendorSubmissionUnit::lockForUpdate()->findOrFail($request->vendor_submission_unit_id);
@@ -66,6 +67,10 @@ class ExpeditionController extends Controller
                 throw $error;
             }
             SafeBroadcast::dispatch(new ExpeditionReportCreated($report));
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'report' => ['id' => $report->id, 'report_number' => $report->report_number]], 201);
+            }
 
             return back()->with('success', 'Laporan kedatangan berhasil dikirim.');
         });

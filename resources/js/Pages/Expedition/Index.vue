@@ -7,6 +7,7 @@ import ArrivalEscortTimer from "@/Components/ArrivalEscortTimer.vue";
 import { router, useForm } from "@inertiajs/vue3";
 import { computed, nextTick, onBeforeUnmount, ref } from "vue";
 import axios from "axios";
+import { arrivalErrorMessage, submitArrivalUnits } from "@/lib/arrivalSubmission";
 import { getPreciseLocation } from "@/lib/preciseLocation";
 
 const props = defineProps({
@@ -53,26 +54,30 @@ const selectedUnitIds = ref([]);
 const unitCardRefs = ref({});
 const batchSubmitting = ref(false);
 const batchMessage = ref("");
+const batchFailures = ref([]);
 const selectedPermit = computed(() => props.permits.find(p => p.id === permitId.value));
 const unitCards = computed(() => (selectedPermit.value?.units || []).map((unit, index) => {
     const planning = selectedPermit.value.planning_items.find(item => item.vendor_submission_unit_id === unit.id);
     return { unit, number: index + 1, planning, completedReport: planning?.reports?.find(report => report.vendor_submission_unit_id === unit.id) || null };
 }));
-const changePermit = () => { selectedUnitIds.value = []; unitCardRefs.value = {}; batchMessage.value = ''; };
+const changePermit = () => { selectedUnitIds.value = []; unitCardRefs.value = {}; batchMessage.value = ''; batchFailures.value = []; };
 const setCardRef = (id, instance) => { if (instance) unitCardRefs.value[id] = instance; else delete unitCardRefs.value[id]; };
 const toggleUnit = (id, checked) => {
     selectedUnitIds.value = checked ? [...new Set([...selectedUnitIds.value, id])] : selectedUnitIds.value.filter(unitId => unitId !== id);
 };
 const sendSelected = async () => {
     if (!selectedUnitIds.value.length || batchSubmitting.value) return;
-    batchSubmitting.value = true; batchMessage.value = '';
-    await nextTick();
-    const results = await Promise.allSettled(selectedUnitIds.value.map(id => unitCardRefs.value[id]?.send()));
-    const sent = results.filter(result => result.status === 'fulfilled').length;
-    const failed = results.length - sent;
-    batchMessage.value = failed ? `${sent} unit berhasil dikirim, ${failed} unit perlu diperiksa kembali.` : `${sent} unit berhasil dikirim.`;
-    batchSubmitting.value = false;
-    if (sent) router.reload({ only: ['permits', 'reports'], preserveScroll: true, onSuccess: () => { selectedUnitIds.value = failed ? selectedUnitIds.value.filter((id, index) => results[index].status === 'rejected') : []; } });
+    const ids = [...selectedUnitIds.value];
+    batchSubmitting.value = true; batchMessage.value = ''; batchFailures.value = [];
+    try {
+        await nextTick();
+        const results = await submitArrivalUnits(ids, unitCardRefs.value);
+        const sent = results.filter(result => result.status === 'fulfilled').length;
+        const failedIds = ids.filter((id, index) => results[index].status === 'rejected');
+        batchFailures.value = results.flatMap((result, index) => result.status === 'rejected' ? [{ id: ids[index], plate: unitCards.value.find(card => card.unit.id === ids[index])?.unit.plate_number || ids[index], message: arrivalErrorMessage(result.reason) }] : []);
+        batchMessage.value = failedIds.length ? `${sent} unit berhasil dikirim, ${failedIds.length} unit gagal. Lihat alasan di bawah.` : `${sent} unit berhasil dikirim.`;
+        if (sent) router.reload({ only: ['permits', 'reports'], preserveScroll: true, onSuccess: () => { selectedUnitIds.value = failedIds; } });
+    } finally { batchSubmitting.value = false; }
 };
 const selectedPlanning = computed(() => selectedPermit.value?.planning_items.find(p => p.id === form.planning_item_id));
 const availableUnits = computed(() => (selectedPermit.value?.units || []).filter(u => (!selectedPlanning.value?.vendor_submission_unit_id || selectedPlanning.value.vendor_submission_unit_id === u.id) && !(selectedPlanning.value?.reports || []).some(r => r.vendor_submission_unit_id === u.id)));
@@ -252,7 +257,7 @@ onBeforeUnmount(clearPreviews);
                 <section v-if="reportBase === '/expedition/reports'" class="space-y-3"><h3 class="text-lg font-black text-slate-900">1. P2H &amp; Keberangkatan per Unit</h3><p class="text-sm text-slate-600">Klik Isi Form P2H, periksa unit, lalu kirim ke vendor. Vendor membuka Detail Pengajuan izin ini untuk Approve/Reject P2H. Setelah disetujui, konfirmasi keberangkatan di sini.</p><DepartureP2hCard v-for="card in unitCards" :key="card.unit.id" :unit="card.unit" :permit="selectedPermit" :checklist="p2hChecklist" :arrived-at="card.completedReport?.arrived_at" /></section>
                 <h3 v-if="reportBase === '/expedition/reports'" class="text-lg font-black text-slate-900">2. P2H Kedatangan &amp; Laporan di Underpass</h3>
                 <ExpeditionArrivalUnitCard v-for="card in unitCards" :key="card.unit.id" :ref="instance => setCardRef(card.unit.id, instance)" :number="card.number" :permit="selectedPermit" :unit="card.unit" :planning="card.planning" :completed-report="card.completedReport" :expedition-company="expeditionCompany" :report-base="reportBase" :checklist="p2hChecklist" :selected="selectedUnitIds.includes(card.unit.id)" @update:selected="toggleUnit(card.unit.id, $event)" />
-                <div class="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur sm:bottom-28 lg:bottom-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><b>{{ selectedUnitIds.length }} unit dipilih</b><p class="text-sm text-slate-500">Unit yang tidak dicentang tetap berstatus Menunggu Driver.</p></div><button type="button" class="btn" :disabled="!selectedUnitIds.length || batchSubmitting" @click="sendSelected">{{ batchSubmitting ? 'MENGIRIM KEDATANGAN...' : 'KIRIM KEDATANGAN UNIT TERPILIH' }}</button></div><p v-if="batchMessage" class="mt-3 text-sm font-semibold" :class="batchMessage.includes('perlu') ? 'text-amber-700' : 'text-emerald-700'">{{ batchMessage }}</p></div>
+                <div class="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur sm:bottom-28 lg:bottom-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><b>{{ selectedUnitIds.length }} unit dipilih</b><p class="text-sm text-slate-500">Unit yang tidak dicentang tetap berstatus Menunggu Driver.</p></div><button type="button" class="btn" :disabled="!selectedUnitIds.length || batchSubmitting" @click="sendSelected">{{ batchSubmitting ? 'MENGIRIM KEDATANGAN...' : 'KIRIM KEDATANGAN UNIT TERPILIH' }}</button></div><p v-if="batchMessage" class="mt-3 text-sm font-semibold" :class="batchFailures.length ? 'text-amber-700' : 'text-emerald-700'">{{ batchMessage }}</p><ul v-if="batchFailures.length" role="alert" class="mt-3 space-y-2 text-sm text-red-800"><li v-for="failure in batchFailures" :key="failure.id" class="rounded-xl border border-red-200 bg-red-50 p-3"><b>{{ failure.plate }}:</b> {{ failure.message }}</li></ul></div>
             </div>
         </section>
 
