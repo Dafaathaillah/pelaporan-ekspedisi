@@ -41,7 +41,7 @@ class EscortAdministrationController extends Controller
         abort_unless($request->user()->role === UserRole::VENDOR && $report->vendor_user_id === $request->user()->id && $report->site === $request->user()->site, 403);
         abort_unless($report->escort_status === 'CLOSED', 422, 'Dokumen administrasi hanya dapat diunggah setelah escort selesai.');
 
-        $request->validate(['scan' => ['required', 'file', 'mimes:pdf', 'max:10240']]);
+        $request->validate(['scan' => ['required', 'file', 'mimes:pdf']]);
         $column = $kind === 'invoice' ? 'invoice_scan_path' : 'spb_scan_path';
         $oldPath = $report->{$column};
         $path = $request->file('scan')->store('private/escort-administration/'.$report->id, 'local');

@@ -1,3 +1,10 @@
+# PHP 8 Apache module: receive original files before backend image compression.
+# PHP-FPM/CGI uses public/.user.ini instead.
+<IfModule php_module>
+    php_value upload_max_filesize 0
+    php_value post_max_size 0
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

@@ -251,14 +251,11 @@ class OperationalWorkflowTest extends TestCase
         $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', [
             'status' => 'RELEASED', 'release_document' => UploadedFile::fake()->image('izin.jpg'),
         ])->assertSessionHasErrors('release_document');
-        $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', [
-            'status' => 'RELEASED', 'release_document' => UploadedFile::fake()->create('izin.pdf', 6000, 'application/pdf'),
-        ])->assertSessionHasErrors('release_document');
 
         $expiredAt = today()->addDays(30)->toDateString();
         $this->actingAs($coordinator)->patch('/coordinator/submission/'.$submission->id.'/status', [
             'status' => 'RELEASED', 'release_expired_at' => $expiredAt,
-            'release_document' => UploadedFile::fake()->create('izin-release.pdf', 100, 'application/pdf'),
+            'release_document' => UploadedFile::fake()->create('izin-release.pdf', 6000, 'application/pdf'),
         ])->assertSessionHasNoErrors();
 
         $released = $submission->fresh();

@@ -204,6 +204,17 @@ try {
                 await delay(100);
                 assert.ok(await evaluate('document.querySelector(".journey-details > div").textContent.length > 0'));
             }
+            if (view === 'go-form') {
+                await evaluate('var condition = document.querySelector("fieldset select"); condition.value = "SESUAI"; condition.dispatchEvent(new Event("change", { bubbles: true }))');
+                await delay(50);
+                assert.equal(await evaluate('document.querySelectorAll("fieldset input")[1].value'), 'sesuai siap escort');
+                await evaluate('var note = document.querySelectorAll("fieldset input")[1]; note.value = "Catatan manual driver"; note.dispatchEvent(new Event("input", { bubbles: true }))');
+                await delay(50);
+                assert.equal(await evaluate('document.querySelectorAll("fieldset input")[1].value'), 'Catatan manual driver');
+                await evaluate('condition.value = "TIDAK_SESUAI"; condition.dispatchEvent(new Event("change", { bubbles: true }))');
+                await delay(50);
+                assert.equal(await evaluate('document.querySelectorAll("fieldset input")[1].value'), 'pengecekan kembali');
+            }
             if (view === 'go-review') {
                 assert.ok(await evaluate('document.querySelector(".go-no-go-menu") !== null'), 'Coordinator menu is available');
                 await evaluate('Array.from(document.querySelectorAll("button")).find(button => button.textContent.includes("Lihat Detail")).click()');

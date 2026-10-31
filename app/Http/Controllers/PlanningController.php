@@ -118,7 +118,7 @@ class PlanningController extends Controller
     public function evidence(Request $request, PlanningItem $planningItem)
     {
         abort_unless($planningItem->submission->site === $request->user()->site, 403);
-        $data = $request->validate(['evidence' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120']]);
+        $data = $request->validate(['evidence' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf']]);
         if ($planningItem->evidence_path) {
             Storage::disk('local')->delete($planningItem->evidence_path);
         }

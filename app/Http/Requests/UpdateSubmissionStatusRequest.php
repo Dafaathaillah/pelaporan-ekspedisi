@@ -23,7 +23,7 @@ class UpdateSubmissionStatusRequest extends FormRequest
             'release_expired_at' => ['exclude_unless:status,RELEASED', Rule::requiredIf($requiresReleaseDocument), 'nullable', 'date', 'after_or_equal:today'],
             'status' => ['required', Rule::in(['APPROVED', 'REVISION', 'REJECTED', 'RELEASED', 'CLOSED'])],
             'coordinator_note' => [Rule::requiredIf(in_array($this->status, ['REVISION', 'REJECTED'], true)), 'nullable', 'string', 'max:2000'],
-            'release_document' => [Rule::requiredIf($requiresReleaseDocument), 'nullable', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:5120'],
+            'release_document' => [Rule::requiredIf($requiresReleaseDocument), 'nullable', 'file', 'mimes:pdf', 'mimetypes:application/pdf'],
         ];
     }
 }

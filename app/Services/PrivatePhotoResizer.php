@@ -28,14 +28,31 @@ class PrivatePhotoResizer
             imagefill($target, 0, 0, $white);
             imagecopyresampled($target, $source, 0, 0, 0, 0, $targetWidth, $targetHeight, $width, $height);
 
-            ob_start();
-            imagejpeg($target, null, 80);
-            $contents = ob_get_clean();
+            $quality = 80;
+            do {
+                ob_start();
+                imagejpeg($target, null, $quality);
+                $contents = ob_get_clean();
+                if (strlen($contents) <= 512 * 1024) {
+                    break;
+                }
+                if ($quality > 60) {
+                    $quality -= 10;
+
+                    continue;
+                }
+                $smaller = imagescale($target, max(1, (int) (imagesx($target) * 0.8)), -1, IMG_BICUBIC);
+                imagedestroy($target);
+                $target = $smaller;
+                $quality = 80;
+            } while (true);
             imagedestroy($source);
             imagedestroy($target);
 
             $path = trim($directory, '/').'/'.$field.'-'.Str::uuid().'.jpg';
-            Storage::disk('local')->put($path, $contents);
+            if (! Storage::disk('local')->put($path, $contents)) {
+                throw new \RuntimeException('Foto gagal disimpan.');
+            }
 
             return $path;
         } catch (\Throwable $error) {

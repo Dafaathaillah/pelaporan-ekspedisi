@@ -79,6 +79,8 @@ class StoreExpeditionReportRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'arrival_photo.uploaded' => 'Foto kedatangan gagal diunggah. Ambil ulang foto dan coba kembali. Jika tetap gagal, periksa batas upload server.',
+            'blood_pressure_photo.uploaded' => 'Foto tensi gagal diunggah. Ambil ulang foto dan coba kembali. Jika tetap gagal, periksa batas upload server.',
             'arrival_location_accuracy.max' => 'Akurasi lokasi foto kedatangan wajib di bawah atau sama dengan ±100 meter. Aktifkan GPS dan ambil ulang foto.',
             'blood_pressure_location_accuracy.max' => 'Akurasi lokasi foto tensi wajib di bawah atau sama dengan ±100 meter. Aktifkan GPS dan ambil ulang foto.',
         ];
