@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\UserRole;
+use App\Models\EscortGoNoGo;
 use App\Models\VendorSubmission;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -58,12 +59,14 @@ class HandleInertiaRequests extends Middleware
                     return ['IJIN_LINTAS' => VendorSubmission::where('site', $user->site)->where('type', 'IJIN_LINTAS')->whereNull('coordinator_opened_at')->count()];
                 }
 
+                $goNoGo = in_array($user->role, [UserRole::DEVELOPER, UserRole::COORDINATOR], true) && $user->hasPermission('coordinator.expedition')
+                    ? ['GO_NO_GO' => EscortGoNoGo::where('site', $user->site)->where('status', 'PENDING')->count()] : [];
                 if (! in_array($user->role, [UserRole::DEVELOPER, UserRole::COORDINATOR], true) || ! $user->hasPermission('coordinator.vendor')) {
-                    return [];
+                    return $goNoGo;
                 }
 
-                return VendorSubmission::where('site', $user->site)->whereNull('coordinator_opened_at')
-                    ->selectRaw('type, count(*) as total')->groupBy('type')->pluck('total', 'type');
+                return [...$goNoGo, ...VendorSubmission::where('site', $user->site)->whereNull('coordinator_opened_at')
+                    ->selectRaw('type, count(*) as total')->groupBy('type')->pluck('total', 'type')->all()];
             },
         ];
     }

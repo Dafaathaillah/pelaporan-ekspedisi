@@ -7,6 +7,7 @@ use App\Http\Controllers\DirectPlanningController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DriverEscortController;
 use App\Http\Controllers\EscortAdministrationController;
+use App\Http\Controllers\EscortGoNoGoController;
 use App\Http\Controllers\ExpeditionController;
 use App\Http\Controllers\ExpeditionPlanningController;
 use App\Http\Controllers\ExpeditionRequestController;
@@ -38,6 +39,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/push/test', [PushSubscriptionController::class, 'test'])->name('push.test');
     Route::get('/dashboard', fn () => redirect(request()->user()->homePath()))->name('dashboard');
     Route::get('/departure-p2h/{unit}/download', [DepartureP2hController::class, 'download'])->name('departure-p2h.download');
+    Route::get('/go-no-go/{goNoGo}/download', [EscortGoNoGoController::class, 'download'])->name('go-no-go.download');
+    Route::get('/go-no-go/{goNoGo}/photo', [EscortGoNoGoController::class, 'photo'])->name('go-no-go.photo');
     Route::get('/arrival-p2h/{p2h}/download', [ArrivalP2hController::class, 'download'])->name('arrival-p2h.download');
     Route::get('/escort-administration/{report}/{kind}', [EscortAdministrationController::class, 'download'])->name('escort-administration.download');
     Route::middleware('role:finance')->get('/finance/escort-administration', [EscortAdministrationController::class, 'financeIndex'])->name('finance.escort-administration');
@@ -58,6 +61,8 @@ Route::middleware('auth')->group(function () {
     });
     Route::middleware(['role:driver', 'permission:driver.escort'])->prefix('driver')->group(function () {
         Route::get('/escorts', [DriverEscortController::class, 'index'])->name('driver.escorts.index');
+        Route::post('/go-no-go', [EscortGoNoGoController::class, 'store'])->name('driver.go-no-go.store');
+        Route::post('/go-no-go/{goNoGo}/cancel', [EscortGoNoGoController::class, 'cancel'])->name('driver.go-no-go.cancel');
         Route::post('/escort-batches', [DriverEscortController::class, 'claimBatch'])->name('driver.escort-batches.claim');
         Route::post('/escort-batches/{report}/close', [DriverEscortController::class, 'closeBatch'])->name('driver.escort-batches.close');
         Route::patch('/escorts/{report}/claim', [DriverEscortController::class, 'claim'])->name('driver.escorts.claim');
@@ -117,6 +122,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:coordinator')->prefix('coordinator')->group(function () {
         Route::middleware('permission:coordinator.expedition')->group(function () {
             Route::get('/', [CoordinatorController::class, 'index'])->name('coordinator.index');
+            Route::get('/go-no-go', [EscortGoNoGoController::class, 'index'])->name('coordinator.go-no-go.index');
+            Route::patch('/go-no-go/{goNoGo}/review', [EscortGoNoGoController::class, 'review'])->name('coordinator.go-no-go.review');
             Route::patch('/arrival-p2h/{p2h}/review', [ArrivalP2hController::class, 'review'])->name('coordinator.arrival-p2h.review');
             Route::get('/export', [CoordinatorController::class, 'export'])->name('coordinator.export');
             Route::patch('/reports/{report}/p2h', [CoordinatorController::class, 'reviewP2h'])->name('coordinator.reports.p2h');

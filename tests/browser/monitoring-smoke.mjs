@@ -16,6 +16,8 @@ import PermitP2hFollowUps from '/resources/js/Components/PermitP2hFollowUps.vue'
 import Coordinator from '/resources/js/Pages/Coordinator/Index.vue';
 import ArrivalMonitoring from '/resources/js/Pages/Expedition/ArrivalMonitoring.vue';
 import VendorShow from '/resources/js/Pages/Vendor/Show.vue';
+import GoNoGo from '/resources/js/Pages/Coordinator/GoNoGo.vue';
+import GoNoGoForm from '/resources/js/Components/GoNoGoForm.vue';
 import '/resources/css/app.css';
 window.__uiErrors = [];
 const longName = 'Perusahaan Ekspedisi Dengan Nama Sangat Panjang Untuk Pemeriksaan Mobile';
@@ -40,6 +42,12 @@ if (view.startsWith('arrivals')) {
     const arrivalProps = reactive(props);
     window.__refreshMonitoringItems = () => { arrivalProps.items = arrivalProps.items.map(item => ({ ...item })); };
     component = { render: () => h(ArrivalMonitoring, arrivalProps) }; props = {};
+}
+if (view === 'go-review') {
+ component = GoNoGo; props = { filters: {}, checklist: Array.from({length:11}, (_, i) => 'Pemeriksaan ' + (i+1)), forms: paginate([{ id:'go-1', escorter_name:longName, nik:'812345', units:Array.from({length:4}, (_,i) => ({id:'u-'+i,vehicle_plate:'DA '+(i+1)+' AB',driver_name:longName})), items:Array.from({length:11},()=>({condition:'SESUAI',evidence:longName,note:longName})), status:'PENDING',result:'PENDING',driver_decision:'LAIK',submitted_at:report.arrived_at,revision:1 }]) };
+}
+if (view === 'go-form') {
+ component = { render: () => h(AppShell, { title:'GO NO GO' }, {default:()=>h(GoNoGoForm, {units:Array.from({length:4},(_,i)=>({id:'u-'+i,vehicle_plate:'DA '+(i+1)+' AB',driver_name:longName})),checklist:Array.from({length:11},(_,i)=>'Pemeriksaan '+(i+1))})}) }; props = {};
 }
 const app = createApp(component, props);
 app.config.errorHandler = error => window.__uiErrors.push(String(error));
@@ -195,6 +203,17 @@ try {
                 await evaluate('document.querySelector(".journey-details summary").click()');
                 await delay(100);
                 assert.ok(await evaluate('document.querySelector(".journey-details > div").textContent.length > 0'));
+            }
+            if (view === 'go-review') {
+                assert.ok(await evaluate('document.querySelector(".go-no-go-menu") !== null'), 'Coordinator menu is available');
+                await evaluate('Array.from(document.querySelectorAll("button")).find(button => button.textContent.includes("Lihat Detail")).click()');
+                await delay(100);
+                assert.ok(await evaluate('document.querySelectorAll("table tbody tr").length >= 11'), 'all checklist details mount when opened');
+                assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), true, 'expanded GO checklist stays within viewport');
+            }
+            if (view.startsWith('go-')) {
+                const screenshot = await send('Page.captureScreenshot', {format:'png'});
+                await writeFile(path.join(artifactDir, view + '-' + width + '.png'), Buffer.from(screenshot.data, 'base64'));
             }
             console.log('PASS', width, view);
         }

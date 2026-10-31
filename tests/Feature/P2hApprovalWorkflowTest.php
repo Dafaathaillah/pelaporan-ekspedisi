@@ -8,11 +8,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\PreparesApprovedGoNoGo;
 use Tests\TestCase;
 
 class P2hApprovalWorkflowTest extends TestCase
 {
-    use RefreshDatabase;
+    use PreparesApprovedGoNoGo, RefreshDatabase;
 
     public function test_coordinator_can_approve_p2h_for_the_same_site(): void
     {
@@ -112,6 +113,8 @@ class P2hApprovalWorkflowTest extends TestCase
 
     private function claim(User $driver, ExpeditionReport $report)
     {
+        $this->prepareApprovedGoNoGo($driver, [$report]);
+
         return $this->actingAs($driver)->post("/driver/escorts/{$report->id}/claim", [
             '_method' => 'PATCH',
             'p5m_photo' => UploadedFile::fake()->image('p5m.jpg'),

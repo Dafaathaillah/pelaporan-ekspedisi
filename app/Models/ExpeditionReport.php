@@ -73,4 +73,9 @@ class ExpeditionReport extends Model
     {
         return $this->belongsTo(ArrivalP2h::class);
     }
+
+    public function goNoGo()
+    {
+        return $this->belongsTo(EscortGoNoGo::class, 'go_no_go_id');
+    }
 }

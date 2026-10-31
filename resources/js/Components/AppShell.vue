@@ -57,6 +57,9 @@ const menus = computed(() => {
                 permission: "coordinator.expedition",
             },
             {
+                label: "Approval GO NO GO", short: "GO NO GO", icon: "shield", href: "/coordinator/go-no-go", permission: "coordinator.expedition", highlight: true, badge: notificationCounts.value.GO_NO_GO,
+            },
+            {
                 label: "Request Ekspedisi",
                 short: "Request",
                 icon: "route",
@@ -303,7 +306,7 @@ const logout = () => {
                         :title="collapsed ? item.label : null"
                         class="side-link relative"
                         :class="[
-                            { 'side-link-active': active(item) },
+                            { 'side-link-active': active(item), 'go-no-go-menu': item.highlight },
                             collapsed ? 'justify-center px-2' : '',
                         ]"
                         ><span class="side-icon"
@@ -528,8 +531,8 @@ const logout = () => {
                         :href="item.href"
                         class="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-sm font-bold text-slate-700"
                         :class="{
-                            'border-red-200 bg-red-50 text-red-700':
-                                active(item),
+                            'border-red-200 bg-red-50 text-red-700': active(item),
+                            'go-no-go-menu': item.highlight,
                         }"
                         ><span class="side-icon"
                             ><NavIcon :name="item.icon" /></span
@@ -584,7 +587,7 @@ const logout = () => {
                 :key="item.href"
                 :href="item.href"
                 class="bottom-link"
-                :class="{ 'bottom-link-active': active(item) }"
+                :class="{ 'bottom-link-active': active(item), 'go-no-go-menu': item.highlight }"
                 ><NavIcon :name="item.icon" /><span>{{
                     item.short
                 }}</span></Link
@@ -620,3 +623,15 @@ const logout = () => {
         />
     </div>
 </template>
+
+<style scoped>
+.app-shell .go-no-go-menu {
+    border-color: #a3cf2e;
+    background: #d9ff43;
+    color: #254000;
+    box-shadow: none;
+}
+.app-shell .go-no-go-menu:hover { background: #c4ef29; color: #183300; }
+.app-shell .go-no-go-menu .side-icon { background: #efffb0; color: #254000; }
+.app-shell .go-no-go-menu:focus-visible { outline: 2px solid #4d7c0f; outline-offset: 2px; }
+</style>

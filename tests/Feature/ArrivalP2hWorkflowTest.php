@@ -14,11 +14,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Support\PreparesApprovedGoNoGo;
 use Tests\TestCase;
 
 class ArrivalP2hWorkflowTest extends TestCase
 {
-    use RefreshDatabase;
+    use PreparesApprovedGoNoGo, RefreshDatabase;
 
     private function fixture(): array
     {
@@ -108,6 +109,7 @@ class ArrivalP2hWorkflowTest extends TestCase
         $driver = User::factory()->create(['role' => UserRole::DRIVER, 'site' => 'BIB']);
         $this->actingAs($driver)->patch("/driver/escorts/{$report->id}/claim", ['p5m_photo' => UploadedFile::fake()->image('p5m.jpg')])->assertSessionHasErrors('ready_escort_at');
         $report->update(['arrived_at' => now()->subHours(7)]);
+        $this->prepareApprovedGoNoGo($driver, [$report]);
         $this->patch("/driver/escorts/{$report->id}/claim", ['p5m_photo' => UploadedFile::fake()->image('p5m.jpg')])->assertSessionHasNoErrors();
         $this->assertSame('PROCESS', $report->fresh()->escort_status);
     }

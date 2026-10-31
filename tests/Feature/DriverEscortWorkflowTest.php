@@ -11,11 +11,12 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Support\PreparesApprovedGoNoGo;
 use Tests\TestCase;
 
 class DriverEscortWorkflowTest extends TestCase
 {
-    use RefreshDatabase;
+    use PreparesApprovedGoNoGo, RefreshDatabase;
 
     public function test_expedition_readiness_is_seven_hours_after_arrival_and_is_exposed_to_driver(): void
     {
@@ -49,14 +50,14 @@ class DriverEscortWorkflowTest extends TestCase
         $this->assertTrue($report->is_ready_for_escort);
     }
 
-    public function test_driver_must_attach_p5m_when_starting_escort(): void
+    public function test_driver_must_have_an_approved_go_no_go_when_starting_escort(): void
     {
         $driver = User::factory()->create(['role' => UserRole::DRIVER, 'permissions' => ['driver.escort']]);
         $report = $this->report(User::factory()->create(['role' => UserRole::EXPEDITION]));
 
         $this->actingAs($driver)
             ->patch('/driver/escorts/'.$report->id.'/claim')
-            ->assertSessionHasErrors('p5m_photo');
+            ->assertSessionHasErrors('go_no_go');
 
         $this->assertDatabaseHas('expedition_reports', [
             'id' => $report->id,
@@ -66,15 +67,13 @@ class DriverEscortWorkflowTest extends TestCase
         ]);
     }
 
-    public function test_driver_can_start_escort_with_a_valid_p5m_photo(): void
+    public function test_driver_can_start_escort_with_the_approved_go_no_go_p5m(): void
     {
         Storage::fake('local');
         $driver = User::factory()->create(['role' => UserRole::DRIVER, 'permissions' => ['driver.escort']]);
         $report = $this->report(User::factory()->create(['role' => UserRole::EXPEDITION]));
-        $this->actingAs($driver)->post('/driver/escorts/'.$report->id.'/claim', [
-            '_method' => 'PATCH',
-            'p5m_photo' => UploadedFile::fake()->image('p5m.jpg'),
-        ])->assertSessionHasNoErrors();
+        $this->prepareApprovedGoNoGo($driver, [$report]);
+        $this->actingAs($driver)->patch('/driver/escorts/'.$report->id.'/claim')->assertSessionHasNoErrors();
         $this->assertNotNull($report->fresh()->p5m_photo_path);
         Storage::disk('local')->assertExists($report->fresh()->p5m_photo_path);
         $this->get('/driver/escorts/'.$report->id.'/p5m-photo')->assertOk();
@@ -153,10 +152,8 @@ class DriverEscortWorkflowTest extends TestCase
         $first = $this->report($expedition);
         $second = $this->report($expedition, ['report_number' => 'EXP-ESCORT-2', 'vehicle_plate' => 'DA 2 AA']);
 
-        $this->actingAs($driver)->post('/driver/escort-batches', [
-            'report_ids' => [$first->id, $second->id],
-            'p5m_photo' => UploadedFile::fake()->image('p5m-batch.png', 3000, 2000),
-        ])->assertSessionHasNoErrors();
+        $this->prepareApprovedGoNoGo($driver, [$first, $second], UploadedFile::fake()->image('p5m-batch.png', 3000, 2000));
+        $this->actingAs($driver)->post('/driver/escort-batches', ['report_ids' => [$first->id, $second->id]])->assertSessionHasNoErrors();
 
         $first->refresh();
         $second->refresh();
@@ -165,7 +162,7 @@ class DriverEscortWorkflowTest extends TestCase
         $this->assertSame($first->p5m_photo_path, $second->p5m_photo_path);
         $this->assertSame($driver->id, $first->escort_driver_id);
         $this->assertSame($driver->id, $second->escort_driver_id);
-        $this->assertCount(1, Storage::disk('local')->allFiles('private/expedition-reports/escort-batches'));
+        $this->assertCount(1, Storage::disk('local')->allFiles('private/go-no-go'));
         $this->assertStringEndsWith('.jpg', $first->p5m_photo_path);
         [$width, $height] = getimagesize(Storage::disk('local')->path($first->p5m_photo_path));
         $this->assertLessThanOrEqual(1920, max($width, $height));
@@ -451,6 +448,8 @@ class DriverEscortWorkflowTest extends TestCase
 
     private function claim(User $driver, ExpeditionReport $report)
     {
+        $this->prepareApprovedGoNoGo($driver, [$report]);
+
         return $this->actingAs($driver)->post('/driver/escorts/'.$report->id.'/claim', [
             '_method' => 'PATCH',
             'p5m_photo' => UploadedFile::fake()->image('p5m.jpg'),
@@ -459,6 +458,8 @@ class DriverEscortWorkflowTest extends TestCase
 
     private function claimBatch(User $driver, array $reports)
     {
+        $this->prepareApprovedGoNoGo($driver, $reports);
+
         return $this->actingAs($driver)->post('/driver/escort-batches', [
             'report_ids' => collect($reports)->pluck('id')->all(),
             'p5m_photo' => UploadedFile::fake()->image('p5m-batch.jpg'),

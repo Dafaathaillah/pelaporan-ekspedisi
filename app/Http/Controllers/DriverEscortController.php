@@ -3,17 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Events\ExpeditionEscortUpdated;
+use App\Models\EscortGoNoGo;
 use App\Models\ExpeditionReport;
+use App\Services\EscortGoNoGoService;
+use App\Services\EscortReadiness;
 use App\Services\PrivatePhotoResizer;
+use App\Support\GoNoGoChecklist;
 use App\Support\SafeBroadcast;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class DriverEscortController extends Controller
@@ -21,7 +23,7 @@ class DriverEscortController extends Controller
     public function index(Request $request)
     {
         $items = ExpeditionReport::query()
-            ->with(['escortDriver:id,name,hull_number', 'escortCloser:id,name,hull_number', 'internalIjinLintas:id,title,escort_date'])
+            ->with(['escortDriver:id,name,hull_number', 'escortCloser:id,name,hull_number', 'internalIjinLintas:id,title,escort_date', 'goNoGo:id,submitted_by,status,driver_decision,started_at'])
             ->where('site', $request->user()->site)
             ->where(fn ($query) => $query
                 ->whereIn('escort_status', ['WAITING', 'PROCESS'])
@@ -29,96 +31,46 @@ class DriverEscortController extends Controller
                 ->orWhere('escort_closed_by', $request->user()->id))
             ->latest('arrived_at')->get();
 
-        return Inertia::render('Driver/Escorts', ['items' => $items]);
+        return Inertia::render('Driver/Escorts', ['items' => $items, 'goNoGoChecklist' => GoNoGoChecklist::ITEMS, 'goNoGoForms' => EscortGoNoGo::where('site', $request->user()->site)->where('submitted_by', $request->user()->id)->latest('submitted_at')->paginate(10, ['*'], 'gng_page')->withQueryString()]);
     }
 
-    public function claim(Request $request, ExpeditionReport $report, PrivatePhotoResizer $photoResizer)
+    public function claim(Request $request, ExpeditionReport $report)
     {
-        $request->validate([
-            'p5m_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp'],
-        ], [
-            'p5m_photo.required' => 'Foto P5M wajib diambil sebelum memulai escort.',
-        ]);
-        DB::transaction(function () use ($request, $report, $photoResizer) {
+        $request->validate(['go_no_go_id' => ['nullable', 'uuid']]);
+        DB::transaction(function () use ($request, $report) {
             $item = ExpeditionReport::lockForUpdate()->findOrFail($report->id);
             abort_unless($item->site === $request->user()->site, 403);
-            $this->ensureP2hAndWaitingPeriodAreComplete($item);
-            $this->ensureInternalEscortIsScheduledToday($item);
-            $this->ensureExpeditionIsReady($item);
+            app(EscortReadiness::class)->ensure($item);
             abort_if($item->escort_status !== 'WAITING' || $item->escort_driver_id, 422, 'Unit ekspedisi sudah diambil driver escort lain.');
-            $path = $photoResizer->store($request->file('p5m_photo'), 'private/expedition-reports/'.$item->report_number, 'p5m');
-            try {
-                $item->update(['escort_status' => 'PROCESS', 'escort_driver_id' => $request->user()->id, 'escort_started_at' => now(), 'p5m_photo_path' => $path]);
-            } catch (\Throwable $error) {
-                if ($path) {
-                    Storage::disk('local')->delete($path);
-                }
-                throw $error;
-            }
+            $form = app(EscortGoNoGoService::class)->approvedForStart($request->user(), collect([$item]), $request->input('go_no_go_id'));
+            $item->update(['escort_status' => 'PROCESS', 'escort_driver_id' => $request->user()->id, 'escort_started_at' => now(), 'p5m_photo_path' => $form->p5m_photo_path]);
+            $form->update(['started_at' => $item->escort_started_at]);
         });
         SafeBroadcast::dispatch(new ExpeditionEscortUpdated($report->fresh()));
 
-        return back()->with('success', 'Escort dimulai. Selesaikan tugas dan lakukan close escort di lokasi tujuan.');
+        return back()->with('success', 'Escort dimulai berdasarkan GO/NO GO yang disetujui.');
     }
 
-    public function claimBatch(Request $request, PrivatePhotoResizer $photoResizer)
+    public function claimBatch(Request $request)
     {
-        $data = $request->validate([
-            'report_ids' => ['required', 'array', 'min:1'],
-            'report_ids.*' => ['required', 'uuid', 'distinct'],
-            'p5m_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp'],
-        ], [
-            'report_ids.required' => 'Pilih minimal satu unit yang akan di-escort.',
-            'report_ids.min' => 'Pilih minimal satu unit yang akan di-escort.',
-            'p5m_photo.required' => 'Foto P5M wajib diambil sebelum memulai escort.',
-        ]);
-
+        $data = $request->validate(['report_ids' => ['required', 'array', 'min:1', 'max:100'], 'report_ids.*' => ['required', 'uuid', 'distinct'], 'go_no_go_id' => ['nullable', 'uuid']]);
         $ids = collect($data['report_ids'])->unique()->sort()->values();
         $batchId = (string) Str::uuid();
-        $path = null;
-        $updatedIds = [];
-
-        try {
-            DB::transaction(function () use ($request, $ids, $batchId, $photoResizer, &$path, &$updatedIds) {
-                $items = ExpeditionReport::query()
-                    ->whereIn('id', $ids)
-                    ->orderBy('id')
-                    ->lockForUpdate()
-                    ->get();
-
-                abort_if($items->count() !== $ids->count(), 422, 'Salah satu unit tidak ditemukan. Muat ulang daftar kendaraan.');
-                abort_if($items->contains(fn ($item) => $item->site !== $request->user()->site), 403);
-                $items->each(fn ($item) => $this->ensureP2hAndWaitingPeriodAreComplete($item));
-                $items->each(fn ($item) => $this->ensureInternalEscortIsScheduledToday($item));
-                $items->each(fn ($item) => $this->ensureExpeditionIsReady($item));
-                abort_if($items->contains(fn ($item) => $item->escort_status !== 'WAITING' || $item->escort_driver_id), 422, 'Salah satu unit sudah diambil driver escort lain. Muat ulang daftar kendaraan.');
-
-                $path = $photoResizer->store($request->file('p5m_photo'), 'private/expedition-reports/escort-batches/'.$batchId, 'p5m');
-                $startedAt = now();
-
-                foreach ($items as $item) {
-                    $item->update([
-                        'escort_status' => 'PROCESS',
-                        'escort_driver_id' => $request->user()->id,
-                        'escort_batch_id' => $batchId,
-                        'escort_started_at' => $startedAt,
-                        'p5m_photo_path' => $path,
-                    ]);
-                    $updatedIds[] = $item->id;
-                }
-            });
-        } catch (\Throwable $error) {
-            if ($path) {
-                Storage::disk('local')->delete($path);
+        DB::transaction(function () use ($request, $ids, $batchId) {
+            $items = app(EscortGoNoGoService::class)->lockedReports($ids->all());
+            abort_if($items->contains(fn ($item) => $item->site !== $request->user()->site), 403);
+            $items->each(fn ($item) => app(EscortReadiness::class)->ensure($item));
+            abort_if($items->contains(fn ($item) => $item->escort_status !== 'WAITING' || $item->escort_driver_id), 422, 'Salah satu unit sudah diambil driver escort lain. Muat ulang daftar kendaraan.');
+            $form = app(EscortGoNoGoService::class)->approvedForStart($request->user(), $items, $request->input('go_no_go_id'));
+            $startedAt = now();
+            foreach ($items as $item) {
+                $item->update(['escort_status' => 'PROCESS', 'escort_driver_id' => $request->user()->id, 'escort_batch_id' => $batchId, 'escort_started_at' => $startedAt, 'p5m_photo_path' => $form->p5m_photo_path]);
             }
-            throw $error;
-        }
+            $form->update(['started_at' => $startedAt]);
+        });
+        ExpeditionReport::whereIn('id', $ids)->get()->each(fn ($item) => SafeBroadcast::dispatch(new ExpeditionEscortUpdated($item)));
 
-        ExpeditionReport::whereIn('id', $updatedIds)->get()->each(
-            fn ($item) => SafeBroadcast::dispatch(new ExpeditionEscortUpdated($item)),
-        );
-
-        return back()->with('success', $ids->count().' unit berhasil dimulai dalam satu batch escort.');
+        return back()->with('success', $ids->count().' unit berhasil dimulai berdasarkan GO/NO GO.');
     }
 
     public function close(Request $request, ExpeditionReport $report, PrivatePhotoResizer $photoResizer)
@@ -258,39 +210,5 @@ class DriverEscortController extends Controller
         });
 
         return response()->json(['display_name' => $name]);
-    }
-
-    private function ensureInternalEscortIsScheduledToday(ExpeditionReport $report): void
-    {
-        if (! $report->internal_ijin_lintas_id) {
-            return;
-        }
-
-        $escortDate = $report->internalIjinLintas()->value('escort_date');
-        if (! $escortDate || ! Carbon::parse($escortDate)->isToday()) {
-            throw ValidationException::withMessages([
-                'escort_date' => 'Izin internal hanya dapat di-escort tepat pada tanggal yang dijadwalkan.',
-            ]);
-        }
-    }
-
-    private function ensureP2hAndWaitingPeriodAreComplete(ExpeditionReport $report): void
-    {
-        if ($report->p2h_photo_path && $report->p2h_status !== 'APPROVED') {
-            throw ValidationException::withMessages([
-                'p2h_status' => 'Unit belum dapat di-escort karena P2H belum disetujui coordinator.',
-            ]);
-        }
-    }
-
-    private function ensureExpeditionIsReady(ExpeditionReport $report): void
-    {
-        if ($report->internal_ijin_lintas_id || $report->is_ready_for_escort) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            'ready_escort_at' => 'Unit belum ready escort. Dapat mulai escort pada '.$report->ready_escort_at->format('d/m/Y H:i').' WITA.',
-        ]);
     }
 }

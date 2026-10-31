@@ -1,13 +1,16 @@
 <script setup>
 import AppShell from "@/Components/AppShell.vue";
+import GoNoGoForm from "@/Components/GoNoGoForm.vue";
+import GoNoGoRecord from "@/Components/GoNoGoRecord.vue";
 import EscortReadinessBadge from "@/Components/EscortReadinessBadge.vue";
 import Modal from "@/Components/Modal.vue";
 import P5mCameraCapture from "@/Components/P5mCameraCapture.vue";
-import { router, useForm, usePage } from "@inertiajs/vue3";
+import { Link, router, useForm, usePage } from "@inertiajs/vue3";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { getPreciseLocation } from "@/lib/preciseLocation";
 import { isEscortReady } from "@/lib/escortReadiness";
-const props = defineProps({ items: Array });
+const props = defineProps({ items: Array, goNoGoChecklist: { type: Array, default: () => [] }, goNoGoForms: { type: Object, default: () => ({ data: [], total: 0, last_page: 1, links: [] }) } });
+const initialGoNoGo = ref(null), selectionError = ref('');
 const user = computed(() => usePage().props.auth.user),
     selectedClaim = ref(false),
     selectedIds = ref([]),
@@ -31,12 +34,13 @@ onMounted(() => {
     }, 1000);
 });
 onUnmounted(() => window.clearInterval(readinessTimer));
-const p2hReady = (item) => !item.p2h_photo_path || item.p2h_status === "APPROVED";
+const p2hReady = (item) => (!item.p2h_photo_path && !item.arrival_p2h_id) || item.p2h_status === "APPROVED";
 const timeAndScheduleReady = (item) => item.internal_ijin_lintas
     ? item.internal_ijin_lintas.escort_date === siteToday
     : isEscortReady(item, now.value);
-const canStart = (item) => p2hReady(item) && timeAndScheduleReady(item);
+const canStart = (item) => p2hReady(item) && timeAndScheduleReady(item) && !item.go_no_go_id;
 const availabilityLabel = (item) => {
+    if (item.go_no_go_id) return item.go_no_go?.status === 'PENDING' ? 'Menunggu approval GO/NO GO' : 'Unit dicadangkan pada GO/NO GO. Mulai dari pengajuan yang disetujui.';
     if (item.p2h_photo_path && item.p2h_status === "REJECTED") return "P2H ditolak · menunggu upload ulang";
     if (item.p2h_photo_path && item.p2h_status !== "APPROVED") return "Menunggu approval P2H";
     if (!timeAndScheduleReady(item)) return item.internal_ijin_lintas ? "Menunggu tanggal escort" : "Menunggu 7 jam";
@@ -78,18 +82,22 @@ const dateTime = (v) =>
         minute: "2-digit",
         hour12: false,
     }) + " WITA";
-const claimForm = useForm({ report_ids: [], p5m_photo: null });
 const openClaim = () => {
-    selectedIds.value = selectedReports.value.filter(canStart).map((item) => item.id);
+    selectedIds.value = selectedReports.value.filter(canStart).map(item => item.id);
     if (!selectedIds.value.length) return;
-    claimForm.reset();
-    claimForm.clearErrors();
+    initialGoNoGo.value = null;
+    selectionError.value = '';
     selectedClaim.value = true;
 };
-const closeClaim = () => {
-    selectedClaim.value = false;
-    claimForm.reset();
-    claimForm.clearErrors();
+const closeClaim = () => { selectedClaim.value = false; initialGoNoGo.value = null; };
+const goNoGoSubmitted = () => { selectedIds.value = []; closeClaim(); };
+const reviseGoNoGo = record => {
+    const ids = record.units.map(unit => unit.id);
+    const available = waiting.value.filter(item => ids.includes(item.id) && canStart(item));
+    if (available.length !== ids.length) { selectionError.value = 'Sebagian unit tidak tersedia. Muat ulang daftar atau pilih ulang unit yang siap.'; return; }
+    selectedIds.value = ids;
+    initialGoNoGo.value = record;
+    selectedClaim.value = true;
 };
 const toggleSelection = (id) => {
     const item = waiting.value.find((candidate) => candidate.id === id);
@@ -98,24 +106,9 @@ const toggleSelection = (id) => {
         ? selectedIds.value.filter((selectedId) => selectedId !== id)
         : [...selectedIds.value, id];
 };
-const setP5mPhoto = (file) => {
-    claimForm.p5m_photo = file;
-    if (file) claimForm.clearErrors("p5m_photo");
-};
 const setClosePhoto = (file) => {
     form.escort_close_photo = file;
     if (file) form.clearErrors("escort_close_photo");
-};
-const claim = () => {
-    selectedIds.value = selectedReports.value.filter(canStart).map((item) => item.id);
-    if (!selectedIds.value.length) return;
-    claimForm.transform(data => ({ ...data, report_ids: selectedIds.value })).post('/driver/escort-batches', {
-        forceFormData: true, preserveScroll: true,
-        onSuccess: () => {
-            selectedIds.value = [];
-            closeClaim();
-        },
-    });
 };
 const openClose = (batch) => {
     closing.value = batch;
@@ -192,6 +185,13 @@ const submitClose = () =>
                 }}</strong
                 ><span>Lokasi dan petugas close tercatat</span>
             </article>
+        </section>
+        <section class="panel mb-5 min-w-0 space-y-4">
+            <header class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="panel-title">Pengajuan GO/NO GO Saya</h2><p class="panel-copy">Isi checklist dan foto P5M terlebih dahulu. Setelah Layak + Approved, mulai escort dari pengajuan ini.</p></div><button type="button" class="btn-ghost" @click="router.reload({ preserveScroll: true })">Muat Ulang</button></header>
+            <p v-if="!goNoGoForms.data.length" class="text-sm text-slate-500">Pilih unit yang siap, lalu klik Isi GO/NO GO.</p>
+            <p v-if="selectionError" class="err" role="alert">{{ selectionError }}</p>
+            <GoNoGoRecord v-for="record in goNoGoForms.data" :key="record.id" :record="record" :checklist="goNoGoChecklist" :driver="true" @revise="reviseGoNoGo" />
+            <nav v-if="goNoGoForms.last_page > 1" class="flex flex-wrap gap-2" aria-label="Halaman GO NO GO saya"><Link v-for="link in goNoGoForms.links" :key="link.label" :href="link.url || ''" preserve-scroll preserve-state class="pagination" :class="{ 'pagination-active': link.active, 'pointer-events-none opacity-40': !link.url }" v-html="link.label" /></nav>
         </section>
         <section class="panel mb-5">
             <h2 class="panel-title">Escort Aktif Site BIB</h2>
@@ -377,7 +377,7 @@ const submitClose = () =>
                         {{ selectedIds.length }} unit dipilih
                     </p>
                     <p class="mt-1 text-xs text-slate-500">
-                        Satu foto P5M berlaku untuk seluruh unit.
+                        Satu form GO/NO GO dan foto P5M berlaku untuk seluruh unit terpilih. Maksimal 100 unit.
                     </p>
                 </div>
                 <div class="flex flex-col-reverse gap-2 sm:flex-row">
@@ -385,47 +385,13 @@ const submitClose = () =>
                         Reset Pilihan
                     </button>
                     <button type="button" class="btn" @click="openClaim">
-                        Ambil P5M & Mulai Escort
+                        Isi GO/NO GO
                     </button>
                 </div>
             </div>
         </section>
-        <Modal :show="Boolean(selectedClaim)" max-width="lg" @close="closeClaim">
-            <form class="p-6" @submit.prevent="claim">
-                <p class="text-[10px] font-bold uppercase tracking-[.18em] text-red-600">
-                    Foto P5M Wajib
-                </p>
-                <h2 class="mt-1 text-xl font-bold">
-                    Mulai Escort {{ selectedIds.length }} Unit
-                </h2>
-                <p class="mt-2 text-sm text-slate-500">
-                    Ambil foto P5M terbaru menggunakan kamera perangkat.
-                </p>
-                <P5mCameraCapture
-                    class="mt-4"
-                    :active="Boolean(selectedClaim)"
-                    :error="claimForm.errors.p5m_photo"
-                    @captured="setP5mPhoto"
-                />
-                <p v-if="claimForm.errors.ready_escort_at" class="err mt-3">
-                    {{ claimForm.errors.ready_escort_at }}
-                </p>
-                <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                    <button type="button" class="btn-ghost" @click="closeClaim">
-                        Batal
-                    </button>
-                    <button
-                        class="btn"
-                        :disabled="claimForm.processing || !claimForm.p5m_photo"
-                    >
-                        {{
-                            claimForm.processing
-                                ? "Menyimpan..."
-                                : "Gunakan Foto & Mulai Escort"
-                        }}
-                    </button>
-                </div>
-            </form>
+        <Modal :show="Boolean(selectedClaim)" max-width="4xl" aria-labelledby="go-no-go-form-title" @close="closeClaim">
+            <GoNoGoForm v-if="selectedClaim" :units="selectedReports" :checklist="goNoGoChecklist" :initial="initialGoNoGo" @submitted="goNoGoSubmitted" @cancel="closeClaim" />
         </Modal>
         <Modal :show="Boolean(closing)" max-width="2xl" @close="closing = null"
             ><form class="p-6 sm:p-8" @submit.prevent="submitClose">
