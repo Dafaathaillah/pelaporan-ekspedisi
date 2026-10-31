@@ -185,22 +185,6 @@ const requestAgain = (x) =>
                 ><span>Menunggu perbaikan vendor</span>
             </article>
         </section>
-        <PermitP2hFollowUps v-if="type === 'IJIN_LINTAS'" :permits="p2hFollowUps" :review-base="reviewBase" />
-        <section v-if="type === 'IJIN_LINTAS'" class="panel my-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div><h2 class="panel-title">Izin Lintas Internal</h2><p class="panel-copy">Buat izin internal dan jadwalkan satu card untuk seluruh unit.</p></div>
-            <button type="button" class="btn shrink-0" @click="internalDialog = true">Buat Izin Lintas</button>
-        </section>
-        <section v-if="type === 'IJIN_LINTAS' && internalItems.length" class="panel my-5">
-            <h2 class="panel-title">Daftar Izin Lintas Internal</h2>
-            <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                <article v-for="item in internalItems" :key="item.id" class="rounded-2xl border border-sky-200 bg-sky-50/50 p-4">
-                    <div class="flex items-center justify-between gap-2"><span class="text-[10px] font-black uppercase tracking-wider text-sky-700">Internal</span><span class="status-badge" :class="item.operational_status === 'CLOSED' ? 'bg-emerald-100 text-emerald-700' : item.operational_status === 'PROCESS' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'">{{ item.operational_status === 'CLOSED' ? 'Closed' : item.operational_status === 'PROCESS' ? 'Sedang Escort' : 'Menunggu' }}</span></div>
-                    <h3 class="mt-1 font-black text-slate-900">{{ item.title }}</h3>
-                    <p class="mt-2 text-sm text-slate-600">{{ date(item.escort_date) }} · {{ item.unit_count }} unit</p>
-                    <p class="mt-1 break-words text-sm font-semibold text-slate-800">{{ item.vehicle_plates.join(', ') }}</p>
-                </article>
-            </div>
-        </section>
         <form class="panel my-5" @submit.prevent="load">
             <h2 class="panel-title">Filter Pengajuan</h2>
             <p class="panel-copy">
@@ -256,6 +240,23 @@ const requestAgain = (x) =>
                 >
             </div>
         </form>
+        <PermitP2hFollowUps v-if="type === 'IJIN_LINTAS'" :permits="p2hFollowUps" :review-base="reviewBase" />
+        <section v-if="type === 'IJIN_LINTAS'" class="panel my-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div><h2 class="panel-title">Izin Lintas Internal</h2><p class="panel-copy">Buat izin internal dan jadwalkan satu card untuk seluruh unit.</p></div>
+            <button type="button" class="btn shrink-0" @click="internalDialog = true">Buat Izin Lintas</button>
+        </section>
+        <section v-if="type === 'IJIN_LINTAS' && internalItems.length" class="panel my-5">
+            <h2 class="panel-title">Daftar Izin Lintas Internal</h2>
+            <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <article v-for="item in internalItems" :key="item.id" class="rounded-2xl border border-sky-200 bg-sky-50/50 p-4">
+                    <div class="flex items-center justify-between gap-2"><span class="text-[10px] font-black uppercase tracking-wider text-sky-700">Internal</span><span class="status-badge" :class="item.operational_status === 'CLOSED' ? 'bg-emerald-100 text-emerald-700' : item.operational_status === 'PROCESS' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'">{{ item.operational_status === 'CLOSED' ? 'Closed' : item.operational_status === 'PROCESS' ? 'Sedang Escort' : 'Menunggu' }}</span></div>
+                    <h3 class="mt-1 font-black text-slate-900">{{ item.title }}</h3>
+                    <p class="mt-2 text-sm text-slate-600">{{ date(item.escort_date) }} · {{ item.unit_count }} unit</p>
+                    <p class="mt-1 break-words text-sm font-semibold text-slate-800">{{ item.vehicle_plates.join(', ') }}</p>
+                </article>
+            </div>
+        </section>
+
         <section class="panel overflow-hidden p-0">
             <div class="flex justify-between border-b px-5 py-4">
                 <div>

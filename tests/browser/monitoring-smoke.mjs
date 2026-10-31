@@ -10,7 +10,9 @@ import vue from '@vitejs/plugin-vue';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const fixture = `
-import { createApp } from 'vue';
+import { createApp, h, reactive } from 'vue';
+import AppShell from '/resources/js/Components/AppShell.vue';
+import PermitP2hFollowUps from '/resources/js/Components/PermitP2hFollowUps.vue';
 import Coordinator from '/resources/js/Pages/Coordinator/Index.vue';
 import ArrivalMonitoring from '/resources/js/Pages/Expedition/ArrivalMonitoring.vue';
 import VendorShow from '/resources/js/Pages/Vendor/Show.vue';
@@ -25,8 +27,20 @@ const paginate = data => ({ data, total: data.length, from: 1, to: data.length, 
 const view = new URLSearchParams(location.search).get('view') || 'dashboard';
 let component = Coordinator, props = { reports: paginate(Array.from({ length: 8 }, (_, i) => ({ ...report, id: 'report-' + i }))), summary: { today: 4, month: 10, total: 20, companies: 3, latest: { time: '12:30:00', company: longName } }, hourly: Array.from({ length: 24 }, (_, i) => ({ hour: String(i).padStart(2, '0'), total: i === 8 ? 4 : 0 })), filters: {}, options: { companies: [longName], vehicleTypes: ['Fuso'], vendors: [longName], destinations: [longName] }, arrivalP2hs: paginate([inspection]), p2hChecklist: Array.from({ length: 13 }, (_, i) => 'Pemeriksaan ' + (i + 1)) };
 if (view === 'empty') { props.arrivalP2hs = paginate([]); props.hourly = props.hourly.map(x => ({ ...x, total: 0 })); }
-if (view === 'arrivals') { component = ArrivalMonitoring; props = { items: [{ id: 'plan-1', submission, completed: 1, total: 2, pending_units: [unit], arrived_units: [{ ...report, vendor_submission_unit_id: unit.id }], planned_date: '2026-10-31' }], isVendor: true }; }
+if (view.startsWith('arrivals')) {
+    const manyUnits = Array.from({ length: 1000 }, (_, i) => ({ ...unit, id: 'monitor-unit-' + (i + 1), plate_number: 'DA ' + (i + 1) + ' AB', driver_name: 'Driver ' + (i + 1), latest_departure_p2h: { ...inspection, status: 'APPROVED', departed_at: report.arrived_at } }));
+    component = ArrivalMonitoring; props = { items: [{ id: 'plan-1', submission: { ...submission, units: manyUnits }, completed: 500, total: 1000, pending_units: manyUnits.slice(0, 500), arrived_units: manyUnits.slice(500).map(u => ({ ...report, id: 'report-' + u.id, vehicle_plate: u.plate_number, driver_name: u.driver_name, vendor_submission_unit_id: u.id })), planned_date: '2026-10-31', is_locked: view === 'arrivals-locked' }], isVendor: view !== 'arrivals-readonly' };
+}
 if (view === 'vendor') { component = VendorShow; unit.latest_departure_p2h = { ...inspection, departed_at: report.arrived_at }; props = { submission }; }
+if (view === 'followups') {
+    const followProps = { reviewBase: '/coordinator', permits: [{ ...submission, company: { name: longName, is_active: true }, expedition_accounts: [{ id: 1, name: longName }], units: Array.from({ length: 1000 }, (_, i) => ({ id: 'large-unit-' + (i + 1), plate_number: 'DA ' + (i + 1) + ' AB', driver_name: 'Driver ' + (i + 1), p2h: { ...inspection, status: i % 2 ? 'APPROVED' : 'PENDING', departed_at: i % 2 ? report.arrived_at : null }, arrived_at: null })) }] };
+    component = { render: () => h(AppShell, { title: 'Ijin Lintas', eyebrow: 'Monitoring P2H' }, { default: () => h(PermitP2hFollowUps, followProps) }) }; props = {};
+}
+if (view.startsWith('arrivals')) {
+    const arrivalProps = reactive(props);
+    window.__refreshMonitoringItems = () => { arrivalProps.items = arrivalProps.items.map(item => ({ ...item })); };
+    component = { render: () => h(ArrivalMonitoring, arrivalProps) }; props = {};
+}
 const app = createApp(component, props);
 app.config.errorHandler = error => window.__uiErrors.push(String(error));
 app.mount('#app');
@@ -37,7 +51,7 @@ import { reactive, h } from 'vue';
 export const usePage = () => ({ url: '/coordinator', props: { auth: { user: { name: 'Browser fixture', site: 'BIB', role: 'developer' } }, notificationCounts: {} } });
 export const router = { get() {}, post() {}, reload() {} };
 export const Link = { props: ['href'], setup: (p, { slots }) => () => h('a', { href: p.href }, slots.default?.()) };
-export const useForm = data => reactive({ ...structuredClone(data), errors: {}, processing: false, reset() {}, clearErrors() {}, post() {}, patch() {}, setError() {}, data() { return data; } });
+export const useForm = data => reactive({ ...structuredClone(data), errors: {}, processing: false, reset() {}, clearErrors() {}, post() {}, patch() { this.errors = { planned_date: 'Tanggal tidak valid' }; window.__refreshMonitoringItems?.(); }, setError() {}, data() { return data; } });
 `;
 const browser = process.env.BROWSER_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const artifactDir = await mkdtemp(path.join(os.tmpdir(), 'monitoring-browser-'));
@@ -59,10 +73,10 @@ try {
     const send = (method, params = {}) => new Promise((resolve, reject) => { const id = ++sequence; pending.set(id, { resolve, reject }); socket.send(JSON.stringify({ id, method, params })); });
     const evaluate = async expression => { const value = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }); if (value.exceptionDetails) throw new Error(JSON.stringify(value.exceptionDetails)); return value.result.value; };
     await send('Page.enable');
-    for (const width of [320, 360, 390, 768, 1440, 1920]) {
+    for (const width of (process.env.UI_WIDTHS || '320,360,390,768,1440,1920').split(',').map(Number)) {
         await send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 });
         await send('Emulation.setTouchEmulationEnabled', { enabled: width < 768 });
-        for (const view of ['dashboard', 'empty', 'arrivals', 'vendor']) {
+        for (const view of (process.env.UI_VIEWS || 'dashboard,empty,arrivals,vendor,followups').split(',')) {
             await send('Page.navigate', { url: 'http://127.0.0.1:' + server.httpServer.address().port + '/__monitoring-smoke?view=' + view });
             let ready = false;
             for (let i = 0; i < 120; i++) { if (await evaluate('Boolean(window.__uiReady)')) { ready = true; break; } await delay(100); }
@@ -106,11 +120,81 @@ try {
                 const image = await send('Page.captureScreenshot', { format: 'png' });
                 await writeFile(path.join(artifactDir, 'dashboard-' + width + '.png'), Buffer.from(image.data, 'base64'));
             }
-            if (view === 'arrivals' || view === 'vendor') {
-                const title = await evaluate('document.querySelector(".journey-details summary").textContent');
+            if (view === 'followups') {
+                assert.equal(await evaluate('document.querySelectorAll(".follow-up-row").length'), 10, '1000 units render only 10 rows');
+                assert.equal(await evaluate('document.querySelectorAll(".permit-follow-ups dialog[open]").length'), 0);
+                const image = await send('Page.captureScreenshot', { format: 'png' });
+                await writeFile(path.join(artifactDir, 'followups-' + width + '.png'), Buffer.from(image.data, 'base64'));
+                await evaluate('Array.from(document.querySelectorAll(".permit-follow-ups footer button")).find(button => button.textContent === "Berikutnya").click()');
+                await delay(100);
+                assert.ok(await evaluate('document.querySelector(".follow-up-row").textContent.includes("DA 11 AB")'), 'next page advances units');
+                await evaluate('var field = document.querySelector(".permit-follow-ups input[type=search]"); field.value = "DA 1000 AB"; field.dispatchEvent(new Event("input", { bubbles: true }))');
+                await delay(100);
+                assert.equal(await evaluate('document.querySelectorAll(".follow-up-row").length'), 1, 'search finds last of 1000 units');
+                await evaluate('var field = document.querySelector(".permit-follow-ups select"); field.value = "AWAITING_VENDOR"; field.dispatchEvent(new Event("change", { bubbles: true }))');
+                await delay(100);
+                assert.equal(await evaluate('document.querySelectorAll(".follow-up-row").length'), 0, 'stage filter combines with search');
+                await evaluate('var field = document.querySelector(".permit-follow-ups select"); field.value = ""; field.dispatchEvent(new Event("change", { bubbles: true }))');
+                await delay(100);
+                await evaluate('document.querySelector(".follow-up-row button").click()');
+                await delay(150);
+                assert.ok(await evaluate('document.querySelector(".permit-follow-ups dialog[open]") !== null'), 'detail modal opens');
+                assert.equal(await evaluate('document.body.style.overflow'), 'hidden', 'background scroll is locked');
+                assert.ok(await evaluate('document.querySelector(".permit-follow-ups dialog[open]").textContent.includes("Waktu sejak P2H dikirim")'), 'journey mounts only in detail');
+                assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), true);
+                await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' });
+                await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape' });
+                await delay(300);
+                assert.equal(await evaluate('document.querySelector(".permit-follow-ups dialog[open]") === null'), true, 'Escape closes modal');
+                assert.equal(await evaluate('document.body.style.overflow'), '', 'page scrolling restored');
+            }
+            if (view.startsWith('arrivals')) {
+                assert.equal(await evaluate('document.querySelectorAll(".arrival-unit-row").length'), 10, 'monitoring renders only 10 units');
+                await evaluate('Array.from(document.querySelectorAll(".arrival-unit-list footer button")).find(button => button.textContent === "Berikutnya").click()');
+                await delay(100);
+                assert.ok(await evaluate('document.querySelector(".arrival-unit-row").textContent.includes("DA 11 AB")'));
+                await evaluate('var field = document.querySelector(".arrival-unit-list input[type=search]"); field.value = "DA 1000 AB"; field.dispatchEvent(new Event("input", { bubbles: true }))');
+                await delay(100);
+                assert.equal(await evaluate('document.querySelectorAll(".arrival-unit-row").length'), 0, 'pending filter excludes arrived unit');
+                await evaluate('document.querySelector(".arrival-unit-list input[type=checkbox]").click()');
+                await delay(100);
+                assert.equal(await evaluate('document.querySelectorAll(".arrival-unit-row").length'), 1, 'all-unit search finds unit 1000');
+                await evaluate('document.querySelector(".arrival-unit-row button").click()');
+                await delay(150);
+                assert.ok(await evaluate('document.querySelector("dialog[open]") !== null'));
+                assert.ok(await evaluate('document.querySelector("dialog[open]").textContent.includes("Durasi P2H sampai tiba")'), 'arrived unit journey appears only in modal');
+                assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), true, 'monitoring modal stays in viewport');
+                const canReschedule = await evaluate('Array.from(document.querySelectorAll("dialog[open] button")).some(button => button.textContent === "Reschedule Sisa Kedatangan")');
+                assert.equal(canReschedule, view !== 'arrivals-readonly');
+                if (canReschedule) {
+                    const disabled = await evaluate('Array.from(document.querySelectorAll("dialog[open] button")).find(button => button.textContent === "Reschedule Sisa Kedatangan").disabled');
+                    assert.equal(disabled, view === 'arrivals-locked', 'locked planning cannot reschedule');
+                    if (!disabled) {
+                        await evaluate('Array.from(document.querySelectorAll("dialog[open] button")).find(button => button.textContent === "Reschedule Sisa Kedatangan").click()');
+                        await delay(100);
+                        assert.ok(await evaluate('document.querySelector("dialog[open] form input[type=date]") !== null'), 'reschedule fields available');
+                        assert.ok(await evaluate('document.querySelector("dialog[open] form").textContent.includes("semua unit yang masih menunggu")'));
+                        await evaluate('var field = document.querySelector("dialog[open] form input[type=date]"); field.value = "2026-12-12"; field.dispatchEvent(new Event("input", { bubbles: true })); var reason = document.querySelector("dialog[open] form textarea"); reason.value = "Menunggu pengiriman"; reason.dispatchEvent(new Event("input", { bubbles: true })); document.querySelector("dialog[open] form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))');
+                        await delay(250);
+                        assert.ok(await evaluate('document.querySelector("dialog[open] form") !== null'), 'validation response keeps reschedule form open');
+                        assert.ok(await evaluate('document.querySelector("dialog[open] form").textContent.includes("Tanggal tidak valid")'), 'server validation message stays visible');
+                        assert.equal(await evaluate('document.querySelector("dialog[open] form textarea").value'), 'Menunggu pengiriman', 'reschedule reason is retained after validation error');
+                    }
+                }
+                await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' });
+                await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape' });
+                await delay(300);
+                assert.equal(await evaluate('document.body.style.overflow'), '', 'monitoring modal restores page scroll');
+                await evaluate('var field = document.querySelector(".arrival-unit-list input[type=search]"); field.value = ""; field.dispatchEvent(new Event("input", { bubbles: true }))');
+                await delay(100);
+                await evaluate('window.scrollTo(0, 0)');
+                const image = await send('Page.captureScreenshot', { format: 'png' });
+                await writeFile(path.join(artifactDir, view + '-' + width + '.png'), Buffer.from(image.data, 'base64'));
+            }
+            if (view === 'vendor') {
                 await evaluate('document.querySelector(".journey-details summary").click()');
                 await delay(100);
-                assert.ok(await evaluate('document.querySelector(".journey-details > div").textContent.length > 0'), title + ' opens');
+                assert.ok(await evaluate('document.querySelector(".journey-details > div").textContent.length > 0'));
             }
             console.log('PASS', width, view);
         }

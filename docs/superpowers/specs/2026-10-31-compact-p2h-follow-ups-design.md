@@ -1,0 +1,3 @@
+# Compact Released-permit P2H follow-up
+
+The user requests a simpler, structured follow-up view that remains readable with 1000 records and reduces vertical scrolling. Replace expanded permit/unit cards with a compact unit table, ten visible rows, local search/status filters, explicit local-versus-global filter scope, and detail-on-demand modal. Keep all stage guidance, expired/company warnings, account identity guidance, PDF and permit-detail links. The timeline component mounts only for the selected modal record and is unmounted on close. Adapt rows to labeled compact cards below 640px. Existing server filtering/pagination remains unchanged and bounds permits; local unit pagination bounds nested unit counts. No database, API or permission changes.
