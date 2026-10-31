@@ -5,7 +5,7 @@ namespace App\Support;
 class GoNoGoChecklist
 {
     public const ITEMS = [
-        'Apakah personel/karyawan Escort Commander berkompeten melakukan pengawalan dan dibuktikan dengan sertifikat awareness pengawalan serta SIMPER yang sesuai?',
+        'Apakah personel/karyawan Escort Commander berkompeten melakukan pengawalan dan dibuktikan dengan sertifikat awareness pengawalan dan SIMPER sesuai dengan?',
         'Apakah unit pengawalan sesuai dengan kategori unit yang dikawal (kategori 1, 2, 3, dan 4)?',
         'Apakah unit pengawalan telah dipasang rambu peringatan pengawalan?',
         'Apakah P2H unit LV Escort Commander/pengawalan sudah dilaksanakan dan diverifikasi oleh pengawas?',
