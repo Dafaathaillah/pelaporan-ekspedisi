@@ -3,6 +3,7 @@ import AppShell from "@/Components/AppShell.vue";
 import DataTableFooter from "@/Components/DataTableFooter.vue";
 import EscortReadinessBadge from "@/Components/EscortReadinessBadge.vue";
 import ArrivalEscortTimer from "@/Components/ArrivalEscortTimer.vue";
+import LazyJourneyDetails from "@/Components/LazyJourneyDetails.vue";
 import Modal from "@/Components/Modal.vue";
 import SortButton from "@/Components/SortButton.vue";
 import ArrivalP2hReviewCard from "@/Components/ArrivalP2hReviewCard.vue";
@@ -161,6 +162,7 @@ const healthStatusClass = (status) =>
 </script>
 <template>
     <AppShell
+        class="coordinator-monitoring"
         title="Monitoring Koordinator Sarana"
         subtitle="Pelaporan Ekspedisi & Pengajuan Dokumen Vendor"
         eyebrow="Koordinator Sarana"
@@ -599,8 +601,7 @@ const healthStatusClass = (status) =>
                             </td>
                             <td>
                                 <span class="status-badge" :class="escortStatusClass(x.escort_status)">{{ escortStatusLabel(x.escort_status) }}</span>
-                                <details class="journey-details mt-3">
-                                    <summary>Lokasi pengambilan foto</summary>
+                                <LazyJourneyDetails title="Lokasi pengambilan foto" class="mt-3">
                                     <div class="mt-3"><div
                                     v-if="
                                         x.arrival_latitude ||
@@ -690,9 +691,8 @@ const healthStatusClass = (status) =>
                                     </div>
                                 </div>
                                 <span v-else class="text-slate-400">—</span></div>
-                                </details>
-                                <details class="journey-details mt-2">
-                                    <summary>Informasi &amp; bukti escort</summary>
+                                </LazyJourneyDetails>
+                                <LazyJourneyDetails title="Informasi &amp; bukti escort" class="mt-2">
                                     <div class="mt-3"><div
                                     class="rounded-xl border border-slate-200 bg-slate-50 p-3"
                                 >
@@ -893,7 +893,7 @@ const healthStatusClass = (status) =>
                                         </div>
                                     </dl>
                                 </div></div>
-                                </details>
+                                </LazyJourneyDetails>
                             </td>
                         </tr>
                     </tbody>
@@ -1204,6 +1204,24 @@ const healthStatusClass = (status) =>
 </template>
 
 <style scoped>
+/* Use solid surfaces across this data-heavy page, including its fixed sidebar. */
+.app-shell.coordinator-monitoring {
+    --glass-surface: #fff;
+    --glass-surface-strong: #fff;
+    --glass-shadow: 0 4px 16px rgba(15, 23, 42, .05);
+}
+.app-shell.coordinator-monitoring :deep(*) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+.app-shell.coordinator-monitoring :deep(.app-shell-backdrop::before),
+.app-shell.coordinator-monitoring :deep(.app-shell-backdrop::after) {
+    filter: none;
+}
+.app-shell.coordinator-monitoring .arrival-monitoring tbody tr {
+    transition: none;
+}
+
 /* Keep this scrolling data surface opaque instead of compositing glass layers. */
 .app-shell .arrival-monitoring {
     background-color: #fff;
@@ -1232,41 +1250,6 @@ const healthStatusClass = (status) =>
 .arrival-monitoring .data-table td:nth-child(2) :deep(.font-mono) {
     max-width: 100%;
     white-space: normal;
-}
-.arrival-monitoring .journey-details {
-    border: 1px solid #e2e8f0;
-    border-radius: .75rem;
-    background: #f8fafc;
-}
-.arrival-monitoring .journey-details > summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .5rem;
-    min-height: 44px;
-    padding: .625rem .75rem;
-    list-style: none;
-    cursor: pointer;
-    color: #475569;
-    font-size: 12px;
-    font-weight: 600;
-}
-.arrival-monitoring .journey-details > summary:hover {
-    color: #b91c1c;
-    background: #fff1f2;
-    border-radius: .75rem;
-}
-.arrival-monitoring .journey-details > summary:focus-visible {
-    outline: 2px solid #dc2626;
-    outline-offset: 2px;
-    border-radius: .75rem;
-}
-.arrival-monitoring .journey-details[open] {
-    background: white;
-}
-.arrival-monitoring .journey-details > div {
-    margin-top: 0;
-    padding: 0 .5rem .5rem;
 }
 
 .arrival-monitoring .arrival-table-scroll {
@@ -1312,29 +1295,7 @@ const healthStatusClass = (status) =>
 .arrival-monitoring .arrival-p2h-download:hover {
     background: #d1fae5;
 }
-.arrival-monitoring .journey-details > summary::-webkit-details-marker {
-    display: none;
-}
-.arrival-monitoring .journey-details > summary::after {
-    content: '';
-    flex-shrink: 0;
-    width: 7px;
-    height: 7px;
-    border-right: 1.5px solid currentColor;
-    border-bottom: 1.5px solid currentColor;
-    transform: rotate(45deg);
-}
-.arrival-monitoring .journey-details[open] > summary::after {
-    transform: rotate(225deg);
-}
-.arrival-monitoring .journey-details[open] > summary {
-    border-bottom: 1px solid #e2e8f0;
-    border-radius: .75rem .75rem 0 0;
-    color: #0f172a;
-}
-.arrival-monitoring .journey-details[open] > div {
-    padding-top: .5rem;
-}
+
 @media (max-width: 640px) {
     .arrival-monitoring .data-table {
         --table-cell-inline-space: .75rem;
