@@ -1,4 +1,5 @@
 <script setup>
+import LazyJourneyDetails from '@/Components/LazyJourneyDetails.vue';
 import AppShell from '@/Components/AppShell.vue';
 import P2hJourney from '@/Components/P2hJourney.vue';
 import { Link, useForm } from '@inertiajs/vue3';
@@ -38,7 +39,7 @@ const review = (unit, status) => { const form = reviewFor(unit); form.status = s
                         <p v-if="unit.latest_departure_p2h.rejection_reason" class="mt-1 text-red-700">Alasan penolakan: {{ unit.latest_departure_p2h.rejection_reason }}</p>
                         <a :href="`/departure-p2h/${unit.id}/download`" class="mt-2 inline-block font-semibold text-red-700 underline">Download hasil P2H</a>
                         <div v-if="unit.latest_departure_p2h.status === 'PENDING'" class="mt-3 space-y-2"><label class="block font-semibold">Alasan jika ditolak<textarea v-model="reviewFor(unit).reason" class="field" maxlength="1000" placeholder="Jelaskan perbaikan yang diperlukan"></textarea></label><p class="err">{{ reviewFor(unit).errors.reason || reviewFor(unit).errors.status }}</p><div class="flex flex-wrap gap-2"><button type="button" class="btn" :disabled="reviewFor(unit).processing" @click="review(unit, 'APPROVED')">Approve P2H</button><button type="button" class="btn-ghost" :disabled="reviewFor(unit).processing || !reviewFor(unit).reason.trim()" @click="review(unit, 'REJECTED')">Reject P2H</button></div></div>
-                        <details v-if="unit.departure_p2hs?.length > 1" class="mt-3"><summary class="cursor-pointer font-semibold">Riwayat revisi ({{ unit.departure_p2hs.length }})</summary><p v-for="version in unit.departure_p2hs" :key="version.id" class="mt-1">Revisi {{ version.revision }} · {{ version.status }} · {{ version.rejection_reason || '-' }}</p></details>
+                        <LazyJourneyDetails v-if="unit.departure_p2hs?.length > 1" :title="`Riwayat revisi (${unit.departure_p2hs.length})`" class="mt-3"><p v-for="version in unit.departure_p2hs" :key="version.id" class="mt-1">Revisi {{ version.revision }} · {{ version.status }} · {{ version.rejection_reason || '-' }}</p></LazyJourneyDetails>
                     </div>
                 </article>
             </div>

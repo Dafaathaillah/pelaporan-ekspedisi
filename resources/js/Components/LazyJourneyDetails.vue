@@ -15,6 +15,9 @@ const syncOpen = (event) => { expanded.value = event.currentTarget.open; };
 
 <style scoped>
 .journey-details {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
     border: 1px solid #e2e8f0;
     border-radius: .75rem;
     background: #f8fafc;

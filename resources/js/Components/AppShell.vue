@@ -455,7 +455,7 @@ const logout = () => {
                 </div>
             </header>
             <main
-                class="mx-auto w-full max-w-[1500px] flex-1 px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:pb-8"
+                class="mx-auto min-w-0 w-full max-w-[1500px] flex-1 px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:pb-8"
             >
                 <section
                     v-if="eyebrow"

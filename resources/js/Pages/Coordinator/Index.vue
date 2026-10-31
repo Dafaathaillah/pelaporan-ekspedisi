@@ -170,19 +170,13 @@ const healthStatusClass = (status) =>
         ><template #hero-copy
             >Informasi laporan kedatangan ekspedisi di Underpass.</template
         >
-        <section class="panel space-y-4 p-5 sm:p-6">
-            <div><h3 class="text-lg font-black text-slate-900">Persetujuan P2H Kedatangan</h3><p class="mt-1 text-sm text-slate-600">Periksa P2H sebelum ekspedisi mengisi laporan kedatangan. Pemeriksaan yang menunggu persetujuan ditampilkan terlebih dahulu.</p></div>
-            <p v-if="!arrivalP2hs?.data?.length" class="text-sm text-slate-500">Belum ada P2H kedatangan.</p>
-            <ArrivalP2hReviewCard v-for="p2h in arrivalP2hs?.data || []" :key="p2h.id" :p2h="p2h" :checklist="p2hChecklist" />
-            <nav v-if="arrivalP2hs?.last_page > 1" aria-label="Halaman P2H kedatangan" class="flex flex-wrap gap-2"><Link v-for="link in arrivalP2hs.links" :key="link.label" :href="link.url || ''" preserve-scroll preserve-state class="pagination" :class="{ 'pagination-active': link.active, 'pointer-events-none opacity-40': !link.url }" v-html="link.label" /></nav>
-        </section>
-        <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            <article v-for="x in cards" :key="x[0]" class="metric-card">
+        <section class="monitoring-metrics grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+            <article v-for="x in cards" :key="x[0]" class="metric-card min-w-0">
                 <p>{{ x[0] }}</p>
                 <strong>{{ x[1] }}</strong
                 ><span>{{ x[2] }}</span>
             </article>
-            <article class="metric-card">
+            <article class="metric-card col-span-2 min-w-0 sm:col-span-2 xl:col-span-1">
                 <p>Kedatangan Terakhir</p>
                 <strong class="text-2xl">{{
                     summary.latest?.time || "--:--:--"
@@ -192,8 +186,14 @@ const healthStatusClass = (status) =>
                 }}</span>
             </article>
         </section>
-        <section class="mt-5 grid gap-4 2xl:grid-cols-[1.05fr_1.35fr]">
-            <article class="panel overflow-hidden">
+        <section class="panel mt-5 min-w-0 space-y-4 p-4 sm:p-5">
+            <div><h3 class="text-lg font-black text-slate-900">Persetujuan P2H Kedatangan</h3><p class="mt-1 text-sm text-slate-600">Periksa P2H sebelum ekspedisi mengisi laporan kedatangan. Pemeriksaan yang menunggu persetujuan ditampilkan terlebih dahulu.</p></div>
+            <p v-if="!arrivalP2hs?.data?.length" class="text-sm text-slate-500">Belum ada P2H kedatangan.</p>
+            <ArrivalP2hReviewCard v-for="p2h in arrivalP2hs?.data || []" :key="p2h.id" :p2h="p2h" :checklist="p2hChecklist" />
+            <nav v-if="arrivalP2hs?.last_page > 1" aria-label="Halaman P2H kedatangan" class="flex flex-wrap gap-2"><Link v-for="link in arrivalP2hs.links" :key="link.label" :href="link.url || ''" preserve-scroll preserve-state class="pagination" :class="{ 'pagination-active': link.active, 'pointer-events-none opacity-40': !link.url }" v-html="link.label" /></nav>
+        </section>
+        <section class="monitoring-overview mt-5 grid min-w-0 items-start gap-4 2xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.35fr)]">
+            <article class="panel min-w-0 overflow-hidden">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <h2 class="panel-title">Pola Kedatangan Hari Ini</h2>
@@ -224,7 +224,7 @@ const healthStatusClass = (status) =>
                         ><small>{{ activeHours.length }} jam aktif</small>
                     </div>
                 </div>
-                <div class="relative mt-5 select-none touch-pan-y">
+                <div v-if="activeHours.length" class="relative mt-5 select-none touch-pan-y">
                     <svg
                         class="h-auto w-full"
                         viewBox="0 0 600 220"
@@ -308,7 +308,7 @@ const healthStatusClass = (status) =>
                                     ' kedatangan'
                                 "
                                 @pointerenter="selectPoint(point)"
-                                @pointerdown.prevent="selectPoint(point)"
+                                @pointerdown="selectPoint(point)"
                                 @focus="selectPoint(point)"
                             />
                             <circle
@@ -376,7 +376,8 @@ const healthStatusClass = (status) =>
                         </g>
                     </svg>
                 </div>
-                <div class="mt-1 flex flex-wrap gap-2">
+                <div v-else class="mt-5 flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center"><p class="text-sm font-semibold text-slate-600">Belum ada kedatangan hari ini</p><p class="mt-1 text-xs text-slate-500">Grafik akan tampil setelah ada laporan kedatangan.</p></div>
+                <div v-if="busiest.length" class="mt-1 flex flex-wrap gap-2">
                     <span class="text-[10px] font-bold uppercase text-slate-400"
                         >Jam terpadat:</span
                     ><span
@@ -388,7 +389,7 @@ const healthStatusClass = (status) =>
                     >
                 </div>
             </article>
-            <form class="panel" @submit.prevent="load">
+            <form class="monitoring-filters panel min-w-0" @submit.prevent="load">
                 <h2 class="panel-title">Filter Monitoring</h2>
                 <p class="panel-copy">Seluruh pencarian diproses server</p>
                 <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -429,13 +430,13 @@ const healthStatusClass = (status) =>
                         </option>
                     </select>
                 </div>
-                <div class="mt-5 flex flex-wrap gap-3">
+                <div class="filter-actions mt-5 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
                     <button class="btn">Terapkan Filter</button
                     ><button type="button" class="btn-ghost" @click="reset">
                         Reset</button
                     ><button
                         type="button"
-                        class="btn-ghost ml-auto"
+                        class="btn-ghost sm:ml-auto"
                         @click="reload"
                     >
                         Muat Ulang</button
@@ -1303,5 +1304,31 @@ const healthStatusClass = (status) =>
     .arrival-monitoring .arrival-evidence > a {
         min-height: 44px;
     }
+}
+
+.monitoring-metrics .metric-card {
+    padding: 1rem;
+}
+.monitoring-metrics .metric-card strong {
+    font-size: clamp(1.5rem, 3vw, 1.875rem);
+    font-variant-numeric: tabular-nums;
+}
+.monitoring-metrics .metric-card p,
+.monitoring-metrics .metric-card span {
+    overflow-wrap: anywhere;
+}
+.monitoring-overview .control {
+    min-width: 0;
+    max-width: 100%;
+}
+.filter-actions > * {
+    min-width: 0;
+    min-height: 44px;
+    text-align: center;
+}
+@media (max-width: 639px) {
+    .monitoring-metrics .metric-card p { font-size: 10px; }
+    .monitoring-metrics .metric-card span { font-size: 11px; }
+    .monitoring-overview .panel { padding: 1rem; }
 }
 </style>
