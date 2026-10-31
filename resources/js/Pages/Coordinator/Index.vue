@@ -392,32 +392,35 @@ const healthStatusClass = (status) =>
                 <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <input
                         v-model="f.search"
+                        aria-label="Cari driver, nomor polisi, atau perusahaan"
                         class="control xl:col-span-2"
                         placeholder="Cari driver, nopol, perusahaan..."
                     /><input
                         v-model="f.date_from"
+                        aria-label="Tanggal kedatangan mulai"
                         type="date"
                         class="control"
                     /><input
                         v-model="f.date_to"
+                        aria-label="Tanggal kedatangan akhir"
                         type="date"
                         class="control"
-                    /><select v-model="f.company" class="control">
+                    /><select v-model="f.company" aria-label="Perusahaan ekspedisi" class="control">
                         <option value="">Semua ekspedisi</option>
                         <option v-for="x in options.companies">
                             {{ x }}
                         </option></select
-                    ><select v-model="f.vehicle_type" class="control">
+                    ><select v-model="f.vehicle_type" aria-label="Jenis kendaraan" class="control">
                         <option value="">Semua kendaraan</option>
                         <option v-for="x in options.vehicleTypes">
                             {{ x }}
                         </option></select
-                    ><select v-model="f.vendor" class="control">
+                    ><select v-model="f.vendor" aria-label="Vendor pengirim" class="control">
                         <option value="">Semua vendor</option>
                         <option v-for="x in options.vendors">
                             {{ x }}
                         </option></select
-                    ><select v-model="f.destination" class="control">
+                    ><select v-model="f.destination" aria-label="Tujuan kedatangan" class="control">
                         <option value="">Semua tujuan</option>
                         <option v-for="x in options.destinations">
                             {{ x }}
@@ -440,33 +443,38 @@ const healthStatusClass = (status) =>
                 </div>
             </form>
         </section>
-        <section class="panel mt-5 overflow-hidden p-0">
-            <div class="flex justify-between border-b px-5 py-4">
+        <section class="arrival-monitoring panel mt-5 overflow-hidden p-0">
+            <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 class="panel-title">Monitoring Kedatangan Ekspedisi</h2>
-                    <p class="panel-copy">DataTable server-side</p>
+                    <p class="panel-copy">Pantau unit, pemeriksaan P2H, dan perjalanan escort</p>
                 </div>
-                <span class="text-xs text-slate-400"
-                    >{{ reports.total }} data</span
-                >
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">{{ reports.total }} laporan</span>
+                    <span v-if="reports.total" class="text-xs text-slate-500">Baris {{ reports.from }}?{{ reports.to }}</span>
+                </div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="data-table min-w-[1540px] table-fixed align-top">
+            <div id="arrival-table-help" class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/70 px-5 py-3 text-xs text-slate-600">
+                <span>Buka detail untuk melihat lokasi foto dan bukti escort.</span>
+                <span class="font-medium">Geser tabel untuk melihat seluruh kolom.</span>
+            </div>
+            <div class="arrival-table-scroll" tabindex="0" role="region" aria-label="Monitoring kedatangan ekspedisi" aria-describedby="arrival-table-help">
+                <table class="data-table min-w-[1320px] table-fixed align-top">
+                    <caption class="sr-only">Daftar kedatangan ekspedisi beserta pemeriksaan kesehatan, bukti P2H, vendor, dan detail perjalanan escort.</caption>
                     <colgroup>
-                        <col class="w-[55px]" />
-                        <col class="w-[135px]" />
-                        <col class="w-[225px]" />
-                        <col class="w-[185px]" />
-                        <col class="w-[190px]" />
-                        <col class="w-[220px]" />
-                        <col class="w-[285px]" />
-                        <col class="w-[190px]" />
-                        <col class="w-[300px]" />
+                        <col class="w-[48px]" />
+                        <col class="w-[145px]" />
+                        <col class="w-[200px]" />
+                        <col class="w-[155px]" />
+                        <col class="w-[150px]" />
+                        <col class="w-[215px]" />
+                        <col class="w-[165px]" />
+                        <col class="w-[240px]" />
                     </colgroup>
                     <thead>
                         <tr>
-                            <th>No</th>
-                            <th>
+                            <th scope="col">No</th>
+                            <th scope="col">
                                 <SortButton
                                     label="Tanggal"
                                     column="arrived_at"
@@ -475,7 +483,7 @@ const healthStatusClass = (status) =>
                                     @sort="sort"
                                 />
                             </th>
-                            <th>
+                            <th scope="col">
                                 <SortButton
                                     label="Unit & Perusahaan"
                                     column="expedition_company"
@@ -484,7 +492,7 @@ const healthStatusClass = (status) =>
                                     @sort="sort"
                                 />
                             </th>
-                            <th>
+                            <th scope="col">
                                 <SortButton
                                     label="Driver & Kontak"
                                     column="driver_name"
@@ -493,11 +501,10 @@ const healthStatusClass = (status) =>
                                     @sort="sort"
                                 />
                             </th>
-                            <th>Tensi</th>
-                            <th>Bukti & Approval P2H</th>
-                            <th>Lokasi Pengambilan Foto</th>
-                            <th>Vendor & Tujuan</th>
-                            <th>Informasi Escort</th>
+                            <th scope="col">Tensi</th>
+                            <th scope="col">Bukti & Approval P2H</th>
+                            <th scope="col">Vendor & Tujuan</th>
+                            <th scope="col">Detail Perjalanan</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -553,7 +560,7 @@ const healthStatusClass = (status) =>
                                 <span v-else>-</span>
                             </td>
                             <td>
-                                <div class="grid grid-cols-3 gap-1.5">
+                                <div class="arrival-evidence flex flex-wrap gap-2">
                                     <a
                                         v-if="x.arrival_photo_path"
                                         :href="`/coordinator/reports/${x.id}/photos/arrival`"
@@ -583,8 +590,18 @@ const healthStatusClass = (status) =>
                                     <div v-if="x.p2h_status !== 'APPROVED'" class="mt-2 grid grid-cols-2 gap-2"><button type="button" class="rounded-lg bg-emerald-600 px-2 py-2 text-[11px] font-bold text-white hover:bg-emerald-700" @click="openP2hReview(x, 'APPROVED')">Setujui</button><button type="button" class="rounded-lg border border-red-200 bg-white px-2 py-2 text-[11px] font-bold text-red-700 hover:bg-red-600 hover:text-white" @click="openP2hReview(x, 'REJECTED')">Tolak</button></div>
                                 </div>
                             </td>
+
                             <td>
-                                <div
+                                <span class="block text-[10px] font-black uppercase tracking-wide text-slate-400">Vendor / Pengirim</span>
+                                <b class="mt-1 block break-words text-slate-800">{{ x.sender_vendor }}</b>
+                                <span class="mt-3 block text-[10px] font-black uppercase tracking-wide text-slate-400">Tujuan</span>
+                                <span class="mt-1 block break-words font-semibold text-slate-700">{{ x.destination }}</span>
+                            </td>
+                            <td>
+                                <span class="status-badge" :class="escortStatusClass(x.escort_status)">{{ escortStatusLabel(x.escort_status) }}</span>
+                                <details class="journey-details mt-3">
+                                    <summary>Lokasi pengambilan foto</summary>
+                                    <div class="mt-3"><div
                                     v-if="
                                         x.arrival_latitude ||
                                         x.blood_pressure_latitude
@@ -672,16 +689,11 @@ const healthStatusClass = (status) =>
                                         >
                                     </div>
                                 </div>
-                                <span v-else class="text-slate-400">—</span>
-                            </td>
-                            <td>
-                                <span class="block text-[10px] font-black uppercase tracking-wide text-slate-400">Vendor / Pengirim</span>
-                                <b class="mt-1 block break-words text-slate-800">{{ x.sender_vendor }}</b>
-                                <span class="mt-3 block text-[10px] font-black uppercase tracking-wide text-slate-400">Tujuan</span>
-                                <span class="mt-1 block break-words font-semibold text-slate-700">{{ x.destination }}</span>
-                            </td>
-                            <td>
-                                <div
+                                <span v-else class="text-slate-400">—</span></div>
+                                </details>
+                                <details class="journey-details mt-2">
+                                    <summary>Informasi &amp; bukti escort</summary>
+                                    <div class="mt-3"><div
                                     class="rounded-xl border border-slate-200 bg-slate-50 p-3"
                                 >
                                     <div
@@ -880,7 +892,8 @@ const healthStatusClass = (status) =>
                                             </dd>
                                         </div>
                                     </dl>
-                                </div>
+                                </div></div>
+                                </details>
                             </td>
                         </tr>
                     </tbody>
@@ -889,7 +902,8 @@ const healthStatusClass = (status) =>
                     v-if="!reports.data.length"
                     class="p-14 text-center text-sm text-slate-500"
                 >
-                    Data tidak ditemukan.
+                    <p class="font-semibold text-slate-700">Belum ada kedatangan yang sesuai.</p>
+                    <p class="mt-1">Coba ubah kata kunci atau rentang tanggal pada filter.</p>
                 </div>
             </div>
             <DataTableFooter
@@ -1188,3 +1202,135 @@ const healthStatusClass = (status) =>
         </Modal>
     </AppShell>
 </template>
+
+<style scoped>
+.arrival-monitoring .data-table {
+    --table-cell-inline-space: 1rem;
+    --table-cell-block-space: 1rem;
+}
+.arrival-monitoring .data-table th {
+    font-size: 11px;
+    letter-spacing: .025em;
+}
+.arrival-monitoring .data-table td {
+    overflow-wrap: anywhere;
+}
+.arrival-monitoring .data-table td:nth-child(2) :deep(.font-mono) {
+    max-width: 100%;
+    white-space: normal;
+}
+.arrival-monitoring .journey-details {
+    border: 1px solid #e2e8f0;
+    border-radius: .75rem;
+    background: #f8fafc;
+}
+.arrival-monitoring .journey-details > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    min-height: 44px;
+    padding: .625rem .75rem;
+    list-style: none;
+    cursor: pointer;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+}
+.arrival-monitoring .journey-details > summary:hover {
+    color: #b91c1c;
+    background: #fff1f2;
+    border-radius: .75rem;
+}
+.arrival-monitoring .journey-details > summary:focus-visible {
+    outline: 2px solid #dc2626;
+    outline-offset: 2px;
+    border-radius: .75rem;
+}
+.arrival-monitoring .journey-details[open] {
+    background: white;
+}
+.arrival-monitoring .journey-details > div {
+    margin-top: 0;
+    padding: 0 .5rem .5rem;
+}
+
+.arrival-monitoring .arrival-table-scroll {
+    max-height: 72vh;
+    overflow: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-color: #cbd5e1 #f8fafc;
+}
+.arrival-monitoring .arrival-table-scroll:focus-visible {
+    outline: 2px solid #dc2626;
+    outline-offset: -2px;
+}
+.arrival-monitoring .data-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f8fafc;
+    box-shadow: 0 1px 0 #e2e8f0;
+}
+.arrival-monitoring .data-table td:first-child {
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+}
+.arrival-monitoring .data-table td:nth-child(2) {
+    font-variant-numeric: tabular-nums;
+}
+.arrival-monitoring .arrival-evidence > a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: .5rem .625rem;
+    white-space: nowrap;
+    font-size: 12px;
+    line-height: 1.25;
+    border: 1px solid #fee2e2;
+}
+.arrival-monitoring .arrival-evidence > a:hover {
+    background: #fee2e2;
+    color: #991b1b;
+}
+.arrival-monitoring .arrival-evidence > a:focus-visible,
+.arrival-monitoring .arrival-p2h-download:focus-visible {
+    outline: 2px solid #dc2626;
+    outline-offset: 2px;
+}
+.arrival-monitoring .arrival-p2h-download:hover {
+    background: #d1fae5;
+}
+.arrival-monitoring .journey-details > summary::-webkit-details-marker {
+    display: none;
+}
+.arrival-monitoring .journey-details > summary::after {
+    content: '';
+    flex-shrink: 0;
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+}
+.arrival-monitoring .journey-details[open] > summary::after {
+    transform: rotate(225deg);
+}
+.arrival-monitoring .journey-details[open] > summary {
+    border-bottom: 1px solid #e2e8f0;
+    border-radius: .75rem .75rem 0 0;
+    color: #0f172a;
+}
+.arrival-monitoring .journey-details[open] > div {
+    padding-top: .5rem;
+}
+@media (max-width: 640px) {
+    .arrival-monitoring .data-table {
+        --table-cell-inline-space: .75rem;
+    }
+    .arrival-monitoring .arrival-evidence > a {
+        min-height: 44px;
+    }
+}
+</style>
